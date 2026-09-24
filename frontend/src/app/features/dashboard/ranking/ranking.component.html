@@ -1,0 +1,34 @@
+@if (modoCompacto) {
+  <h2 class="text-lg font-bold text-[#1E3A8A]">Ranking de avance por SLEP</h2>
+  <div class="lista-ranking flex flex-col">
+    @for (r of ranking; track r.slep; let i = $index) {
+      <div class="flex items-center gap-2 text-[11px] py-1 border-b border-gray-100">
+        <span class="w-6 text-gray-400">{{ i + 1 }}.</span>
+        <span class="w-40 truncate">{{ r.slep }}</span>
+        <div class="flex-1 bg-gray-100 rounded h-2 overflow-hidden">
+          <div class="h-full" [style.width.%]="anchosAnimados[i]" [style.background]="colorBarra(r.pct)"></div>
+        </div>
+        <span class="w-10 text-right text-gray-500">{{ r.pct === null ? '—' : r.pct + '%' }}</span>
+      </div>
+    }
+  </div>
+} @else {
+  <h3 class="text-sm font-bold text-gray-700 mb-2">Ranking de avance por SLEP</h3>
+  <div class="flex flex-col gap-2">
+    @for (r of ranking; track r.slep; let i = $index) {
+      <div class="flex flex-col gap-1 text-xs">
+        <div class="flex items-center justify-between">
+          <span><span class="text-gray-400">{{ i + 1 }}.</span> {{ r.slep }}</span>
+          <span class="text-gray-500">{{ r.pct === null ? '—' : r.pct + '%' }}</span>
+        </div>
+        <div class="w-full bg-gray-100 rounded h-3 overflow-hidden">
+          <div
+            class="h-full transition-all duration-700 ease-out"
+            [style.width.%]="anchosAnimados[i]"
+            [style.background]="colorBarra(r.pct)"
+          ></div>
+        </div>
+      </div>
+    }
+  </div>
+}

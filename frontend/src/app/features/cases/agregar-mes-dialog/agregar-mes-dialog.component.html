@@ -1,0 +1,32 @@
+<h2 mat-dialog-title>Agregar Mes</h2>
+<mat-dialog-content>
+  <p class="text-sm text-gray-600 mb-3">Se crearán los 36 SLEP para este mes, con sus campos en blanco — cada Digitador podrá cargar los suyos después.</p>
+  <form [formGroup]="form" class="flex flex-col gap-3">
+    <mat-form-field appearance="outline">
+      <mat-label>Mes</mat-label>
+      <mat-select formControlName="mes">
+        @for (m of meses; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Año</mat-label>
+      <mat-select formControlName="anio">
+        @for (a of anios; track a) { <mat-option [value]="a">{{ a }}</mat-option> }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Formulario</mat-label>
+      <mat-select formControlName="formularioId">
+        @for (f of formularios; track f.id) { <mat-option [value]="f.id">{{ f.label }}</mat-option> }
+      </mat-select>
+    </mat-form-field>
+    @if (avisoPlantilla44) {
+      <p class="text-xs text-amber-600">⚠️ El Dashboard, el Excel y el Informe todavía están calibrados para la plantilla de 37 preguntas — con 44, esos números podrían no ser exactos.</p>
+    }
+    @if (error) { <p class="text-xs text-red-600">{{ error }}</p> }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()">Cancelar</button>
+  <button mat-flat-button class="!bg-[#1E3A8A] !text-white" [disabled]="form.invalid" (click)="confirmar()">Crear Mes</button>
+</mat-dialog-actions>

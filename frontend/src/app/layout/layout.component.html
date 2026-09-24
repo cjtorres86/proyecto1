@@ -1,0 +1,33 @@
+<div class="flex flex-col h-full">
+  <mat-toolbar class="!bg-[#1E3A8A] !text-white flex justify-between">
+    <div class="flex items-center gap-3">
+      <span class="font-bold">Avance de Sumarios</span>
+      <a routerLink="/" mat-button class="!text-white">Cases</a>
+      @if (authService.can('gestionar_usuarios')) { <a routerLink="/usuarios" mat-button class="!text-white">Usuarios</a> }
+      @if (authService.usuarioActual()?.esSuperadmin) { <a routerLink="/perfiles" mat-button class="!text-white">Perfiles</a> }
+      @if (authService.can('exportar_informe')) { <a routerLink="/errores" mat-button class="!text-white">Errores</a> }
+    </div>
+    <div class="flex items-center gap-3">
+      @if (authService.can('exportar_excel') || authService.can('exportar_informe')) {
+        @if (mesActivo$ | async; as mes) {
+          <button mat-icon-button class="!text-white" (click)="abrirDescargas(mes)" title="Descargar">
+            <i class="pi pi-download"></i>
+          </button>
+        } @else {
+          <button mat-icon-button class="!text-white" disabled title="Selecciona un mes primero">
+            <i class="pi pi-download"></i>
+          </button>
+        }
+      }
+      @if (authService.usuarioActual(); as u) {
+        <span class="text-sm">{{ u.nombreParaMostrar }} ({{ u.esSuperadmin ? 'Superadmin' : u.perfil?.nombre }})</span>
+      }
+      <button mat-icon-button class="!text-white" (click)="cerrarSesion()" title="Cerrar sesión">
+        <i class="pi pi-sign-out"></i>
+      </button>
+    </div>
+  </mat-toolbar>
+  <div class="flex-1 overflow-auto bg-gray-50 p-4">
+    <router-outlet></router-outlet>
+  </div>
+</div>

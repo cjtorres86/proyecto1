@@ -1,0 +1,62 @@
+<div class="bg-gray-100 min-h-screen py-8 print:bg-white print:min-h-0 print:py-0">
+  <div class="print:hidden mb-4 flex justify-end w-[816px] mx-auto">
+    <button
+      (click)="imprimir()"
+      class="text-xs border border-blue-800 text-blue-800 rounded px-3 py-1.5 cursor-pointer"
+    >
+      Imprimir / Guardar como PDF
+    </button>
+  </div>
+
+  @if (!datos) {
+    <p class="text-gray-400 text-center">Cargando informe…</p>
+  } @else {
+    <!-- HOJA 1: Dashboard -->
+    <div class="hoja-informe break-after-page block mx-auto bg-white shadow-md mb-6 w-[816px] min-h-[1056px] p-10 print:shadow-none print:mb-0 print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
+      <div #contenidoHoja class="contenido-hoja flex flex-col gap-5 w-[736px] mx-auto">
+        <header class="border-b border-gray-200 pb-4">
+          <h1 class="text-2xl font-bold text-[#1E3A8A]">Avance de Sumarios — Informe {{ mes }} {{ anio }}</h1>
+          <p class="text-sm text-gray-500 mt-1">{{ datos.totalContenedores }} SLEP consolidados</p>
+        </header>
+        <app-advance-indicator [pct]="datos.metricas.pctAvance" />
+        <app-initial-totals-donut [metricas]="datos.metricas" />
+        <app-total-and-bars-group
+          titulo="Consolidado de Información Circularizada"
+          totalLabel="Total a investigar (C19)"
+          totalFieldId="Q23"
+          [total]="datos.metricas.casosInvestigar"
+          [diferencia]="datos.metricas.diferenciaInvestigar"
+          tipoDiferencia="investigar"
+          [series]="datos.cicPct"
+          class="pt-4 border-t border-dotted border-gray-200" />
+        <app-total-and-bars-group
+          titulo="Procedimientos"
+          totalLabel="Sumarios instruidos (C27)"
+          totalFieldId="Q37"
+          [total]="datos.metricas.sumariosInstruidos"
+          [diferencia]="datos.metricas.diferenciaCIC"
+          tipoDiferencia="cic"
+          [series]="datos.procedimientosPct"
+          class="pt-4 border-t border-dotted border-gray-200" />
+        <app-total-and-bars-group
+          titulo="Sanciones aplicadas"
+          totalLabel="Procesos cerrados (C32)"
+          totalFieldId="Q45"
+          [total]="datos.metricas.procesosCerrados"
+          [diferencia]="datos.metricas.diferenciaSanciones"
+          tipoDiferencia="sanciones"
+          [series]="datos.sancionesPct"
+          class="pt-4 border-t border-dotted border-gray-200" />
+      </div>
+    </div>
+
+    <!-- HOJA 2: Ranking (modo compacto: 1 línea por SLEP) -->
+    @if (datos.ranking.length) {
+      <div class="hoja-informe block mx-auto bg-white shadow-md w-[816px] min-h-[1056px] p-10 print:shadow-none print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
+        <div #contenidoHoja class="contenido-hoja flex flex-col gap-3 w-[736px] mx-auto">
+          <app-ranking [ranking]="datos.ranking" [modoCompacto]="true" />
+        </div>
+      </div>
+    }
+  }
+</div>

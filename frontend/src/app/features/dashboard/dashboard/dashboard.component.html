@@ -1,0 +1,49 @@
+<div class="flex justify-between items-center mb-2">
+  <h3 class="font-bold text-sm uppercase text-gray-500">Dashboard</h3>
+  <app-mode-switcher modoActivo="dashboard-ampliado" />
+</div>
+@if (!datos) {
+  <p class="text-sm text-gray-400">Selecciona un mes en el panel Meses para ver el Dashboard.</p>
+} @else {
+  <div class="flex flex-col gap-4">
+    <div class="text-xs text-gray-400">
+      @if (slepActivo) {
+        SLEP: {{ slepActivo }} — {{ datos.totalContenedores }} contenedor
+      } @else {
+        Todos los SLEP — {{ datos.totalContenedores }} contenedores
+      }
+    </div>
+    <app-advance-indicator [pct]="datos.metricas.pctAvance" />
+    <app-initial-totals-donut [metricas]="datos.metricas" />
+    <app-total-and-bars-group
+      titulo="Consolidado de Información Circularizada"
+      totalLabel="Total a investigar (C19)"
+      totalFieldId="Q23"
+      [total]="datos.metricas.casosInvestigar"
+      [diferencia]="datos.metricas.diferenciaInvestigar"
+      tipoDiferencia="investigar"
+      [series]="datos.cicPct"
+      class="pt-4 border-t border-dotted border-gray-200" />
+    <app-total-and-bars-group
+      titulo="Procedimientos"
+      totalLabel="Sumarios instruidos (C27)"
+      totalFieldId="Q37"
+      [total]="datos.metricas.sumariosInstruidos"
+      [diferencia]="datos.metricas.diferenciaCIC"
+      tipoDiferencia="cic"
+      [series]="datos.procedimientosPct"
+      class="pt-4 border-t border-dotted border-gray-200" />
+    <app-total-and-bars-group
+      titulo="Sanciones aplicadas"
+      totalLabel="Procesos cerrados (C32)"
+      totalFieldId="Q45"
+      [total]="datos.metricas.procesosCerrados"
+      [diferencia]="datos.metricas.diferenciaSanciones"
+      tipoDiferencia="sanciones"
+      [series]="datos.sancionesPct"
+      class="pt-4 border-t border-dotted border-gray-200" />
+    @if (!slepActivo) {
+      <app-ranking [ranking]="datos.ranking" />
+    }
+  </div>
+}

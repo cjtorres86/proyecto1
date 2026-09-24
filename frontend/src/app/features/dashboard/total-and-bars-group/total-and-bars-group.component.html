@@ -1,0 +1,48 @@
+<div class="grid grid-cols-2 gap-4 items-center">
+  <div
+    [appSlepBreakdown]="totalFieldId"
+    #tipTotal="appSlepBreakdown"
+    [pTooltip]="tipTotal.texto"
+    [escape]="false"
+    tooltipPosition="left"
+    tooltipStyleClass="text-xs"
+    class="text-center pr-4 border-r border-dotted border-gray-200"
+  >
+    <div class="text-2xl font-bold">{{ total }}</div>
+    <div class="text-xs text-gray-500">{{ totalLabel }}</div>
+    @if (diferencia !== undefined) {
+      <div
+        [appDiferenciaBreakdown]="tipoDiferencia ?? ''"
+        #tipDif="appDiferenciaBreakdown"
+        [pTooltip]="tipDif.texto"
+        [escape]="false"
+        tooltipPosition="right"
+        tooltipStyleClass="text-xs"
+        class="text-xs text-gray-400 mt-1"
+      >
+        Diferencia: {{ diferencia > 0 ? '+' + diferencia : diferencia }}
+      </div>
+    }
+  </div>
+  <div class="flex flex-col gap-3">
+    <h3 class="text-sm font-bold text-gray-700 mb-2 text-center">{{ titulo }}</h3>
+    @for (s of series; track s.id; let i = $index) {
+      <div
+        [appSlepBreakdown]="s.id"
+        #tipBarra="appSlepBreakdown"
+        [pTooltip]="tipBarra.texto"
+        [escape]="false"
+        tooltipStyleClass="text-xs"
+        class="flex flex-col gap-1 text-xs"
+      >
+        <div class="flex items-center justify-between">
+          <span class="text-gray-600">{{ s.label }}</span>
+          <span class="text-gray-500 font-medium">{{ s.valor }}</span>
+        </div>
+        <div class="w-full bg-gray-100 rounded h-3 overflow-hidden">
+          <div class="h-full bg-gray-700 transition-all duration-700 ease-out" [style.width.%]="anchosAnimados[i]"></div>
+        </div>
+      </div>
+    }
+  </div>
+</div>

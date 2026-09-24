@@ -1,0 +1,49 @@
+<div class="flex flex-col h-full">
+  <div class="flex justify-between items-center mb-2">
+    <h3 class="font-bold text-sm uppercase text-gray-500">Formulario</h3>
+    @if (puedeEditar && !esTotalGeneral) {
+      <label class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer">
+        Cargar Datos
+        <input type="file" accept=".xlsx,.xls" class="hidden" (change)="onArchivoSeleccionado($event)" />
+      </label>
+    }
+  </div>
+
+  @if (!contenedor && !esTotalGeneral) {
+    <p class="text-sm text-gray-400">Selecciona un SLEP en el panel anterior.</p>
+  } @else {
+    <div class="text-xs text-gray-500 mb-2">
+      @if (esTotalGeneral) {
+        Total general — {{ totalContenedores }} SLEP consolidados
+      } @else {
+        {{ contenedor!.slep }} — {{ contenedor!.filled }}/{{ contenedor!.total }} campos
+      }
+    </div>
+    <div class="flex-1 overflow-auto flex flex-col">
+      @for (campo of campos; track campo.id) {
+        <div
+          class="flex justify-between items-center px-2 py-1.5 text-sm border-b border-gray-100 cursor-pointer"
+          [class.bg-red-50]="campo.invalido"
+          [class.border-l-4]="campo.invalido"
+          [class.border-l-red-600]="campo.invalido"
+          [class.bg-gray-100]="!campo.invalido && campo.preguntaId === campoActivoId"
+          (click)="activarCampo(campo)">
+          <span>{{ campo.numero }}. {{ campo.nombre }}</span>
+          @if (esEditable(campo)) {
+            <input
+              type="number"
+              class="w-20 text-right border border-gray-300 rounded px-1 text-sm"
+              [value]="campo.valor"
+              (input)="onValorChange(campo, $any($event.target).value)"
+              (click)="$event.stopPropagation()" />
+          } @else {
+            <span class="font-mono">{{ campo.valor || '—' }}</span>
+          }
+        </div>
+      }
+    </div>
+    @if (puedeEditar && !esTotalGeneral) {
+      <button mat-flat-button class="!bg-[#1E3A8A] !text-white mt-2 w-full" [disabled]="guardando" (click)="guardar()">Guardar</button>
+    }
+  }
+</div>

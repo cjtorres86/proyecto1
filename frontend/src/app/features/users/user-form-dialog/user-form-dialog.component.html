@@ -1,0 +1,19 @@
+<h2 mat-dialog-title>Nuevo usuario</h2>
+<mat-dialog-content>
+  <form [formGroup]="form" class="flex flex-col gap-3 pt-1">
+    <mat-form-field appearance="outline"><mat-label>Usuario</mat-label><input matInput formControlName="usuario" /></mat-form-field>
+    <mat-form-field appearance="outline"><mat-label>Contraseña</mat-label><input matInput type="password" formControlName="contrasena" /></mat-form-field>
+    <mat-form-field appearance="outline"><mat-label>Nombre para mostrar</mat-label><input matInput formControlName="nombreParaMostrar" /></mat-form-field>
+    <mat-form-field appearance="outline"><mat-label>Alcance (SLEP o "todos")</mat-label><input matInput formControlName="alcance" /></mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Perfil</mat-label>
+      <mat-select formControlName="perfilId">
+        @for (p of perfiles; track p.id) { <mat-option [value]="p.id">{{ p.nombre }}</mat-option> }
+      </mat-select>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()">Cancelar</button>
+  <button mat-flat-button class="!bg-[#1E3A8A] !text-white" [disabled]="form.invalid" (click)="confirmar()">Crear</button>
+</mat-dialog-actions>

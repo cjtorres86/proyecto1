@@ -1,0 +1,62 @@
+// Custom Theming for Angular Material
+// For más información: https://material.angular.dev/guide/theming
+@use '@angular/material' as mat;
+
+// Paleta cercana a --color-primary (#1E3A8A) del PMV (TDD, sección 5.1) —
+// ajustar con mat.define-palette si se necesita un calce exacto de color
+// en una pasada de diseño posterior; esto ya es un tema real, no un stub.
+html {
+  @include mat.theme((
+    color: (
+      theme-type: light,
+      primary: mat.$azure-palette,
+      tertiary: mat.$blue-palette,
+    ),
+    typography: Roboto,
+    density: 0,
+  ));
+}
+
+@import "primeicons/primeicons.css";
+
+/* You can add global styles to this file, and also import other style files */
+
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+// Fuerza que los colores de fondo (las barras, el donut, etc.) se
+// impriman siempre, sin depender de que la persona tenga marcada la
+// casilla "Gráficos de fondo" en el diálogo de impresión de su
+// navegador — sin esto, Chrome puede omitir background-color y
+// background por defecto al imprimir/guardar como PDF manualmente.
+@media print {
+  * {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+}
+
+// Tamaño y márgenes de página al imprimir: carta (Letter), los mismos
+// márgenes que usa el PDF real (pdf.service.ts). El ajuste de las hojas
+// del informe (informe.component.ts) está calculado para esta geometría.
+@page {
+  size: letter;
+  margin: 1cm 1cm 1.5cm 1cm;
+}
+
+// Fix: línea vertical falsa dentro de todo mat-form-field appearance="outline"
+// (login, "Agregar mes", "Nuevo usuario"). Verificado contra el SCSS fuente
+// de Angular Material 19 (_mdc-text-field-structure.scss): el segmento
+// central del contorno (".mdc-notched-outline__notch", el que rodea la
+// etiqueta) recibe ancho y color de borde por token compartido, pero Material
+// nunca fija explícitamente que sus lados izquierdo/derecho deben quedar sin
+// estilo — confía en el valor por defecto del navegador (border-style: none).
+// El preflight de Tailwind 4 fuerza border-style: solid en *, exponiendo ese
+// lado como una línea vertical dentro del campo. Los segmentos izquierdo y
+// derecho del contorno SÍ declaran su lado interno en none explícitamente,
+// por eso solo falla el segmento del medio.
+.mdc-notched-outline__notch {
+  border-left-style: none;
+  border-right-style: none;
+}
+

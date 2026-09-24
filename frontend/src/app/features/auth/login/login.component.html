@@ -1,0 +1,19 @@
+<div class="flex h-full items-center justify-center bg-gray-50">
+  <mat-card class="w-96 p-6">
+    <h1 class="text-xl font-bold text-center mb-1">Avance de Sumarios</h1>
+    <p class="text-sm text-gray-500 text-center mb-4">Inicia sesión para continuar</p>
+    <form [formGroup]="form" (ngSubmit)="enviar()" class="flex flex-col gap-3">
+      <mat-form-field appearance="outline">
+        <mat-label>Usuario</mat-label>
+        <input matInput formControlName="usuario" autocomplete="username" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Contraseña</mat-label>
+        <input matInput type="password" formControlName="contrasena" autocomplete="current-password" />
+      </mat-form-field>
+      <button mat-flat-button class="!bg-[#1E3A8A] !text-white" type="submit" [disabled]="form.invalid || cargando">
+        Ingresar
+      </button>
+    </form>
+  </mat-card>
+</div>

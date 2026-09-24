@@ -1,0 +1,32 @@
+<div class="flex flex-col h-full">
+  <div class="flex justify-between items-center mb-2 gap-2">
+    <h3 class="font-bold text-sm uppercase text-gray-500">SLEP</h3>
+    <div class="flex gap-1">
+      <button
+        class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer"
+        [title]="ordenPorRanking ? 'Volver a orden alfabético' : 'Ordenar por avance'"
+        (click)="alternarOrden()"
+      >
+        {{ ordenPorRanking ? 'Por avance' : 'A-Z' }}
+      </button>
+      <button class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer" (click)="agregarSlep()">+ Agregar SLEP</button>
+    </div>
+  </div>
+  @if ((contenedoresOrdenados$ | async)?.length) {
+    <div class="flex-1 overflow-auto flex flex-col gap-1">
+      @for (c of contenedoresOrdenados$ | async; track c.id) {
+        <div
+          class="px-2 py-1.5 rounded text-sm border cursor-pointer"
+          [class.bg-gray-200]="(slepActivo$ | async) === c.id"
+          [class.border-gray-400]="(slepActivo$ | async) === c.id"
+          [class.border-gray-200]="(slepActivo$ | async) !== c.id"
+          [class.font-bold]="tieneDatos(c)"
+          (click)="seleccionar(c)">
+          {{ c.slep }}
+        </div>
+      }
+    </div>
+  } @else {
+    <p class="text-sm text-gray-400">Selecciona un mes en el panel anterior.</p>
+  }
+</div>

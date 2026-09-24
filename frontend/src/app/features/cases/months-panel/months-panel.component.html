@@ -1,0 +1,20 @@
+<div class="flex flex-col h-full">
+  <div class="flex justify-between items-center mb-2">
+    <h3 class="font-bold text-sm uppercase text-gray-500">Meses</h3>
+    @if (authService.can('crear_mes')) {
+      <button class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer" (click)="abrirAgregarMes()">+ Agregar Mes</button>
+    }
+  </div>
+  <div class="flex-1 overflow-auto flex flex-col gap-1">
+    @for (m of meses; track m.mes + m.anio) {
+      <button
+        class="text-left px-2 py-1.5 rounded text-sm border"
+        [class.bg-blue-900]="esActivo(m)"
+        [class.text-white]="esActivo(m)"
+        [class.border-gray-200]="!esActivo(m)"
+        (click)="seleccionar(m)">
+        {{ m.mes }} {{ m.anio }}
+      </button>
+    }
+  </div>
+</div>

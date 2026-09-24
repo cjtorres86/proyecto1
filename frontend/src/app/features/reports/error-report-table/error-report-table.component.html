@@ -1,0 +1,21 @@
+<h3 class="text-sm font-bold text-gray-700 mb-2">Informe de errores</h3>
+@if (!errores.length) {
+  <p class="text-sm text-gray-400">Sin errores de validación para el mes activo.</p>
+} @else {
+  <p-table [value]="errores" [paginator]="true" [rows]="10" [sortField]="'slep'" [rowsPerPageOptions]="[10, 25, 50]">
+    <ng-template pTemplate="header">
+      <tr>
+        <th pSortableColumn="slep">SLEP <p-sortIcon field="slep" /></th>
+        <th pSortableColumn="campo">Campo <p-sortIcon field="campo" /></th>
+        <th>Detalle</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-fila>
+      <tr>
+        <td class="font-semibold">{{ fila.slep }}</td>
+        <td>{{ fila.campo }}</td>
+        <td class="text-red-700 text-sm">{{ fila.mensaje }}</td>
+      </tr>
+    </ng-template>
+  </p-table>
+}

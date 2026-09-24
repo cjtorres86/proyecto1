@@ -1,0 +1,15 @@
+@if (authService.usuarioActual()?.esSuperadmin) {
+  <h2 class="font-bold mb-3">Perfiles</h2>
+  <p-table [value]="perfiles">
+    <ng-template pTemplate="header"><tr><th>Id</th><th>Nombre</th><th>Vistas</th><th>Acciones</th><th>Gestión</th></tr></ng-template>
+    <ng-template pTemplate="body" let-p>
+      <tr>
+        <td>{{ p.id }}</td>
+        <td>{{ p.nombre }}</td>
+        <td>{{ p.permisos.vistas.join(', ') }}</td>
+        <td>{{ p.permisos.acciones.join(', ') }}</td>
+        <td>{{ p.permisos.gestion.join(', ') }}</td>
+      </tr>
+    </ng-template>
+  </p-table>
+}
