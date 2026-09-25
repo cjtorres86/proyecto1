@@ -22,10 +22,11 @@ export class PdfService {
     private readonly config: ConfigService,
   ) {}
 
-  async generarPdfInforme(usuario: Usuario, mes: string, anio: string): Promise<Buffer> {
+  async generarPdfInforme(usuario: Usuario, mes: string, anio: string, slep?: string): Promise<Buffer> {
     const token = this.jwtService.sign({ sub: usuario.id }, { expiresIn: '2m' });
     const frontendUrl = this.config.get<string>('FRONTEND_URL') || 'http://localhost:4200';
-    const url = `${frontendUrl}/informe/${encodeURIComponent(mes)}/${encodeURIComponent(anio)}?token=${token}`;
+    const slepQuery = slep ? `&slep=${encodeURIComponent(slep)}` : '';
+    const url = `${frontendUrl}/informe/${encodeURIComponent(mes)}/${encodeURIComponent(anio)}?token=${token}${slepQuery}`;
 
     const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     try {
@@ -58,7 +59,7 @@ export class PdfService {
       // incluido — exponía el token de acceso, de vida corta pero de
       // todas formas no debería aparecer nunca a la vista, ni verse
       // como un texto gigante en el pie de página.
-      const urlLimpia = `${frontendUrl}/informe/${encodeURIComponent(mes)}/${encodeURIComponent(anio)}`;
+      const urlLimpia = `${frontendUrl}/informe/${encodeURIComponent(mes)}/${encodeURIComponent(anio)}${slep ? ' — ' + slep : ''}`;
       const pdf = await page.pdf({
         format: 'letter',
         printBackground: true,

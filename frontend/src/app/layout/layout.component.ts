@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -25,8 +25,9 @@ import { DownloadModalComponent } from '../features/reports/download-modal/downl
   imports: [CommonModule, RouterOutlet, RouterLink, MatToolbarModule, MatButtonModule],
   templateUrl: './layout.component.html',
 })
-export class LayoutComponent {
+export class LayoutComponent implements OnInit {
   readonly mesActivo$;
+  private slepActivoNombre: string | null = null;
 
   constructor(
     readonly authService: AuthService,
@@ -36,12 +37,19 @@ export class LayoutComponent {
     this.mesActivo$ = this.caseState.mesActivo$;
   }
 
+  ngOnInit(): void {
+    // Se guarda como propiedad simple (no async pipe) para poder leerlo
+    // de inmediato al clickear el ícono de descarga — mismo patrón que
+    // ya usan slep-panel y months-panel para sus propios toggles.
+    this.caseState.contenedorActivo$.subscribe((c) => (this.slepActivoNombre = c?.slep ?? null));
+  }
+
   cerrarSesion(): void {
     this.authService.logout();
   }
 
   abrirDescargas(mes: { mes: string; anio: string } | null): void {
     if (!mes) return;
-    this.dialog.open(DownloadModalComponent, { width: '340px', data: mes });
+    this.dialog.open(DownloadModalComponent, { width: '340px', data: { ...mes, slep: this.slepActivoNombre } });
   }
 }

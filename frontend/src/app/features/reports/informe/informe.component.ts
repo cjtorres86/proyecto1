@@ -42,6 +42,11 @@ import { RankingComponent } from '../../dashboard/ranking/ranking.component';
 export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   mes = '';
   anio = '';
+  // Informe por SLEP (mejora post-v2.23): si viene ?slep=... en la URL,
+  // se filtra igual que el Dashboard por SLEP (mismo endpoint,
+  // getDashboard ya acepta este parámetro) — el ranking llega vacío
+  // solo, sin nada especial que hacer para esconderlo (ver plantilla).
+  slep: string | null = null;
   datos: DashboardDeMes | null = null;
 
   // Geometría (96 px por pulgada). Carta = 816 x 1056 px. Márgenes del PDF
@@ -65,10 +70,12 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.mes = this.route.snapshot.paramMap.get('mes') ?? '';
     this.anio = this.route.snapshot.paramMap.get('anio') ?? '';
+    this.slep = this.route.snapshot.queryParamMap.get('slep');
     // Título real de la pestaña (reemplaza el genérico "Frontend"): es el
     // nombre sugerido al guardar y el que usa el pie del PDF.
-    this.titleService.setTitle(`Informe Avance de Sumarios - ${this.mes} ${this.anio}`);
-    this.dashboardApi.getDashboard(this.mes, this.anio).subscribe((datos) => (this.datos = datos));
+    const sufijoTitulo = this.slep ? ` - ${this.slep}` : '';
+    this.titleService.setTitle(`Informe Avance de Sumarios - ${this.mes} ${this.anio}${sufijoTitulo}`);
+    this.dashboardApi.getDashboard(this.mes, this.anio, this.slep ?? undefined).subscribe((datos) => (this.datos = datos));
   }
 
   ngAfterViewInit(): void {

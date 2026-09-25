@@ -6,7 +6,7 @@ import { ReportsApiService } from '../services/reports-api.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
-export interface DownloadModalData { mes: string; anio: string }
+export interface DownloadModalData { mes: string; anio: string; slep: string | null }
 
 // Equivalente al modal único de descarga del PMV (TDD, sección 9.6) —
 // las mismas 4 modalidades, cada una visible u oculta según el permiso
@@ -67,8 +67,14 @@ export class DownloadModalComponent {
   // post-v2.23) — ya no se le pide HTML al backend, se abre la ruta
   // directo. El botón "PDF" abre la misma página y dispara la
   // impresión de inmediato (mismo documento, dos formas de verlo).
+  //
+  // Informe por SLEP (mejora post-v2.23): si hay un SLEP activo al
+  // abrir el modal, se agrega a la URL — el Informe ya sabe filtrarse
+  // por SLEP (mismo mecanismo del Dashboard por SLEP) y el ranking se
+  // esconde solo, sin código nuevo para eso.
   verInforme(): void {
-    window.open(`/informe/${this.data.mes}/${this.data.anio}`, '_blank');
+    const slepQuery = this.data.slep ? `?slep=${encodeURIComponent(this.data.slep)}` : '';
+    window.open(`/informe/${this.data.mes}/${this.data.anio}${slepQuery}`, '_blank');
   }
 
   // Ahora pide el PDF real al backend (Puppeteer, ver PdfService) —
@@ -76,8 +82,9 @@ export class DownloadModalComponent {
   // configurada la impresión.
   descargarPDF(): void {
     this.descargando = true;
-    this.reportsApi.descargarInformePdf(this.data.mes, this.data.anio).subscribe({
-      next: (blob) => { this.descargarBlob(blob, `Avance_de_Sumarios_${this.data.mes}_${this.data.anio}.pdf`); this.descargando = false; },
+    const sufijo = this.data.slep ? `_${this.data.slep}` : '';
+    this.reportsApi.descargarInformePdf(this.data.mes, this.data.anio, this.data.slep ?? undefined).subscribe({
+      next: (blob) => { this.descargarBlob(blob, `Avance_de_Sumarios_${this.data.mes}_${this.data.anio}${sufijo}.pdf`); this.descargando = false; },
       error: () => { this.notification.mostrar('No se pudo generar el PDF.'); this.descargando = false; },
     });
   }

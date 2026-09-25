@@ -16,7 +16,11 @@
       <div #contenidoHoja class="contenido-hoja flex flex-col gap-5 w-[736px] mx-auto">
         <header class="border-b border-gray-200 pb-4">
           <h1 class="text-2xl font-bold text-[#1E3A8A]">Avance de Sumarios — Informe {{ mes }} {{ anio }}</h1>
-          <p class="text-sm text-gray-500 mt-1">{{ datos.totalContenedores }} SLEP consolidados</p>
+          @if (slep) {
+            <p class="text-sm text-gray-500 mt-1">SLEP: {{ slep }}</p>
+          } @else {
+            <p class="text-sm text-gray-500 mt-1">{{ datos.totalContenedores }} SLEP consolidados</p>
+          }
         </header>
         <app-advance-indicator [pct]="datos.metricas.pctAvance" />
         <app-initial-totals-donut [metricas]="datos.metricas" />

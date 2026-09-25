@@ -64,8 +64,14 @@ export class ReportsController {
   // del token de corta duración que usa Puppeteer para entrar.
   @Permisos('exportar_informe')
   @Get('informe-pdf')
-  async informePdf(@Query('mes') mes: string, @Query('anio') anio: string, @Res() res: Response, @UsuarioActual() usuario: Usuario) {
-    const pdf = await this.pdfService.generarPdfInforme(usuario, mes, anio);
+  async informePdf(
+    @Query('mes') mes: string,
+    @Query('anio') anio: string,
+    @Query('slep') slep: string | undefined,
+    @Res() res: Response,
+    @UsuarioActual() usuario: Usuario,
+  ) {
+    const pdf = await this.pdfService.generarPdfInforme(usuario, mes, anio, slep);
     // Fecha y hora de generación en el nombre — útil si el informe se
     // vuelve a generar más de una vez para el mismo mes. Se arma con
     // los componentes de hora LOCAL del servidor (no toISOString, que
@@ -74,9 +80,10 @@ export class ReportsController {
     const ahora = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     const timestamp = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())}_${pad(ahora.getHours())}-${pad(ahora.getMinutes())}`;
+    const sufijoSlep = slep ? `_${slep.replace(/\s+/g, '_')}` : '';
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="Informe_Avance_de_Sumarios_${mes}_${anio}_${timestamp}.pdf"`,
+      'Content-Disposition': `attachment; filename="Informe_Avance_de_Sumarios_${mes}_${anio}${sufijoSlep}_${timestamp}.pdf"`,
     });
     res.send(pdf);
   }
