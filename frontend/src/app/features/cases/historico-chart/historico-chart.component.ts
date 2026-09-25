@@ -24,7 +24,7 @@ export interface SerieHistoricoAvance {
   selector: 'app-historico-chart',
   standalone: true,
   imports: [CommonModule, ChartModule],
-  template: `<p-chart type="line" [data]="chartData" [options]="chartOptions" [style]="{ height: '260px' }" />`,
+  template: `<p-chart type="line" [data]="chartData" [options]="chartOptions" [style]="{ height: '780px' }" />`,
 })
 export class HistoricoChartComponent implements OnChanges {
   @Input() etiquetasMeses: string[] = [];

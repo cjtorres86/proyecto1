@@ -18,23 +18,25 @@ function colorPorAvance(pct: number | null): string {
   return '#DC2626';
 }
 
-// Panel "Ver Histórico" (mejora post-v2.23) — ahora con 2 niveles:
+// Panel "Ver Histórico" — 2 niveles:
 //
-// GENERAL: siempre visible. Una línea (% de avance mes a mes, el mismo
-// indicador del Dashboard) más una planilla tipo Excel (columnas =
-// SLEP, filas = mes). Reutiliza CasesService.getHistoricoAvance() /
-// getHistoricoAvanceTodosLosSlep() — mismo motor de suma que el
-// Dashboard, nunca un cálculo aparte.
+// GENERAL (sin ningún SLEP marcado): una línea (% de avance mes a mes,
+// el mismo indicador del Dashboard) más la planilla tipo Excel
+// (columnas = SLEP, filas = mes). Reutiliza CasesService.
+// getHistoricoAvance()/getHistoricoAvanceTodosLosSlep() — mismo motor
+// de suma que el Dashboard, nunca un cálculo aparte.
 //
 // POR SLEP: clickear un SLEP en el panel (estando en este modo) agrega
 // su propia línea al MISMO gráfico general, en gris — clickearlo de
-// nuevo la quita. El último que se marcó queda en color y encima del
-// resto (ver HistoricoChartComponent), y es el único cuya planilla
-// detallada (la que ya existía, mes x 37 campos) se muestra debajo.
+// nuevo la quita. El último que se marcó ("destacado") queda en SU
+// PROPIO color (según su nivel de avance actual) y encima de todas las
+// demás líneas, incluida la general; la planilla general se reemplaza
+// por la planilla detallada de ESE SLEP (mes x 37 campos) mientras
+// haya uno destacado — no se muestran las 2 a la vez.
+//
 // El estado de qué SLEP están marcados vive en CaseStateService,
 // SEPARADO de slepActivo — así sobrevive un cambio a Formulario/
-// Dashboard y de vuelta a Histórico (esos 2 modos siempre muestran el
-// general, sin importar cuántos SLEP haya marcados acá).
+// Dashboard y de vuelta a Histórico.
 @Component({
   selector: 'app-historico-panel',
   standalone: true,
@@ -65,7 +67,6 @@ export class HistoricoPanelComponent implements OnInit, OnDestroy {
     this.sub = combineLatest([this.caseState.mesActivo$, this.caseState.slepsHistorico$, this.caseState.slepDestacadoHistorico$])
       .pipe(
         switchMap(([mes, sleps, destacado]) => {
-          this.slepDestacado = destacado;
           if (!mes) return of(null);
           this.mes = mes.mes;
           this.anio = mes.anio;
@@ -73,8 +74,16 @@ export class HistoricoPanelComponent implements OnInit, OnDestroy {
 
           const listaSleps = [...sleps];
           return forkJoin({
+            // "destacado" viaja DENTRO del resultado — nunca se lee una
+            // propiedad de la clase adentro del subscribe (hallazgo
+            // real: eso era justo lo que podía desincronizar el color
+            // del SLEP marcado con el resultado que en verdad llegó).
+            destacado: of(destacado),
             general: this.api.getHistoricoAvance(mes.mes, mes.anio),
-            tabla: this.api.getHistoricoAvanceTodos(mes.mes, mes.anio),
+            // La planilla general solo hace falta si NO hay un SLEP
+            // destacado (se reemplaza por su planilla detallada) — no
+            // se pide de más cuando no se va a mostrar.
+            tabla: destacado ? of(null) : this.api.getHistoricoAvanceTodos(mes.mes, mes.anio),
             porSlep: listaSleps.length
               ? forkJoin(listaSleps.map((s) => this.api.getHistoricoAvance(mes.mes, mes.anio, s).pipe(map((datos) => ({ slep: s, datos })))))
               : of([]),
@@ -88,10 +97,12 @@ export class HistoricoPanelComponent implements OnInit, OnDestroy {
           this.etiquetasMeses = [];
           this.series = [];
           this.tablaGeneral = null;
+          this.slepDestacado = null;
           this.datosSlepDestacado = null;
           return;
         }
 
+        this.slepDestacado = resultado.destacado;
         this.etiquetasMeses = resultado.general.map((f) => `${f.mes} ${f.anio}`);
 
         const serieGeneral: SerieHistoricoAvance = {
@@ -101,7 +112,7 @@ export class HistoricoPanelComponent implements OnInit, OnDestroy {
           prioridad: 1,
         };
         const seriesSlep: SerieHistoricoAvance[] = resultado.porSlep.map(({ slep, datos }) => {
-          const esDestacado = slep === this.slepDestacado;
+          const esDestacado = slep === resultado.destacado;
           return {
             etiqueta: slep,
             datos: datos.map((f) => f.pct),
