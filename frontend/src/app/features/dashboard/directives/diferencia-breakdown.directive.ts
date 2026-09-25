@@ -1,5 +1,5 @@
 import { Directive, Input } from '@angular/core';
-import { switchMap, take, of } from 'rxjs';
+import { combineLatest, switchMap, take, of } from 'rxjs';
 import { CaseStateService } from '../../../core/services/case-state.service';
 import { DashboardApiService } from '../services/dashboard-api.service';
 
@@ -15,6 +15,10 @@ import { DashboardApiService } from '../services/dashboard-api.service';
 //        [pTooltip]="tip.texto" [escape]="false" tooltipStyleClass="text-xs">
 //     ...contenido normal...
 //   </div>
+//
+// Con un SLEP puntual activo (mejora post-v2.23, hallazgo real): igual
+// que SlepBreakdownDirective — no tiene sentido preguntar "qué SLEP
+// aportan" si ya se está viendo un solo SLEP.
 @Directive({
   selector: '[appDiferenciaBreakdown]',
   standalone: true,
@@ -35,12 +39,19 @@ export class DiferenciaBreakdownDirective {
   cargar(): void {
     if (this.cargado) return;
     this.cargado = true;
-    this.caseState.mesActivo$
+    combineLatest([this.caseState.mesActivo$, this.caseState.slepActivo$])
       .pipe(
         take(1),
-        switchMap((mes) => (mes ? this.api.getDesgloseDiferencia(mes.mes, mes.anio, this.tipo) : of([]))),
+        switchMap(([mes, slep]) => {
+          if (!mes || slep) return of(null);
+          return this.api.getDesgloseDiferencia(mes.mes, mes.anio, this.tipo);
+        }),
       )
       .subscribe((filas) => {
+        if (filas === null) {
+          this.texto = '';
+          return;
+        }
         this.texto = filas.length
           ? filas.map((f) => `${f.slep}: ${f.diferencia > 0 ? '+' + f.diferencia : f.diferencia}`).join('<br>')
           : 'Sin diferencias en ningún SLEP';

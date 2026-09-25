@@ -1,5 +1,5 @@
 import { Directive, Input } from '@angular/core';
-import { switchMap, take, of } from 'rxjs';
+import { combineLatest, switchMap, take, of } from 'rxjs';
 import { CaseStateService } from '../../../core/services/case-state.service';
 import { DashboardApiService } from '../services/dashboard-api.service';
 
@@ -21,6 +21,12 @@ import { DashboardApiService } from '../services/dashboard-api.service';
 // La consulta al backend se dispara una sola vez por campo (al primer
 // mouseenter) y el resultado queda en memoria mientras la directiva
 // viva — pasar el mouse de nuevo no vuelve a pedir nada.
+//
+// Con un SLEP puntual activo (mejora post-v2.23, hallazgo real): "qué
+// SLEP aportan a este número" no tiene sentido si ya se está viendo un
+// solo SLEP — siempre sería él mismo, nadie más. En ese caso ni
+// siquiera se pide el dato al backend (texto queda vacío, pTooltip no
+// muestra nada) — solo en el consolidado de los 36 vale la pena.
 @Directive({
   selector: '[appSlepBreakdown]',
   standalone: true,
@@ -41,12 +47,22 @@ export class SlepBreakdownDirective {
   cargar(): void {
     if (this.cargado) return;
     this.cargado = true;
-    this.caseState.mesActivo$
+    combineLatest([this.caseState.mesActivo$, this.caseState.slepActivo$])
       .pipe(
         take(1),
-        switchMap((mes) => (mes ? this.api.getDesglose(mes.mes, mes.anio, this.preguntaId) : of([]))),
+        switchMap(([mes, slep]) => {
+          // Sin mes, o con un SLEP puntual activo: no aplica (null =
+          // "no corresponde", distinto de [] = "se consultó y no hay
+          // datos" — ese caso sigue mostrando su mensaje normal).
+          if (!mes || slep) return of(null);
+          return this.api.getDesglose(mes.mes, mes.anio, this.preguntaId);
+        }),
       )
       .subscribe((filas) => {
+        if (filas === null) {
+          this.texto = '';
+          return;
+        }
         this.texto = filas.length ? filas.map((f) => `${f.slep}: ${f.valor}`).join('<br>') : 'Sin datos por SLEP';
       });
   }
