@@ -6,20 +6,24 @@ export interface SerieHistoricoAvance {
   etiqueta: string;
   datos: (number | null)[];
   color: string;
-  // Orden de dibujo (mejora post-v2.23): 0 = gris de fondo, 1 = general
-  // (siempre coloreada), 2 = el SLEP marcado más reciente (coloreado Y
-  // encima de todo, incluido el general). Se dibuja de menor a mayor —
-  // ver comentario de clase.
+  // Qué tan adelante se dibuja: 0 = SLEP gris (al fondo), 1 = General,
+  // 2 = el SLEP marcado más reciente (adelante de todo, incluida la
+  // General). Se traduce a la opción "order" de Chart.js — ver
+  // comentario de clase.
   prioridad: 0 | 1 | 2;
 }
 
-// Gráfico de líneas del panel Histórico (mejora post-v2.23). El orden
-// de dibujo NO se controla con la opción "order" de Chart.js (su
-// semántica exacta no se pudo confirmar sin poder renderizar de
-// verdad) — se controla con el ORDEN DEL ARREGLO de series, que es
-// inequívoco: Chart.js pinta cada dataset en el orden en que aparece,
-// el último pintado queda encima. Por eso "prioridad" (0/1/2) ordena el
-// arreglo antes de armar los datasets.
+// Gráfico de líneas del panel Histórico (mejora post-v2.23).
+//
+// Orden de dibujo (hallazgo real, verificado en el código fuente de
+// Chart.js): antes de dibujar, Chart.js ordena las líneas de MENOR a
+// MAYOR "order" (a igual order, por posición en el arreglo) y después
+// las dibuja AL REVÉS — _drawDatasets() recorre desde la última hacia la
+// primera. Por lo tanto la línea con el "order" MÁS BAJO es la última en
+// pintarse y queda ENCIMA de todas. (La versión anterior asumía lo
+// contrario y ponía la destacada al final del arreglo: quedaba al fondo,
+// tapada por las grises.) Se usa "order" explícito en vez de depender de
+// la posición en el arreglo.
 @Component({
   selector: 'app-historico-chart',
   standalone: true,
@@ -73,14 +77,13 @@ export class HistoricoChartComponent implements OnChanges {
   };
 
   ngOnChanges(): void {
-    // Menor prioridad primero (queda al fondo), mayor prioridad al
-    // final (queda encima) — orden estable, no reordena entre iguales.
-    const enOrdenDeDibujo = [...this.series].sort((a, b) => a.prioridad - b.prioridad);
-
     this.chartData = {
       labels: this.etiquetasMeses,
-      datasets: enOrdenDeDibujo.map((s) => ({
+      datasets: this.series.map((s) => ({
         label: s.etiqueta,
+        // order más bajo = dibujado al final = encima (ver comentario de
+        // clase): destacado 0, General 1, SLEP grises 2.
+        order: 2 - s.prioridad,
         data: s.datos,
         borderColor: s.color,
         backgroundColor: s.color,
