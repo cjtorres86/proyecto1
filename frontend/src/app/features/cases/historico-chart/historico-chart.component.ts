@@ -24,7 +24,7 @@ export interface SerieHistoricoAvance {
   selector: 'app-historico-chart',
   standalone: true,
   imports: [CommonModule, ChartModule],
-  template: `<p-chart type="line" [data]="chartData" [options]="chartOptions" [style]="{ height: '780px' }" />`,
+  template: `<p-chart type="line" [data]="chartData" [options]="chartOptions" height="780px" />`,
 })
 export class HistoricoChartComponent implements OnChanges {
   @Input() etiquetasMeses: string[] = [];
@@ -60,9 +60,15 @@ export class HistoricoChartComponent implements OnChanges {
         borderColor: s.color,
         backgroundColor: s.color,
         borderWidth: s.prioridad === 2 ? 3 : s.prioridad === 1 ? 2.5 : 1.5,
-        pointRadius: s.prioridad > 0 ? 3 : 0,
+        // Punto en cada mes, en todas las líneas por igual — antes solo
+        // las coloreadas tenían punto, las grises no; se ven más
+        // parejas así. tension muy baja (casi 0): tramos rectos entre
+        // un mes y el siguiente, sin la curva suavizada de Chart.js —
+        // así se nota mejor cada subida/bajada real, sin que la curva
+        // "redondee" el cambio.
+        pointRadius: 3,
         pointHoverRadius: 4,
-        tension: 0.3,
+        tension: 0.05,
         spanGaps: true,
       })),
     };
