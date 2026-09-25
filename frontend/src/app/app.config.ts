@@ -37,7 +37,13 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideAnimationsAsync(),
     provideHttpClient(withInterceptors([authInterceptor])),
-    providePrimeNG({ theme: { preset: Aura } }),
+    // darkModeSelector: false (hallazgo real): por defecto PrimeNG usa
+    // "system" y, si el computador está en modo oscuro, declara
+    // color-scheme: dark en :root — le gana al tema claro de Angular
+    // Material y el navegador pinta el texto en blanco sobre los fondos
+    // blancos del sistema (letras invisibles). El sistema solo tiene
+    // diseño claro, así que el modo oscuro automático queda apagado.
+    providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: false } } }),
     { provide: APP_INITIALIZER, useFactory: restaurarSesion, multi: true },
   ],
 };
