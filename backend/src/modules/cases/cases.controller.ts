@@ -75,6 +75,29 @@ export class CasesController {
     return this.casesService.getTotalGeneralConValores(mes, anio, alcance);
   }
 
+  // Gráfico de líneas del panel Histórico (mejora post-v2.23) — una
+  // línea (general o de un SLEP puntual, según slep). Mismo límite de
+  // alcance que el resto de las rutas de este controlador.
+  @Get('historico-avance')
+  async getHistoricoAvance(
+    @Query('mes') mes: string,
+    @Query('anio') anio: string,
+    @Query('slep') slepPedido: string | undefined,
+    @UsuarioActual() usuario: Usuario,
+  ) {
+    const alcance = this.resolverAlcance(usuario, slepPedido);
+    return this.casesService.getHistoricoAvance(mes, anio, alcance);
+  }
+
+  // Planilla general del panel Histórico (mejora post-v2.23) — columnas
+  // = SLEP, filas = mes. Un usuario con alcance fijo ve una sola
+  // columna (la suya), nunca las de otro SLEP.
+  @Get('historico-avance-todos')
+  async getHistoricoAvanceTodos(@Query('mes') mes: string, @Query('anio') anio: string, @UsuarioActual() usuario: Usuario) {
+    const alcance = usuario.alcance !== 'todos' ? usuario.alcance : 'todos';
+    return this.casesService.getHistoricoAvanceTodosLosSlep(mes, anio, alcance);
+  }
+
   // Mismo límite que DashboardController.resolverAlcance(): un usuario
   // con alcance 'todos' puede pedir cualquier SLEP puntual o 'todos'; un
   // usuario con alcance fijo (Digitador) nunca puede ver otro SLEP,

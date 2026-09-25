@@ -8,6 +8,7 @@ import { FormularioPregunta } from '../forms/entities/formulario-pregunta.entity
 import { Pregunta } from '../forms/entities/pregunta.entity';
 import { Slep } from '../forms/entities/slep.entity';
 import { ConsolidadoService } from '../dashboard/consolidado.service';
+import { DashboardService } from '../dashboard/dashboard.service';
 
 export interface CampoConValor {
   id: string; // 'c01'..'c44'
@@ -37,6 +38,7 @@ export class CasesService {
     @InjectRepository(Slep) private readonly sleps: Repository<Slep>,
     private readonly validacionService: ValidacionService,
     private readonly consolidadoService: ConsolidadoService,
+    private readonly dashboardService: DashboardService,
   ) {}
 
   // Equivalente a crearMesVacio() del PMV (TDD, sección 7.9): crea los 36
@@ -322,6 +324,26 @@ export class CasesService {
     return errores;
   }
 
+  // Orden canónico de meses (Enero..Diciembre) — usado por
+  // listarMesesDisponibles(), getHistoricoSlep() y
+  // getHistoricoAvance()/getHistoricoAvanceTodosLosSlep() para el mismo
+  // corte "hasta el mes activo, nunca después". Un solo lugar, en vez de
+  // 3 copias de la misma lista y la misma fórmula.
+  private static readonly ORDEN_MESES = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  ];
+  private claveOrden(mes: string, anio: string): number {
+    return Number(anio) * 100 + CasesService.ORDEN_MESES.indexOf(mes);
+  }
+  // Todos los meses disponibles, hasta hastaMes/hastaAnio inclusive
+  // (nunca después) — más reciente primero.
+  private async mesesHastaCorte(hastaMes: string, hastaAnio: string): Promise<{ mes: string; anio: string }[]> {
+    const corte = this.claveOrden(hastaMes, hastaAnio);
+    const todos = await this.listarMesesDisponibles();
+    return todos.filter((m) => this.claveOrden(m.mes, m.anio) <= corte);
+  }
+
   // Equivalente a la deduplicación de _renderPanelMeses() del PMV (TDD,
   // sección 7.9) — los meses no son datos acotados por alcance (crearMesVacio
   // siempre crea los 36 SLEP a la vez), así que la lista es la misma para
@@ -332,10 +354,9 @@ export class CasesService {
       .select('DISTINCT c.mes_consolidado', 'mes')
       .addSelect('c.anio_consolidado', 'anio')
       .getRawMany();
-    const ORDEN_MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     return filas
       .map((f) => ({ mes: f.mes as string, anio: f.anio as string }))
-      .sort((a, b) => (Number(b.anio) * 100 + ORDEN_MESES.indexOf(b.mes)) - (Number(a.anio) * 100 + ORDEN_MESES.indexOf(a.mes)));
+      .sort((a, b) => this.claveOrden(b.mes, b.anio) - this.claveOrden(a.mes, a.anio));
   }
 
   // Histórico de un SLEP puntual (panel "Ver Histórico"): una fila por
@@ -346,12 +367,7 @@ export class CasesService {
   // los meses. Solo incluye meses hasta el mes de corte (inclusive) —
   // nunca meses posteriores a donde está posicionado el usuario.
   async getHistoricoSlep(slep: string, hastaMes: string, hastaAnio: string) {
-    const ORDEN_MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    const claveOrden = (mes: string, anio: string) => Number(anio) * 100 + ORDEN_MESES.indexOf(mes);
-    const corte = claveOrden(hastaMes, hastaAnio);
-
-    const todosLosMeses = await this.listarMesesDisponibles(); // ya viene desc (más reciente primero)
-    const meses = todosLosMeses.filter((m) => claveOrden(m.mes, m.anio) <= corte);
+    const meses = await this.mesesHastaCorte(hastaMes, hastaAnio);
 
     const receta = await this.recetas.find({
       where: { formularioId: 'seguimiento_disciplinario_37' },
@@ -380,5 +396,47 @@ export class CasesService {
     }
 
     return { slep, campos, filas };
+  }
+
+  // Gráfico de líneas del panel Histórico (mejora post-v2.23): el mismo
+  // % de avance del indicador del Dashboard (Procesos Cerrados ÷
+  // Sumarios Instruidos, DashboardService.calculateMetrics), mes a mes.
+  // Sirve para la línea general (alcance='todos') Y para la línea de
+  // cualquier SLEP puntual — mismo método, mismo motor de suma
+  // (ConsolidadoService) que ya alimenta el Dashboard, sin cálculo
+  // aparte ni fórmula duplicada.
+  async getHistoricoAvance(hastaMes: string, hastaAnio: string, alcance: string): Promise<{ mes: string; anio: string; pct: number | null }[]> {
+    const meses = await this.mesesHastaCorte(hastaMes, hastaAnio);
+    const resultado: { mes: string; anio: string; pct: number | null }[] = [];
+    for (const m of meses) {
+      const ids = await this.consolidadoService.idsDelMes(m.mes, m.anio, alcance);
+      const { snapshot } = await this.consolidadoService.calcularConsolidado(ids);
+      const { pctAvance } = this.dashboardService.calculateMetrics(snapshot);
+      resultado.push({ mes: m.mes, anio: m.anio, pct: pctAvance });
+    }
+    return resultado;
+  }
+
+  // Planilla general del panel Histórico (mejora post-v2.23): columnas =
+  // los 36 SLEP, filas = mes, valor = % de avance de ESE SLEP en ESE
+  // mes (0 si no hay datos o el SLEP no tiene sumarios instruidos ese
+  // mes). Reutiliza getRankingSeries() — ya calcula el % de los 36 SLEP
+  // para UN mes en 2 consultas — en vez de llamar a
+  // getHistoricoAvance() 36 veces (una por SLEP): acá se llama una vez
+  // por MES, no por SLEP, mucho más barato.
+  async getHistoricoAvanceTodosLosSlep(hastaMes: string, hastaAnio: string, alcance: string): Promise<{ sleps: string[]; filas: { mes: string; anio: string; valores: number[] }[] }> {
+    const where: Record<string, string> = { mesConsolidado: hastaMes, anioConsolidado: hastaAnio };
+    if (alcance !== 'todos') where.slep = alcance;
+    const contenedoresDelCorte = await this.contenedores.find({ where, order: { slep: 'ASC' } });
+    const sleps = contenedoresDelCorte.map((c) => c.slep);
+
+    const meses = await this.mesesHastaCorte(hastaMes, hastaAnio);
+    const filas = [];
+    for (const m of meses) {
+      const ranking = await this.dashboardService.getRankingSeries(m.mes, m.anio, alcance);
+      const pctPorSlep = new Map(ranking.map((r) => [r.slep, r.pct]));
+      filas.push({ mes: m.mes, anio: m.anio, valores: sleps.map((s) => pctPorSlep.get(s) ?? 0) });
+    }
+    return { sleps, filas };
   }
 }

@@ -17,9 +17,10 @@
       @for (c of contenedoresOrdenados$ | async; track c.id) {
         <div
           class="px-2 py-1.5 rounded text-sm border cursor-pointer"
-          [class.bg-gray-200]="(slepActivo$ | async) === c.id"
-          [class.border-gray-400]="(slepActivo$ | async) === c.id"
-          [class.border-gray-200]="(slepActivo$ | async) !== c.id"
+          [class.bg-gray-200]="esDestacado(c)"
+          [class.border-gray-400]="esDestacado(c)"
+          [class.bg-gray-100]="esMarcadoSecundario(c)"
+          [class.border-gray-200]="!esDestacado(c) && !esMarcadoSecundario(c)"
           [class.font-bold]="tieneDatos(c)"
           (click)="seleccionar(c)">
           {{ c.slep }}

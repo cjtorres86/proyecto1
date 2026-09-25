@@ -49,4 +49,17 @@ export class CasesApiService {
     if (slep) params['slep'] = slep;
     return this.http.get<{ totalContenedores: number; campos: CampoConValor[] }>(`${environment.apiUrl}/cases/total-general`, { params });
   }
+
+  getHistoricoAvance(mes: string, anio: string, slep?: string): Observable<{ mes: string; anio: string; pct: number | null }[]> {
+    const params: Record<string, string> = { mes, anio };
+    if (slep) params['slep'] = slep;
+    return this.http.get<{ mes: string; anio: string; pct: number | null }[]>(`${environment.apiUrl}/cases/historico-avance`, { params });
+  }
+
+  getHistoricoAvanceTodos(mes: string, anio: string): Observable<{ sleps: string[]; filas: { mes: string; anio: string; valores: number[] }[] }> {
+    return this.http.get<{ sleps: string[]; filas: { mes: string; anio: string; valores: number[] }[] }>(
+      `${environment.apiUrl}/cases/historico-avance-todos`,
+      { params: { mes, anio } },
+    );
+  }
 }

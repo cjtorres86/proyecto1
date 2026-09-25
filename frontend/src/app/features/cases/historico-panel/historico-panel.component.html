@@ -1,44 +1,76 @@
-<div class="flex flex-col h-full">
+<div class="flex flex-col h-full overflow-auto">
   <div class="flex justify-between items-center mb-2">
     <h3 class="font-bold text-sm uppercase text-gray-500">Histórico</h3>
     <app-mode-switcher modoActivo="historico" />
   </div>
 
-  @if (!slep) {
-    <p class="text-sm text-gray-400">Selecciona un SLEP en el panel anterior.</p>
-  } @else if (!datos) {
+  @if (!mes) {
     <p class="text-sm text-gray-400">Selecciona un mes en el panel Meses.</p>
   } @else {
-    <div class="text-xs text-gray-400 mb-2">
-      {{ datos.slep }} — hasta {{ datos.filas[0].mes }} {{ datos.filas[0].anio }} ({{ datos.filas.length }} meses)
-    </div>
-    <div class="flex-1 overflow-x-auto border border-gray-100 rounded">
-      <table class="text-xs border-collapse w-full">
-        <thead>
-          <tr>
-            <th class="sticky left-0 top-0 z-20 bg-white text-left px-2 py-1.5 border-b border-r border-gray-200 whitespace-nowrap">
-              Mes
-            </th>
-            @for (c of datos.campos; track c.id) {
-              <th class="sticky top-0 z-10 bg-white text-left px-2 py-1.5 border-b border-gray-200 whitespace-nowrap font-medium text-gray-600">
-                {{ c.nombre }}
-              </th>
-            }
-          </tr>
-        </thead>
-        <tbody>
-          @for (fila of datos.filas; track fila.mes + fila.anio) {
-            <tr class="hover:bg-gray-50">
-              <td class="sticky left-0 z-10 bg-white px-2 py-1.5 border-b border-r border-gray-100 font-medium whitespace-nowrap">
-                {{ fila.mes }} {{ fila.anio }}
-              </td>
-              @for (v of fila.valores; track $index) {
-                <td class="px-2 py-1.5 border-b border-gray-100 text-gray-700 whitespace-nowrap">{{ v || '—' }}</td>
+    <!-- GENERAL: gráfico de líneas -->
+    <h4 class="text-xs font-semibold text-gray-600 uppercase mb-1">Avance general — hasta {{ mes }} {{ anio }}</h4>
+    <app-historico-chart [etiquetasMeses]="etiquetasMeses" [series]="series" />
+
+    <!-- GENERAL: planilla tipo Excel (columnas = SLEP, filas = mes) -->
+    <h4 class="text-xs font-semibold text-gray-600 uppercase mt-4 mb-1">Planilla general — % de avance por SLEP</h4>
+    @if (tablaGeneral) {
+      <div class="overflow-x-auto border border-gray-100 rounded max-h-64">
+        <table class="text-xs border-collapse w-full">
+          <thead>
+            <tr>
+              <th class="sticky left-0 top-0 z-20 bg-white text-left px-2 py-1.5 border-b border-r border-gray-200 whitespace-nowrap">Mes</th>
+              @for (s of tablaGeneral.sleps; track s) {
+                <th class="sticky top-0 z-10 bg-white text-left px-2 py-1.5 border-b border-gray-200 whitespace-nowrap font-medium text-gray-600">{{ s }}</th>
               }
             </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            @for (fila of tablaGeneral.filas; track fila.mes + fila.anio) {
+              <tr class="hover:bg-gray-50">
+                <td class="sticky left-0 z-10 bg-white px-2 py-1.5 border-b border-r border-gray-100 font-medium whitespace-nowrap">
+                  {{ fila.mes }} {{ fila.anio }}
+                </td>
+                @for (v of fila.valores; track $index) {
+                  <td class="px-2 py-1.5 border-b border-gray-100 text-gray-700 whitespace-nowrap">{{ v }}%</td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <!-- POR SLEP: la planilla detallada (mes x 37 campos) del SLEP marcado más reciente -->
+    @if (slepDestacado && datosSlepDestacado) {
+      <h4 class="text-xs font-semibold text-gray-600 uppercase mt-4 mb-1">{{ slepDestacado }} — hasta {{ mes }} {{ anio }}</h4>
+      <div class="overflow-x-auto border border-gray-100 rounded">
+        <table class="text-xs border-collapse w-full">
+          <thead>
+            <tr>
+              <th class="sticky left-0 top-0 z-20 bg-white text-left px-2 py-1.5 border-b border-r border-gray-200 whitespace-nowrap">Mes</th>
+              @for (c of datosSlepDestacado.campos; track c.id) {
+                <th class="sticky top-0 z-10 bg-white text-left px-2 py-1.5 border-b border-gray-200 whitespace-nowrap font-medium text-gray-600">
+                  {{ c.nombre }}
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (fila of datosSlepDestacado.filas; track fila.mes + fila.anio) {
+              <tr class="hover:bg-gray-50">
+                <td class="sticky left-0 z-10 bg-white px-2 py-1.5 border-b border-r border-gray-100 font-medium whitespace-nowrap">
+                  {{ fila.mes }} {{ fila.anio }}
+                </td>
+                @for (v of fila.valores; track $index) {
+                  <td class="px-2 py-1.5 border-b border-gray-100 text-gray-700 whitespace-nowrap">{{ v || '—' }}</td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else if (!slepDestacado) {
+      <p class="text-xs text-gray-400 mt-4">Marca un SLEP en el panel anterior para ver su planilla detallada acá.</p>
+    }
   }
 </div>
