@@ -21,6 +21,15 @@ export const dataSourceOptions: DataSourceOptions = {
   // el que ve el equipo en el control de versiones nunca divergen.
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
+  // Aiven (y la mayoría de los MySQL manejados en la nube) exigen
+  // conexión cifrada — tu MySQL local no. DB_SSL=true solo se pone en
+  // el .env cuando se apunta a Aiven/producción; en local, sin esa
+  // variable, la conexión queda exactamente como siempre (sin SSL).
+  // rejectUnauthorized:false es la opción rápida (la conexión sigue
+  // cifrada igual, solo no verifica el certificado de Aiven contra una
+  // autoridad) — para más adelante, si se quiere más riguroso, existe
+  // la opción de pasar el certificado CA real que da Aiven.
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
 };
 
 export default new DataSource(dataSourceOptions);
