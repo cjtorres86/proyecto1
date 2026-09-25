@@ -1,7 +1,10 @@
 import { Component } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { combineLatest } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { WorkspaceModeService } from '../../../core/services/workspace-mode.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { CaseStateService } from '../../../core/services/case-state.service';
 import { MonthsPanelComponent } from '../months-panel/months-panel.component';
 import { SlepPanelComponent } from '../slep-panel/slep-panel.component';
 import { CaseFormPanelComponent } from '../case-form-panel/case-form-panel.component';
@@ -41,8 +44,27 @@ export class CasesComponent {
   constructor(
     private readonly workspaceMode: WorkspaceModeService,
     readonly authService: AuthService,
+    private readonly caseState: CaseStateService,
   ) {
     this.modo$ = this.workspaceMode.modo$;
+
+    // Digitador: sin panel SLEP, nadie elige su contenedor a mano (hallazgo
+    // real: le quedaba el "Formulario total general", de solo lectura, sin
+    // poder ingresar datos). Al elegir un mes, se activa solo el contenedor
+    // de SU SLEP para ESE mes — se compara también el mes, para no tomar
+    // por un instante el contenedor del mes anterior mientras carga el
+    // nuevo. Si algo lo deja en null (re-clickear el mes activo), se vuelve
+    // a activar. takeUntilDestroyed: la suscripción se cierra sola al salir.
+    combineLatest([this.caseState.mesActivo$, this.caseState.contenedores$, this.caseState.slepActivo$])
+      .pipe(takeUntilDestroyed())
+      .subscribe(([mes, contenedores, slepActivo]) => {
+        const u = this.authService.usuarioActual();
+        if (!mes || !u || u.alcance === 'todos') return;
+        const propio = contenedores.find(
+          (c) => c.slep === u.alcance && c.mesConsolidado === mes.mes && c.anioConsolidado === mes.anio,
+        );
+        if (propio && propio.id !== slepActivo) this.caseState.setSlepActivo(propio.id);
+      });
   }
 
   get esDigitador(): boolean {

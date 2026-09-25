@@ -14,7 +14,7 @@
     <p class="text-sm text-gray-400">Selecciona un mes en el panel Meses.</p>
   } @else {
     <!-- GENERAL: gráfico de líneas -->
-    <h4 class="text-xs font-semibold text-gray-600 uppercase mb-1">Avance general — hasta {{ mes }} {{ anio }}</h4>
+    <h4 class="text-xs font-semibold text-gray-600 uppercase mb-1">{{ tituloGrafico }} — hasta {{ mes }} {{ anio }}</h4>
     <div #zonaGrafico>
       <app-historico-chart [etiquetasMeses]="etiquetasMeses" [series]="series" [alto]="altoGrafico" />
     </div>

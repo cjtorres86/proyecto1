@@ -2,6 +2,7 @@ import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewCh
 import { CommonModule } from '@angular/common';
 import { Subscription, combineLatest, switchMap, of, forkJoin, map } from 'rxjs';
 import { CaseStateService } from '../../../core/services/case-state.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { CasesApiService } from '../services/cases-api.service';
 import { HistoricoSlep } from '../../../core/models/case.model';
 import { ModeSwitcherComponent } from '../../../shared/mode-switcher/mode-switcher.component';
@@ -98,6 +99,8 @@ export class HistoricoPanelComponent implements OnInit, AfterViewInit, OnDestroy
 
   slepDestacado: string | null = null;
   datosSlepDestacado: HistoricoSlep | null = null;
+  // Título del gráfico: "Avance general" o, para un Digitador, "Avance de <su SLEP>".
+  tituloGrafico = 'Avance general';
 
   cargando = false;
   private sub?: Subscription;
@@ -106,7 +109,17 @@ export class HistoricoPanelComponent implements OnInit, AfterViewInit, OnDestroy
     private readonly caseState: CaseStateService,
     private readonly api: CasesApiService,
     private readonly zone: NgZone,
+    private readonly authService: AuthService,
   ) {}
+
+  // Digitador (alcance = un SLEP fijo): su Histórico es SOLO su SLEP —
+  // su línea y su tabla detallada (mes x 37 campos), nunca el general.
+  // El backend ya le acota los datos a su SLEP (resolverAlcance); esto
+  // ajusta lo que se muestra y cómo se rotula.
+  private get slepPropio(): string | null {
+    const u = this.authService.usuarioActual();
+    return u && u.alcance !== 'todos' ? u.alcance : null;
+  }
 
   ngOnInit(): void {
     this.sub = combineLatest([this.caseState.mesActivo$, this.caseState.slepsHistorico$, this.caseState.slepDestacadoHistorico$])
@@ -115,8 +128,22 @@ export class HistoricoPanelComponent implements OnInit, AfterViewInit, OnDestroy
           if (!mes) return of(null);
           this.cargando = true;
 
+          const slepPropio = this.slepPropio;
+          if (slepPropio) {
+            return forkJoin({
+              mesActivo: of(mes),
+              destacado: of(slepPropio as string | null),
+              slepPropio: of(slepPropio as string | null),
+              general: this.api.getHistoricoAvance(mes.mes, mes.anio),
+              tabla: of(null),
+              porSlep: of([] as { slep: string; datos: PuntoAvance[] }[]),
+              destacadoHistorico: this.api.getHistorico(slepPropio, mes.mes, mes.anio),
+            });
+          }
+
           const listaSleps = [...sleps];
           return forkJoin({
+            slepPropio: of(null as string | null),
             // El mes activo y el destacado viajan DENTRO del resultado:
             // el subscribe nunca lee propiedades de la clase que pueden
             // haber cambiado mientras llegaban las respuestas.
@@ -146,7 +173,8 @@ export class HistoricoPanelComponent implements OnInit, AfterViewInit, OnDestroy
           return;
         }
 
-        const { mesActivo, destacado } = resultado;
+        const { mesActivo, destacado, slepPropio } = resultado;
+        this.tituloGrafico = slepPropio ? `Avance de ${slepPropio}` : 'Avance general';
         this.mes = mesActivo.mes;
         this.anio = mesActivo.anio;
         this.slepDestacado = destacado;
@@ -169,10 +197,12 @@ export class HistoricoPanelComponent implements OnInit, AfterViewInit, OnDestroy
         // gris como el resto: la única línea de color es la del último
         // SLEP marcado. Conserva su grosor (prioridad 1), así sigue
         // siendo reconocible entre las grises.
+        // Para un Digitador, "general" ya viene acotado a su SLEP: es SU
+        // línea, así que va rotulada con su nombre y siempre en color.
         const serieGeneral: SerieHistoricoAvance = {
-          etiqueta: 'General (36 SLEP)',
+          etiqueta: slepPropio ?? 'General (36 SLEP)',
           datos: alinear(resultado.general),
-          color: destacado ? GRIS_FONDO : colorPorAvance(pctMesActivo(resultado.general)),
+          color: destacado && !slepPropio ? GRIS_FONDO : colorPorAvance(pctMesActivo(resultado.general)),
           prioridad: 1,
         };
         const seriesSlep: SerieHistoricoAvance[] = resultado.porSlep.map(({ slep, datos }) => {

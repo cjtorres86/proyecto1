@@ -1,10 +1,22 @@
 <div class="flex flex-col h-full">
   <div class="flex justify-between items-center mb-2">
     <h3 class="font-bold text-sm uppercase text-gray-500">Formulario</h3>
-    @if (puedeEditar && !esTotalGeneral) {
-      <label class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer">
-        Cargar Datos
-        <input type="file" accept=".xlsx,.xls" class="hidden" (change)="onArchivoSeleccionado($event)" />
+    <!-- Mismo estilo que los botones Formulario/Dashboard/Histórico
+         (app-mode-switcher). Es un <label> para abrir el selector de
+         archivo sin JavaScript; tabindex/keydown lo dejan usable con
+         teclado. Solo .xlsx: es el formato que lee ExcelJS. -->
+    @if (puedeEditar && !esTotalGeneral && contenedor) {
+      <label
+        class="text-xs rounded px-2 py-1 border border-blue-800 text-blue-800 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-800"
+        [class.opacity-50]="cargandoArchivo"
+        [class.pointer-events-none]="cargandoArchivo"
+        tabindex="0"
+        (keydown.enter)="selectorArchivo.click()"
+        (keydown.space)="$event.preventDefault(); selectorArchivo.click()"
+        title="El Excel debe tener las preguntas del formulario como columnas y una sola fila con los datos de tu SLEP"
+      >
+        {{ cargandoArchivo ? 'Cargando…' : 'Cargar datos' }}
+        <input #selectorArchivo type="file" accept=".xlsx" class="hidden" (change)="onArchivoSeleccionado($event)" />
       </label>
     }
   </div>

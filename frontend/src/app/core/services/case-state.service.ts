@@ -92,8 +92,8 @@ export class CaseStateService {
     this.api.listarPorMes(mes.mes, mes.anio).subscribe((lista) => this.contenedoresSubject.next(lista));
   }
 
-  crearMes(mes: string, anio: string, formularioId: string): Observable<Contenedor[]> {
-    return this.api.crearMes(mes, anio, formularioId).pipe(tap(() => this.recargarContenedores({ mes, anio })));
+  crearMes(mes: string, anio: string, formularioId: string, sleps: string[]): Observable<Contenedor[]> {
+    return this.api.crearMes(mes, anio, formularioId, sleps).pipe(tap(() => this.recargarContenedores({ mes, anio })));
   }
 
   getContenedorConValores(id: string): Observable<{ contenedor: Contenedor; campos: CampoConValor[] }> {

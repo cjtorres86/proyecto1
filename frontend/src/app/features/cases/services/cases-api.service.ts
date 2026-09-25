@@ -18,8 +18,14 @@ export class CasesApiService {
     return this.http.get<Contenedor[]>(`${environment.apiUrl}/cases`, { params: { mes, anio } });
   }
 
-  crearMes(mes: string, anio: string, formularioId: string): Observable<Contenedor[]> {
-    return this.http.post<Contenedor[]>(`${environment.apiUrl}/cases/crear-mes`, { mes, anio, formularioId });
+  crearMes(mes: string, anio: string, formularioId: string, sleps: string[]): Observable<Contenedor[]> {
+    return this.http.post<Contenedor[]>(`${environment.apiUrl}/cases/crear-mes`, { mes, anio, formularioId, sleps });
+  }
+
+  // Catálogo de SLEP (endpoint ya existente, GET /forms/slep) — lo usa el
+  // paso 2 del asistente "Crear mes".
+  listarSlep(): Observable<{ nombre: string }[]> {
+    return this.http.get<{ nombre: string }[]>(`${environment.apiUrl}/forms/slep`);
   }
 
   getContenedorConValores(id: string): Observable<{ contenedor: Contenedor; campos: CampoConValor[] }> {

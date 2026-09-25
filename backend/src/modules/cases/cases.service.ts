@@ -45,7 +45,11 @@ export class CasesService {
   // contenedores vacíos de un mes nuevo, con sus campos de identificación
   // (Ministerio, Subsecretaría, Servicio/SLEP) ya resueltos desde el
   // banco de preguntas — nunca importa ningún archivo.
-  async crearMesVacio(mes: string, anio: string, formularioId: string, usuarioId: string | null) {
+  // Crea el mes solo para los SLEP elegidos en el asistente (mejora
+  // post-v2.23 — antes siempre eran los 36). Cada nombre se valida contra
+  // el catálogo de SLEP: un nombre mal escrito se rechaza entero, en vez
+  // de crear un contenedor huérfano. Se crean en el orden del catálogo.
+  async crearMesVacio(mes: string, anio: string, formularioId: string, slepsElegidos: string[], usuarioId: string | null) {
     const yaExiste = await this.contenedores.findOne({ where: { mesConsolidado: mes, anioConsolidado: anio } });
     if (yaExiste) {
       throw new BadRequestException(`Ya existe un mes ${mes} ${anio} cargado en el sistema.`);
@@ -53,7 +57,14 @@ export class CasesService {
 
     const receta = await this.recetas.find({ where: { formularioId }, relations: ['pregunta'] });
     if (!receta.length) throw new NotFoundException(`No existe el formulario "${formularioId}".`);
-    const sleps = await this.sleps.find();
+
+    const catalogo = await this.sleps.find({ order: { nombre: 'ASC' } });
+    const elegidos = new Set(slepsElegidos);
+    const desconocidos = [...elegidos].filter((nombre) => !catalogo.some((s) => s.nombre === nombre));
+    if (desconocidos.length) {
+      throw new BadRequestException(`SLEP no reconocidos: ${desconocidos.join(', ')}.`);
+    }
+    const sleps = catalogo.filter((s) => elegidos.has(s.nombre));
 
     const nuevos: Contenedor[] = [];
     for (const slepRow of sleps) {

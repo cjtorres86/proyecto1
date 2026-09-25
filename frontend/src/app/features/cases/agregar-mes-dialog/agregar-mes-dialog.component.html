@@ -1,32 +1,83 @@
-<h2 mat-dialog-title>Agregar Mes</h2>
+<h2 mat-dialog-title>Crear mes</h2>
 <mat-dialog-content>
-  <p class="text-sm text-gray-600 mb-3">Se crearán los 36 SLEP para este mes, con sus campos en blanco — cada Digitador podrá cargar los suyos después.</p>
-  <form [formGroup]="form" class="flex flex-col gap-3">
-    <mat-form-field appearance="outline">
-      <mat-label>Mes</mat-label>
-      <mat-select formControlName="mes">
-        @for (m of meses; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
-      </mat-select>
-    </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Año</mat-label>
-      <mat-select formControlName="anio">
-        @for (a of anios; track a) { <mat-option [value]="a">{{ a }}</mat-option> }
-      </mat-select>
-    </mat-form-field>
-    <mat-form-field appearance="outline">
-      <mat-label>Formulario</mat-label>
-      <mat-select formControlName="formularioId">
-        @for (f of formularios; track f.id) { <mat-option [value]="f.id">{{ f.label }}</mat-option> }
-      </mat-select>
-    </mat-form-field>
-    @if (avisoPlantilla44) {
-      <p class="text-xs text-amber-600">⚠️ El Dashboard, el Excel y el Informe todavía están calibrados para la plantilla de 37 preguntas — con 44, esos números podrían no ser exactos.</p>
-    }
-    @if (error) { <p class="text-xs text-red-600">{{ error }}</p> }
-  </form>
+  <mat-stepper linear #stepper>
+    <!-- Íconos de los pasos con PrimeIcons (incluidos en el proyecto): los
+         de Material se cargan desde internet y la red corporativa los
+         bloquea, mostrando texto suelto en su lugar. -->
+    <ng-template matStepperIcon="edit"><i class="pi pi-pencil text-[10px]"></i></ng-template>
+    <ng-template matStepperIcon="done"><i class="pi pi-check text-[10px]"></i></ng-template>
+
+    <!-- Paso 1: mes y año -->
+    <mat-step [stepControl]="pasoMes" label="Mes y año">
+      <form [formGroup]="pasoMes" class="flex flex-col gap-1 pt-3">
+        <mat-form-field appearance="outline">
+          <mat-label>Mes</mat-label>
+          <mat-select formControlName="mes">
+            @for (m of meses; track m) { <mat-option [value]="m">{{ m }}</mat-option> }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Año</mat-label>
+          <mat-select formControlName="anio">
+            @for (a of anios; track a) { <mat-option [value]="a">{{ a }}</mat-option> }
+          </mat-select>
+        </mat-form-field>
+        <div class="flex justify-end gap-2">
+          <button mat-button type="button" (click)="cancelar()">Cancelar</button>
+          <button mat-flat-button type="button" class="!bg-[#1E3A8A] !text-white" matStepperNext [disabled]="pasoMes.invalid">Siguiente</button>
+        </div>
+      </form>
+    </mat-step>
+
+    <!-- Paso 2: SLEP (todos marcados por defecto) -->
+    <mat-step [stepControl]="pasoSleps" label="SLEP">
+      <form [formGroup]="pasoSleps" class="flex flex-col gap-2 pt-3">
+        <p class="text-sm text-gray-600">Se creará el mes para los SLEP marcados. Desmarca los que no correspondan.</p>
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-gray-500">{{ cantidadMarcados }} de {{ catalogoSleps.length }} marcados</span>
+          <button mat-button type="button" class="!text-xs" (click)="alternarTodos()">
+            {{ todosMarcados ? 'Desmarcar todos' : 'Marcar todos' }}
+          </button>
+        </div>
+        <mat-selection-list formControlName="sleps" class="max-h-64 overflow-auto border border-gray-200 rounded">
+          @for (s of catalogoSleps; track s) {
+            <mat-list-option [value]="s" togglePosition="before">{{ s }}</mat-list-option>
+          }
+        </mat-selection-list>
+        @if (pasoSleps.invalid && catalogoSleps.length) {
+          <p class="text-xs text-red-600">Marca al menos un SLEP para continuar.</p>
+        }
+        <div class="flex justify-end gap-2">
+          <button mat-button type="button" matStepperPrevious>Atrás</button>
+          <button mat-flat-button type="button" class="!bg-[#1E3A8A] !text-white" matStepperNext [disabled]="pasoSleps.invalid">Siguiente</button>
+        </div>
+      </form>
+    </mat-step>
+
+    <!-- Paso 3: formulario -->
+    <mat-step [stepControl]="pasoFormulario" label="Formulario">
+      <form [formGroup]="pasoFormulario" class="flex flex-col gap-2 pt-3">
+        <mat-form-field appearance="outline">
+          <mat-label>Formulario</mat-label>
+          <mat-select formControlName="formularioId">
+            @for (f of formularios; track f.id) { <mat-option [value]="f.id">{{ f.label }}</mat-option> }
+          </mat-select>
+        </mat-form-field>
+        @if (avisoPlantilla44) {
+          <p class="text-xs text-amber-600">El Dashboard, el Excel y el Informe todavía están calibrados para la plantilla de 37 preguntas: con 44, esos números podrían no ser exactos.</p>
+        }
+        <div class="flex items-center gap-2">
+          <button mat-stroked-button type="button" disabled>Cargar formulario nuevo</button>
+          <span class="text-xs text-gray-500">Próximamente</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">
+          Se creará {{ pasoMes.value.mes }} {{ pasoMes.value.anio }} para {{ cantidadMarcados }} SLEP, con sus campos en blanco.
+        </p>
+        <div class="flex justify-end gap-2">
+          <button mat-button type="button" matStepperPrevious>Atrás</button>
+          <button mat-flat-button type="button" class="!bg-[#1E3A8A] !text-white" [disabled]="pasoFormulario.invalid" (click)="crear()">Crear mes</button>
+        </div>
+      </form>
+    </mat-step>
+  </mat-stepper>
 </mat-dialog-content>
-<mat-dialog-actions align="end">
-  <button mat-button (click)="cancelar()">Cancelar</button>
-  <button mat-flat-button class="!bg-[#1E3A8A] !text-white" [disabled]="form.invalid" (click)="confirmar()">Crear Mes</button>
-</mat-dialog-actions>

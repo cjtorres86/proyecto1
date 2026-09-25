@@ -21,7 +21,7 @@ export class CasesController {
   @Permisos('crear_mes')
   @Post('crear-mes')
   crearMes(@Body() dto: CrearMesDto, @UsuarioActual() usuario: Usuario) {
-    return this.casesService.crearMesVacio(dto.mes, dto.anio, dto.formularioId, usuario.id);
+    return this.casesService.crearMesVacio(dto.mes, dto.anio, dto.formularioId, dto.sleps, usuario.id);
   }
 
   @Get()

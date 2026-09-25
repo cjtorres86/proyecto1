@@ -29,6 +29,7 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
   campos: CampoConValor[] = [];
   valoresEditados: Record<string, string> = {};
   guardando = false;
+  cargandoArchivo = false;
   esTotalGeneral = false;
   totalContenedores = 0;
   campoActivoId: string | null = null;
@@ -112,23 +113,31 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Carga estricta (mejora post-v2.23): el backend valida el formato
+  // completo antes de guardar. Si lo rechaza, no se guardó nada y su
+  // mensaje dice exactamente qué falló (columnas faltantes, filas de más,
+  // otro SLEP…) — se muestra tal cual, con más tiempo en pantalla para
+  // alcanzar a leerlo.
   onArchivoSeleccionado(event: Event): void {
     if (!this.contenedor) return;
     const input = event.target as HTMLInputElement;
     const archivo = input.files?.[0];
+    input.value = '';
     if (!archivo) return;
+    this.cargandoArchivo = true;
     this.caseState.importarArchivo(this.contenedor.id, archivo).subscribe({
-      next: (res) => {
-        const msg = `Datos cargados para ${this.contenedor!.slep} desde "${archivo.name}".` +
-          (res.desconocidas.length ? ` (${res.desconocidas.length} columnas no reconocidas)` : '');
-        this.notification.mostrar(msg);
+      next: () => {
+        this.cargandoArchivo = false;
+        this.notification.mostrar(`Datos cargados para ${this.contenedor!.slep} desde "${archivo.name}".`);
         this.caseState.getContenedorConValores(this.contenedor!.id).subscribe((r) => {
           this.contenedor = r.contenedor;
           this.campos = r.campos;
         });
       },
-      error: () => this.notification.mostrar('No se pudo leer el archivo.'),
+      error: (err) => {
+        this.cargandoArchivo = false;
+        this.notification.mostrar(err.error?.message ?? 'No se pudo leer el archivo.', 15000);
+      },
     });
-    input.value = '';
   }
 }

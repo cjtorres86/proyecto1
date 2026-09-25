@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Subscription, filter, fromEvent, interval, merge } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
 import { HttpClient } from '@angular/common/http';
@@ -6,7 +7,7 @@ import { CaseStateService } from '../../../core/services/case-state.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { WorkspaceModeService } from '../../../core/services/workspace-mode.service';
-import { AgregarMesDialogComponent } from '../agregar-mes-dialog/agregar-mes-dialog.component';
+import { AgregarMesDialogComponent, NuevoMes } from '../agregar-mes-dialog/agregar-mes-dialog.component';
 import { environment } from '../../../../environments/environment';
 
 interface MesConDatos { mes: string; anio: string }
@@ -20,9 +21,13 @@ interface MesConDatos { mes: string; anio: string }
   imports: [CommonModule],
   templateUrl: './months-panel.component.html',
 })
-export class MonthsPanelComponent implements OnInit {
+export class MonthsPanelComponent implements OnInit, OnDestroy {
   meses: MesConDatos[] = [];
   mesActivo: MesConDatos | null = null;
+  private readonly subs = new Subscription();
+
+  // Cada cuánto se revisa si alguien creó un mes nuevo (mejora post-v2.23).
+  private static readonly REFRESCO_MS = 60_000;
 
   constructor(
     private readonly caseState: CaseStateService,
@@ -34,8 +39,25 @@ export class MonthsPanelComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.caseState.mesActivo$.subscribe((m) => (this.mesActivo = m));
+    this.subs.add(this.caseState.mesActivo$.subscribe((m) => (this.mesActivo = m)));
     this.cargarMesesDisponibles();
+
+    // "Todos los usuarios ven el mes nuevo" (mejora post-v2.23): la lista
+    // se carga al entrar, así que alguien que ya estaba conectado no vería
+    // un mes creado por otro usuario hasta recargar. Se vuelve a consultar
+    // cada 60 segundos y cada vez que el usuario regresa a la pestaña del
+    // sistema. Liviano: es una sola consulta chica, sin infraestructura
+    // nueva. No toca el mes que el usuario tiene elegido.
+    this.subs.add(
+      merge(
+        interval(MonthsPanelComponent.REFRESCO_MS),
+        fromEvent(document, 'visibilitychange').pipe(filter(() => document.visibilityState === 'visible')),
+      ).subscribe(() => this.cargarMesesDisponibles()),
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subs.unsubscribe();
   }
 
   // Los meses disponibles se derivan de /cases (año actual conocido) —
@@ -66,15 +88,15 @@ export class MonthsPanelComponent implements OnInit {
   }
 
   abrirAgregarMes(): void {
-    const ref = this.dialog.open(AgregarMesDialogComponent, { width: '380px' });
+    const ref = this.dialog.open<AgregarMesDialogComponent, void, NuevoMes | null>(AgregarMesDialogComponent, { width: '460px' });
     ref.afterClosed().subscribe((resultado) => {
       if (!resultado) return;
-      this.caseState.crearMes(resultado.mes, resultado.anio, resultado.formularioId).subscribe({
-        next: () => {
-          this.notification.mostrar(`Mes ${resultado.mes} ${resultado.anio} creado, con sus 36 SLEP listos para cargar datos.`);
+      this.caseState.crearMes(resultado.mes, resultado.anio, resultado.formularioId, resultado.sleps).subscribe({
+        next: (creados) => {
+          this.notification.mostrar(`Mes ${resultado.mes} ${resultado.anio} creado para ${creados.length} SLEP, listos para cargar datos.`);
           this.cargarMesesDisponibles();
         },
-        error: (err) => this.notification.mostrar(err.error?.message ?? 'No se pudo crear el mes.'),
+        error: (err) => this.notification.mostrar(err.error?.message ?? 'No se pudo crear el mes.', 6000),
       });
     });
   }
