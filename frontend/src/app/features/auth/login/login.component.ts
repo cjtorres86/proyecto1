@@ -2,7 +2,6 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,15 +9,31 @@ import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { WorkspaceModeService } from '../../../core/services/workspace-mode.service';
 
+// Login en 2 zonas (mejora post-v2.23):
+//
+// ARRIBA — ClaveÚnica, solo como vista previa: campos y botón
+// desactivados, marcados "Próximamente". Todavía no hay integración.
+// Nota para cuando se integre de verdad: según la guía técnica oficial
+// de la Secretaría de Gobierno Digital, el RUT y la clave se ingresan
+// en el sitio de ClaveÚnica (redirección a pantalla completa), nunca en
+// un formulario propio — estos campos se reemplazarán por el botón
+// oficial que redirige, requisito de certificación.
+//
+// ABAJO — el acceso actual con usuario del sistema, sin cambios de
+// funcionamiento.
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [CommonModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
   templateUrl: './login.component.html',
 })
 export class LoginComponent {
   readonly form;
+  readonly claveUnicaForm;
   cargando = false;
+  // Pasa a false si frontend/public/claveunica.svg no existe todavía —
+  // la plantilla muestra entonces el nombre en texto simple.
+  logoClaveUnicaDisponible = true;
 
   constructor(
     private readonly fb: FormBuilder,
@@ -30,6 +45,12 @@ export class LoginComponent {
     this.form = this.fb.group({
       usuario: ['', Validators.required],
       contrasena: ['', Validators.required],
+    });
+    // Desactivados desde el origen (no solo con CSS): no se pueden
+    // escribir ni enviar mientras la integración no exista.
+    this.claveUnicaForm = this.fb.group({
+      rut: [{ value: '', disabled: true }],
+      clave: [{ value: '', disabled: true }],
     });
   }
 

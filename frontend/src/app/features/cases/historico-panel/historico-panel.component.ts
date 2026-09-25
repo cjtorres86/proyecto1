@@ -136,10 +136,15 @@ export class HistoricoPanelComponent implements OnInit, OnDestroy {
         const pctMesActivo = (datos: PuntoAvance[]) =>
           aNumero(datos.find((p) => p.mes === mesActivo.mes && p.anio === mesActivo.anio)?.pct ?? null);
 
+        // La General va en color solo cuando es la única protagonista
+        // (ningún SLEP marcado). Apenas hay un SLEP destacado, pasa a
+        // gris como el resto: la única línea de color es la del último
+        // SLEP marcado. Conserva su grosor (prioridad 1), así sigue
+        // siendo reconocible entre las grises.
         const serieGeneral: SerieHistoricoAvance = {
           etiqueta: 'General (36 SLEP)',
           datos: alinear(resultado.general),
-          color: colorPorAvance(pctMesActivo(resultado.general)),
+          color: destacado ? GRIS_FONDO : colorPorAvance(pctMesActivo(resultado.general)),
           prioridad: 1,
         };
         const seriesSlep: SerieHistoricoAvance[] = resultado.porSlep.map(({ slep, datos }) => {

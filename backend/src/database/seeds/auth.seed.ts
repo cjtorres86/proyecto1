@@ -65,6 +65,14 @@ async function seed() {
       alcance: 'todos',
     }),
     usuarioRepo.create({
+      usuario: 'Betania',
+      contrasenaHash: await hash('betaniabetania'),
+      nombreParaMostrar: 'Betania',
+      esSuperadmin: false,
+      perfilId: 'perfil_admin',
+      alcance: 'todos',
+    }),
+    usuarioRepo.create({
       usuario: 'Ximena',
       contrasenaHash: await hash('ximenaximena'),
       nombreParaMostrar: 'Ximena',
