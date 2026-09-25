@@ -28,7 +28,15 @@ export class PdfService {
     const slepQuery = slep ? `&slep=${encodeURIComponent(slep)}` : '';
     const url = `${frontendUrl}/informe/${encodeURIComponent(mes)}/${encodeURIComponent(anio)}?token=${token}${slepQuery}`;
 
-    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    // En Render/Docker, PUPPETEER_EXECUTABLE_PATH apunta al Chromium
+    // instalado por el sistema (ver Dockerfile) — en tu Windows local,
+    // esa variable no existe, así que Puppeteer sigue usando su propio
+    // Chrome descargado, sin ningún cambio de comportamiento ahí.
+    const browser = await puppeteer.launch({
+      headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
     try {
       const page = await browser.newPage();
       // Viewport más ancho que la hoja (816px) para que nada de la vista
