@@ -58,10 +58,30 @@ export class CasesController {
   // "Formulario total general" (mejora post-v2.23) — la suma de los SLEP
   // dentro del alcance, campo por campo. Antes de ':id' por la misma
   // razón que el resto de las rutas estáticas de este controlador.
+  //
+  // Informe (interactivo/PDF, mejora post-v2.23): reutiliza esta MISMA
+  // ruta para su hoja de formulario — pidiendo un SLEP puntual en vez
+  // de 'todos' consigue el formulario real de ese SLEP, sin endpoint
+  // aparte. Un usuario con alcance fijo nunca puede pedir un SLEP que
+  // no sea el suyo, mismo límite que ya usa el Dashboard por SLEP.
   @Get('total-general')
-  async getTotalGeneral(@Query('mes') mes: string, @Query('anio') anio: string, @UsuarioActual() usuario: Usuario) {
-    const alcance = usuario.esSuperadmin ? 'todos' : usuario.alcance;
+  async getTotalGeneral(
+    @Query('mes') mes: string,
+    @Query('anio') anio: string,
+    @Query('slep') slepPedido: string | undefined,
+    @UsuarioActual() usuario: Usuario,
+  ) {
+    const alcance = this.resolverAlcance(usuario, slepPedido);
     return this.casesService.getTotalGeneralConValores(mes, anio, alcance);
+  }
+
+  // Mismo límite que DashboardController.resolverAlcance(): un usuario
+  // con alcance 'todos' puede pedir cualquier SLEP puntual o 'todos'; un
+  // usuario con alcance fijo (Digitador) nunca puede ver otro SLEP,
+  // pase lo que pase en la query.
+  private resolverAlcance(usuario: Usuario, slepPedido?: string): string {
+    if (usuario.alcance !== 'todos') return usuario.alcance;
+    return slepPedido && slepPedido !== 'todos' ? slepPedido : 'todos';
   }
 
   @Get(':id')

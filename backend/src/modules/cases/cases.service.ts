@@ -205,8 +205,15 @@ export class CasesService {
       // DISTINTO en cada uno de los 36 — calcularConsolidado() junta
       // los nombres únicos con " / " (correcto para el motor genérico,
       // pero ilegible acá: 36 nombres pegados). Se muestra el conteo en
-      // su lugar, solo para esta vista.
-      const valorMostrado = item.preguntaId === 'Q03' ? `${totalContenedores} SLEP` : valor !== undefined ? String(valor) : '';
+      // su lugar — solo cuando de verdad son varios SLEP; si es uno
+      // solo (informe por SLEP puntual), snapshot ya trae su nombre
+      // real tal cual, sin nada que arreglar.
+      const valorMostrado =
+        item.preguntaId === 'Q03' && totalContenedores > 1
+          ? `${totalContenedores} SLEP`
+          : valor !== undefined
+            ? String(valor)
+            : '';
       return {
         id,
         numero: item.posicionCanonica,

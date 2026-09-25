@@ -8,7 +8,7 @@
     </button>
   </div>
 
-  @if (!datos) {
+  @if (!datos || !camposFormulario.length) {
     <p class="text-gray-400 text-center">Cargando informe…</p>
   } @else {
     <!-- HOJA 1: Dashboard -->
@@ -54,13 +54,34 @@
       </div>
     </div>
 
-    <!-- HOJA 2: Ranking (modo compacto: 1 línea por SLEP) -->
+    <!-- HOJA 2 (solo consolidado general): Ranking, 1 línea por SLEP —
+         lleva break-after-page porque la hoja de Formulario siempre
+         viene después. -->
     @if (datos.ranking.length) {
-      <div class="hoja-informe block mx-auto bg-white shadow-md w-[816px] min-h-[1056px] p-10 print:shadow-none print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
+      <div class="hoja-informe break-after-page block mx-auto bg-white shadow-md mb-6 w-[816px] min-h-[1056px] p-10 print:shadow-none print:mb-0 print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
         <div #contenidoHoja class="contenido-hoja flex flex-col gap-3 w-[736px] mx-auto">
           <app-ranking [ranking]="datos.ranking" [modoCompacto]="true" />
         </div>
       </div>
     }
+
+    <!-- Última hoja siempre: Formulario con sus respuestas — el mismo
+         endpoint del "Formulario total general" del sistema, pidiendo
+         el SLEP puntual (?slep=...) en vez de 'todos' cuando aplica.
+         Sin break-after-page: siempre es la última, sea el informe
+         general (hoja 3) o por SLEP (hoja 2, sin ranking antes). -->
+    <div class="hoja-informe block mx-auto bg-white shadow-md w-[816px] min-h-[1056px] p-10 print:shadow-none print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
+      <div #contenidoHoja class="contenido-hoja flex flex-col gap-3 w-[736px] mx-auto">
+        <h2 class="text-lg font-bold text-[#1E3A8A]">Formulario — {{ slep ? slep : 'Total general' }}</h2>
+        <div class="flex flex-col">
+          @for (campo of camposFormulario; track campo.id) {
+            <div class="flex justify-between items-center gap-4 text-[11px] py-1 border-b border-gray-100" [class.bg-red-50]="campo.invalido">
+              <span>{{ campo.numero }}. {{ campo.nombre }}</span>
+              <span class="font-mono whitespace-nowrap">{{ campo.valor || '—' }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
   }
 </div>

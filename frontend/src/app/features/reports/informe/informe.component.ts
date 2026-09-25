@@ -4,7 +4,9 @@ import { Title } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { DashboardApiService } from '../../dashboard/services/dashboard-api.service';
+import { CasesApiService } from '../../cases/services/cases-api.service';
 import { DashboardDeMes } from '../../../core/models/dashboard.model';
+import { CampoConValor } from '../../../core/models/case.model';
 import { AdvanceIndicatorComponent } from '../../dashboard/advance-indicator/advance-indicator.component';
 import { InitialTotalsDonutComponent } from '../../dashboard/initial-totals-donut/initial-totals-donut.component';
 import { TotalAndBarsGroupComponent } from '../../dashboard/total-and-bars-group/total-and-bars-group.component';
@@ -48,6 +50,11 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // solo, sin nada especial que hacer para esconderlo (ver plantilla).
   slep: string | null = null;
   datos: DashboardDeMes | null = null;
+  // Hoja de formulario (mejora post-v2.23): reutiliza EXACTAMENTE el
+  // mismo endpoint que ya alimenta el "Formulario total general" del
+  // sistema — pedirle un SLEP puntual en vez de 'todos' devuelve el
+  // formulario real de ese SLEP, sin ningún cálculo nuevo.
+  camposFormulario: CampoConValor[] = [];
 
   // Geometría (96 px por pulgada). Carta = 816 x 1056 px. Márgenes del PDF
   // (pdf.service.ts y @page en styles.scss): 1cm arriba/lados, 1,5cm abajo
@@ -64,6 +71,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     private readonly route: ActivatedRoute,
     private readonly dashboardApi: DashboardApiService,
+    private readonly casesApi: CasesApiService,
     private readonly titleService: Title,
   ) {}
 
@@ -76,6 +84,9 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     const sufijoTitulo = this.slep ? ` - ${this.slep}` : '';
     this.titleService.setTitle(`Informe Avance de Sumarios - ${this.mes} ${this.anio}${sufijoTitulo}`);
     this.dashboardApi.getDashboard(this.mes, this.anio, this.slep ?? undefined).subscribe((datos) => (this.datos = datos));
+    this.casesApi
+      .getTotalGeneral(this.mes, this.anio, this.slep ?? undefined)
+      .subscribe((r) => (this.camposFormulario = r.campos));
   }
 
   ngAfterViewInit(): void {

@@ -44,9 +44,9 @@ export class CasesApiService {
     return this.http.get<HistoricoSlep>(`${environment.apiUrl}/cases/historico`, { params: { slep, mes, anio } });
   }
 
-  getTotalGeneral(mes: string, anio: string): Observable<{ totalContenedores: number; campos: CampoConValor[] }> {
-    return this.http.get<{ totalContenedores: number; campos: CampoConValor[] }>(`${environment.apiUrl}/cases/total-general`, {
-      params: { mes, anio },
-    });
+  getTotalGeneral(mes: string, anio: string, slep?: string): Observable<{ totalContenedores: number; campos: CampoConValor[] }> {
+    const params: Record<string, string> = { mes, anio };
+    if (slep) params['slep'] = slep;
+    return this.http.get<{ totalContenedores: number; campos: CampoConValor[] }>(`${environment.apiUrl}/cases/total-general`, { params });
   }
 }
