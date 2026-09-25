@@ -35,8 +35,27 @@ export class HistoricoChartComponent implements OnChanges {
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'nearest', intersect: false },
+    // Espacio abajo (mejora post-v2.23): sin esto, una línea en 0%
+    // quedaba pegada al borde inferior del área del gráfico —a veces
+    // literalmente tapada por el eje— y las etiquetas de los meses se
+    // veían apretadas contra las líneas. min en -4 (en vez de 0) le da
+    // a un valor real de 0% un pelo de aire debajo antes de tocar el
+    // borde; el padding agrega separación extra hacia las etiquetas.
+    layout: { padding: { bottom: 8 } },
     scales: {
-      y: { min: 0, max: 100, ticks: { callback: (v: number) => v + '%' } },
+      y: {
+        min: -4,
+        max: 100,
+        ticks: { callback: (v: number) => (v < 0 ? '' : v + '%') },
+        // grid.borderDash: verificado contra el código fuente real de
+        // Chart.js (drawGrid() lee style.borderDash al trazar cada
+        // línea) — aunque no aparece en la interfaz de TypeScript que
+        // se revisó, el motor de dibujo sí lo usa.
+        grid: { borderDash: [4, 4] },
+      },
+      x: {
+        grid: { borderDash: [4, 4] },
+      },
     },
     plugins: {
       // Con muchas líneas grises de fondo, una leyenda con 37 nombres
