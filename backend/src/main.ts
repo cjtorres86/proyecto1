@@ -17,6 +17,11 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`Avance de Sumarios backend corriendo en http://localhost:${port}`);
+  // "localhost" solo tiene sentido en desarrollo local — en Render
+  // (NODE_ENV=production, ver Dockerfile) decía lo mismo igual, aunque
+  // el backend no corre ahí de verdad. Puramente cosmético: no afecta
+  // en nada cómo se conecta el frontend, solo el texto del log.
+  const donde = process.env.NODE_ENV === 'production' ? `puerto ${port} (Render)` : `http://localhost:${port}`;
+  console.log(`Avance de Sumarios backend corriendo en ${donde}`);
 }
 bootstrap();
