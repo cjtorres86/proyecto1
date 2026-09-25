@@ -26,6 +26,7 @@ export interface CampoConValor {
   valorFijo: string | null;
   opciones: string[] | null;
   invalido: boolean;
+  validaciones: { formula: string; mensaje: string; cumple: boolean }[];
 }
 
 export interface HistoricoSlep {

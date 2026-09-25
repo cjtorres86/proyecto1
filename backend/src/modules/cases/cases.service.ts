@@ -20,6 +20,12 @@ export interface CampoConValor {
   valorFijo: string | null;
   opciones: string[] | null;
   invalido: boolean;
+  // Detalle completo de cada validación que se pudo evaluar para este
+  // campo (mejora post-v2.23, hallazgo real): antes solo llegaba
+  // "invalido" (sí/no) — el motor ya calculaba la fórmula y el mensaje
+  // correcto (msgFail/msgOk) pero se descartaban antes de salir del
+  // backend. Puede tener más de una validación por campo.
+  validaciones: { formula: string; mensaje: string; cumple: boolean }[];
 }
 
 @Injectable()
@@ -95,6 +101,31 @@ export class CasesService {
     return this.revalidarYGuardar(contenedor);
   }
 
+  // Corre las validaciones de una receta contra un mapa posición->valor
+  // ya resuelto — reutilizado tanto para un SLEP puntual
+  // (revalidarYGuardar) como para el total general
+  // (getTotalGeneralConValores), mismo motor, un solo lugar. Devuelve,
+  // por cada campo con al menos una regla que se pudo evaluar, el
+  // detalle completo (fórmula + mensaje real + si se cumplió) — no solo
+  // un sí/no, para que el Inspector de Campo pueda explicar el motivo,
+  // no solo señalarlo.
+  private evaluarTodasLasValidaciones(
+    receta: FormularioPregunta[],
+    valoresPorPosicion: Map<number, string>,
+  ): Map<string, { formula: string; mensaje: string; cumple: boolean }[]> {
+    const resultadosPorCampo = new Map<string, { formula: string; mensaje: string; cumple: boolean }[]>();
+    receta.forEach((r) => {
+      const validaciones = (r.validaciones || []) as Validacion[];
+      if (!validaciones.length) return;
+      const resultados = validaciones
+        .map((v) => ({ v, res: this.validacionService.evaluarValidacion(v, valoresPorPosicion) }))
+        .filter(({ res }) => res.aplica)
+        .map(({ v, res }) => ({ formula: v.formula, mensaje: res.msg ?? '', cumple: !!res.cumple }));
+      if (resultados.length) resultadosPorCampo.set('c' + String(r.posicionCanonica).padStart(2, '0'), resultados);
+    });
+    return resultadosPorCampo;
+  }
+
   // Recalcula "filled" y corre validateAllFieldsAndUpdateUI() (PMV) sobre
   // este contenedor, y persiste status/filled.
   private async revalidarYGuardar(contenedor: Contenedor) {
@@ -109,21 +140,19 @@ export class CasesService {
     });
 
     let filled = 0;
-    const invalidFieldIds: string[] = [];
     receta.forEach((r) => {
       if (valorPorPregunta.get(r.preguntaId)) filled++;
-      const validaciones = (r.validaciones || []) as Validacion[];
-      if (!validaciones.length) return;
-      const algunaFalla = validaciones
-        .map((v) => this.validacionService.evaluarValidacion(v, valoresPorPosicion))
-        .some((res) => res.aplica && !res.cumple);
-      if (algunaFalla) invalidFieldIds.push('c' + String(r.posicionCanonica).padStart(2, '0'));
     });
+
+    const validacionesPorCampo = this.evaluarTodasLasValidaciones(receta, valoresPorPosicion);
+    const invalidFieldIds = [...validacionesPorCampo.entries()]
+      .filter(([, resultados]) => resultados.some((r) => !r.cumple))
+      .map(([id]) => id);
 
     contenedor.filled = filled;
     contenedor.status = invalidFieldIds.length ? 'no' : 'ok';
     await this.contenedores.save(contenedor);
-    return { contenedor, invalidFieldIds };
+    return { contenedor, invalidFieldIds, validacionesPorCampo };
   }
 
   // Ensambla un contenedor con sus valores y el resultado de validación
@@ -132,7 +161,7 @@ export class CasesService {
     const contenedor = await this.contenedores.findOne({ where: { id: contenedorId } });
     if (!contenedor) throw new NotFoundException('Contenedor no encontrado.');
 
-    const { invalidFieldIds } = await this.revalidarYGuardar(contenedor);
+    const { invalidFieldIds, validacionesPorCampo } = await this.revalidarYGuardar(contenedor);
 
     const receta = await this.recetas.find({
       where: { formularioId: contenedor.formularioId },
@@ -155,6 +184,7 @@ export class CasesService {
         valorFijo: item.pregunta.valorFijo,
         opciones: item.pregunta.opciones,
         invalido: invalidFieldIds.includes(id),
+        validaciones: validacionesPorCampo.get(id) ?? [],
       };
     });
     return { contenedor, campos };
@@ -188,15 +218,10 @@ export class CasesService {
       if (v !== undefined && v !== '') valoresPorPosicion.set(r.posicionCanonica, String(v));
     });
 
-    const invalidFieldIds: string[] = [];
-    receta.forEach((r) => {
-      const validaciones = (r.validaciones || []) as Validacion[];
-      if (!validaciones.length) return;
-      const algunaFalla = validaciones
-        .map((v) => this.validacionService.evaluarValidacion(v, valoresPorPosicion))
-        .some((res) => res.aplica && !res.cumple);
-      if (algunaFalla) invalidFieldIds.push('c' + String(r.posicionCanonica).padStart(2, '0'));
-    });
+    const validacionesPorCampo = this.evaluarTodasLasValidaciones(receta, valoresPorPosicion);
+    const invalidFieldIds = [...validacionesPorCampo.entries()]
+      .filter(([, resultados]) => resultados.some((r) => !r.cumple))
+      .map(([id]) => id);
 
     const campos: CampoConValor[] = receta.map((item) => {
       const id = 'c' + String(item.posicionCanonica).padStart(2, '0');
@@ -225,6 +250,7 @@ export class CasesService {
         valorFijo: item.pregunta.valorFijo,
         opciones: item.pregunta.opciones,
         invalido: invalidFieldIds.includes(id),
+        validaciones: validacionesPorCampo.get(id) ?? [],
       };
     });
 
