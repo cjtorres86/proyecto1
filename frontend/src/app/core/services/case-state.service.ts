@@ -28,14 +28,22 @@ export class CaseStateService {
   // general al volver desde Histórico, sin importar cuántos SLEP haya
   // marcados ahí. Se guarda por NOMBRE de SLEP (no por id de
   // contenedor, que cambia cada mes) para que la marca sobreviva un
-  // cambio de mes. "destacado" es el último marcado — el único que se
-  // dibuja en color y encima del resto en el gráfico (los demás quedan
-  // en gris), y el único cuya planilla detallada se muestra.
-  private readonly slepsHistoricoSubject = new BehaviorSubject<Set<string>>(new Set());
-  readonly slepsHistorico$ = this.slepsHistoricoSubject.asObservable();
-
-  private readonly slepDestacadoHistoricoSubject = new BehaviorSubject<string | null>(null);
-  readonly slepDestacadoHistorico$ = this.slepDestacadoHistoricoSubject.asObservable();
+  // cambio de mes.
+  //
+  // "sleps" y "destacado" viven en UN SOLO BehaviorSubject, a
+  // propósito — no dos separados (hallazgo real, post-implementación:
+  // con dos avisos distintos, uno después del otro, existía una
+  // fracción de instante donde "destacado" ya apuntaba al SLEP nuevo
+  // pero "sleps" todavía no lo incluía, y ese estado a medio actualizar
+  // alcanzaba a armar mal el gráfico antes de autocorregirse). Un solo
+  // objeto que cambia de una vez hace que ese estado intermedio sea
+  // imposible de observar.
+  private readonly historicoSubject = new BehaviorSubject<{ sleps: Set<string>; destacado: string | null }>({
+    sleps: new Set<string>(),
+    destacado: null,
+  });
+  readonly slepsHistorico$ = this.historicoSubject.pipe(map((h) => h.sleps));
+  readonly slepDestacadoHistorico$ = this.historicoSubject.pipe(map((h) => h.destacado));
 
   readonly contenedorActivo$: Observable<Contenedor | null> = combineLatest([this.contenedores$, this.slepActivoSubject]).pipe(
     map(([contenedores, slepId]) => contenedores.find((c) => c.id === slepId) ?? null),
@@ -63,17 +71,21 @@ export class CaseStateService {
   // comentario arriba). Al marcar uno nuevo, pasa a ser el "destacado".
   // Al desmarcar el que ya era el destacado, nadie queda destacado
   // hasta que se marque otro — los demás SLEP que sigan marcados se
-  // quedan en gris, sin planilla propia visible.
+  // quedan en gris, sin planilla propia visible. Un solo .next(): sleps
+  // y destacado cambian juntos, nunca por separado (ver comentario del
+  // subject más arriba).
   toggleSlepHistorico(slep: string): void {
-    const actuales = new Set(this.slepsHistoricoSubject.value);
-    if (actuales.has(slep)) {
-      actuales.delete(slep);
-      if (this.slepDestacadoHistoricoSubject.value === slep) this.slepDestacadoHistoricoSubject.next(null);
+    const actual = this.historicoSubject.value;
+    const sleps = new Set(actual.sleps);
+    let destacado: string | null;
+    if (sleps.has(slep)) {
+      sleps.delete(slep);
+      destacado = actual.destacado === slep ? null : actual.destacado;
     } else {
-      actuales.add(slep);
-      this.slepDestacadoHistoricoSubject.next(slep);
+      sleps.add(slep);
+      destacado = slep;
     }
-    this.slepsHistoricoSubject.next(actuales);
+    this.historicoSubject.next({ sleps, destacado });
   }
 
   recargarContenedores(mes: MesActivo): void {
