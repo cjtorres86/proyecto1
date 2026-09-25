@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WorkspaceModeService } from '../../../core/services/workspace-mode.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { MonthsPanelComponent } from '../months-panel/months-panel.component';
 import { SlepPanelComponent } from '../slep-panel/slep-panel.component';
 import { CaseFormPanelComponent } from '../case-form-panel/case-form-panel.component';
@@ -8,12 +9,22 @@ import { FieldInspectorComponent } from '../field-inspector/field-inspector.comp
 import { DashboardComponent } from '../../dashboard/dashboard/dashboard.component';
 import { HistoricoPanelComponent } from '../historico-panel/historico-panel.component';
 
-// Workspace principal (TDD, sección 7.8): Meses y SLEP siempre visibles;
-// los 2 paneles de la derecha alternan entre 3 modos (Formulario+
-// Inspector, Dashboard ampliado, Histórico), según WorkspaceModeService
-// — ningún componente llama a otro directamente, todos leen el mismo
-// Observable. El switcher de 3 vías vive dentro de cada uno de los 3
-// paneles (app-mode-switcher), no acá arriba.
+// Workspace principal (TDD, sección 7.8): Meses siempre visible; los
+// paneles de la derecha alternan entre 3 modos (Formulario+Inspector,
+// Dashboard ampliado, Histórico), según WorkspaceModeService — ningún
+// componente llama a otro directamente, todos leen el mismo Observable.
+// El switcher de 3 vías vive dentro de Inspector/Dashboard/Histórico
+// (app-mode-switcher), no acá arriba — CaseFormPanel nunca lo tiene,
+// justo porque es el único panel que no rota (ver esDigitador).
+//
+// Layout Digitador (mejora post-v2.23): un Digitador siempre ve un solo
+// SLEP fijo (TDD, sección 11.2.1) — el panel SLEP no tiene nada que
+// elegir ahí, así que se saca del todo. El espacio libre queda así:
+// Meses(1) + Formulario(1, SIEMPRE visible, es su vista principal) +
+// [Inspector | Dashboard | Histórico, col-span-2, se turnan igual que
+// hoy Dashboard/Histórico]. Se detecta por alcance, no por el nombre
+// del perfil — la razón real es "tiene un solo SLEP fijo", no una
+// etiqueta.
 @Component({
   selector: 'app-cases',
   standalone: true,
@@ -27,7 +38,15 @@ import { HistoricoPanelComponent } from '../historico-panel/historico-panel.comp
 export class CasesComponent {
   readonly modo$;
 
-  constructor(private readonly workspaceMode: WorkspaceModeService) {
+  constructor(
+    private readonly workspaceMode: WorkspaceModeService,
+    readonly authService: AuthService,
+  ) {
     this.modo$ = this.workspaceMode.modo$;
+  }
+
+  get esDigitador(): boolean {
+    const u = this.authService.usuarioActual();
+    return !!u && u.alcance !== 'todos';
   }
 }

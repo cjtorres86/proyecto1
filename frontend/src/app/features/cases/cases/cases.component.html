@@ -1,14 +1,28 @@
 <div class="flex flex-col h-full">
   <div class="grid grid-cols-4 gap-4 flex-1 overflow-hidden">
     <div class="bg-white rounded-lg shadow p-3 overflow-auto"><app-months-panel /></div>
-    <div class="bg-white rounded-lg shadow p-3 overflow-auto"><app-slep-panel /></div>
-    @if ((modo$ | async) === 'formulario') {
+
+    @if (esDigitador) {
+      <!-- Digitador: sin panel SLEP. Formulario fijo en la columna 2;
+           Inspector/Dashboard/Histórico se turnan en el bloque doble. -->
       <div class="bg-white rounded-lg shadow p-3 overflow-auto"><app-case-form-panel /></div>
-      <div class="bg-white rounded-lg shadow p-3 overflow-auto"><app-field-inspector /></div>
-    } @else if ((modo$ | async) === 'dashboard-ampliado') {
-      <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-dashboard /></div>
+      @if ((modo$ | async) === 'formulario') {
+        <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-field-inspector /></div>
+      } @else if ((modo$ | async) === 'dashboard-ampliado') {
+        <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-dashboard /></div>
+      } @else {
+        <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-historico-panel /></div>
+      }
     } @else {
-      <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-historico-panel /></div>
+      <div class="bg-white rounded-lg shadow p-3 overflow-auto"><app-slep-panel /></div>
+      @if ((modo$ | async) === 'formulario') {
+        <div class="bg-white rounded-lg shadow p-3 overflow-auto"><app-case-form-panel /></div>
+        <div class="bg-white rounded-lg shadow p-3 overflow-auto"><app-field-inspector /></div>
+      } @else if ((modo$ | async) === 'dashboard-ampliado') {
+        <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-dashboard /></div>
+      } @else {
+        <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-historico-panel /></div>
+      }
     }
   </div>
 </div>
