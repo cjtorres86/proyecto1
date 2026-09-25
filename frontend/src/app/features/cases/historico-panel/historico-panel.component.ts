@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription, combineLatest, switchMap, of, forkJoin, map } from 'rxjs';
 import { CaseStateService } from '../../../core/services/case-state.service';
@@ -59,8 +59,35 @@ const GRIS_FONDO = '#D1D5DB';
   standalone: true,
   imports: [CommonModule, ModeSwitcherComponent, HistoricoChartComponent],
   templateUrl: './historico-panel.component.html',
+  // El host ocupa todo el alto de su celda: así el contenedor interno
+  // (#contenedor, el que hace scroll) tiene un alto real que medir.
+  host: { class: 'block h-full' },
 })
-export class HistoricoPanelComponent implements OnInit, OnDestroy {
+export class HistoricoPanelComponent implements OnInit, AfterViewInit, OnDestroy {
+  // Alto del gráfico adaptado a la pantalla (mejora post-v2.23). En
+  // pantallas grandes (2K) queda en el máximo, igual que antes. En
+  // pantallas más chicas (o con escala de Windows al 125%/150%, que para
+  // el navegador equivale a una pantalla más chica) baja lo justo para
+  // verse COMPLETO dentro de lo visible del panel; las tablas quedan
+  // debajo, alcanzables con el scroll. Nunca baja del mínimo legible.
+  static readonly ALTO_MAXIMO = 780;
+  static readonly ALTO_MINIMO = 280;
+  // Aire entre el borde inferior del gráfico y el borde visible del panel.
+  static readonly MARGEN_INFERIOR = 12;
+  altoGrafico = HistoricoPanelComponent.ALTO_MAXIMO;
+
+  @ViewChild('contenedor', { static: true }) private contenedor!: ElementRef<HTMLElement>;
+  private zonaGraficoEl?: HTMLElement;
+  // La zona del gráfico solo existe cuando hay un mes elegido (@if): el
+  // setter se entera cuando aparece y recalcula en el siguiente cuadro
+  // (requestAnimationFrame), ya con el layout listo y fuera del ciclo de
+  // detección de cambios en curso.
+  @ViewChild('zonaGrafico') private set zonaGrafico(ref: ElementRef<HTMLElement> | undefined) {
+    this.zonaGraficoEl = ref?.nativeElement;
+    if (this.zonaGraficoEl) requestAnimationFrame(() => this.recalcularAltoGrafico());
+  }
+  private observadorTamano?: ResizeObserver;
+
   mes: string | null = null;
   anio: string | null = null;
 
@@ -78,6 +105,7 @@ export class HistoricoPanelComponent implements OnInit, OnDestroy {
   constructor(
     private readonly caseState: CaseStateService,
     private readonly api: CasesApiService,
+    private readonly zone: NgZone,
   ) {}
 
   ngOnInit(): void {
@@ -163,7 +191,31 @@ export class HistoricoPanelComponent implements OnInit, OnDestroy {
       });
   }
 
+  ngAfterViewInit(): void {
+    // ResizeObserver (API estándar del navegador): avisa cada vez que el
+    // panel cambia de tamaño — ventana redimensionada, zoom del
+    // navegador, o la ventana arrastrada del notebook al monitor 2K.
+    this.observadorTamano = new ResizeObserver(() => this.recalcularAltoGrafico());
+    this.observadorTamano.observe(this.contenedor.nativeElement);
+  }
+
+  // Espacio visible para el gráfico = alto visible del panel, menos lo que
+  // hay encima del gráfico (encabezado y título), menos un margen. Se mide
+  // con offsetTop (posición de diseño, no cambia al hacer scroll), así el
+  // resultado es el mismo aunque el usuario esté a mitad de la página.
+  private recalcularAltoGrafico(): void {
+    const contenedor = this.contenedor?.nativeElement;
+    const zona = this.zonaGraficoEl;
+    if (!contenedor || !zona) return;
+    const disponible = contenedor.clientHeight - zona.offsetTop - HistoricoPanelComponent.MARGEN_INFERIOR;
+    const alto = Math.round(Math.min(HistoricoPanelComponent.ALTO_MAXIMO, Math.max(HistoricoPanelComponent.ALTO_MINIMO, disponible)));
+    // ResizeObserver avisa fuera de la zona de Angular: zone.run hace que
+    // la vista se actualice. Solo se actualiza si el valor cambió.
+    if (alto !== this.altoGrafico) this.zone.run(() => (this.altoGrafico = alto));
+  }
+
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
+    this.observadorTamano?.disconnect();
   }
 }

@@ -24,11 +24,17 @@ export interface SerieHistoricoAvance {
   selector: 'app-historico-chart',
   standalone: true,
   imports: [CommonModule, ChartModule],
-  template: `<p-chart type="line" [data]="chartData" [options]="chartOptions" height="780px" />`,
+  // El alto llega desde HistoricoPanelComponent, que lo calcula según el
+  // espacio realmente visible del panel (ver recalcularAltoGrafico). p-chart
+  // lo aplica al contenedor del canvas y Chart.js (responsive) se redibuja
+  // solo cuando ese contenedor cambia de tamaño — verificado en el código
+  // fuente de PrimeNG (UIChart enlaza [style.height] al div del canvas).
+  template: `<p-chart type="line" [data]="chartData" [options]="chartOptions" [height]="alto + 'px'" />`,
 })
 export class HistoricoChartComponent implements OnChanges {
   @Input() etiquetasMeses: string[] = [];
   @Input() series: SerieHistoricoAvance[] = [];
+  @Input() alto = 780;
 
   chartData: unknown;
   chartOptions = {
