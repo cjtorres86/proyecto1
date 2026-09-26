@@ -108,7 +108,6 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   --color-error-bg: #FEF2F2;
   --color-error-bg-activo: #FCA5A5;
   --color-error-borde: #DC2626;
-  --color-error-glow: rgba(220, 38, 38, 0.35);
 
   // Selección genérica (fila activa sin error).
   --color-seleccion-bg: #F3F4F6;
@@ -117,7 +116,6 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   --color-error-bg: #3A1B24;
   --color-error-bg-activo: #7A1F2B;
   --color-error-borde: #EF4444;
-  --color-error-glow: rgba(239, 68, 68, 0.5);
   --color-seleccion-bg: #242F4A;
 }
 
@@ -125,7 +123,17 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 // variables de arriba, nunca un color suelto.
 .fila-con-error-activa {
   background-color: var(--color-error-bg-activo);
-  box-shadow: 0 0 0 1px var(--color-error-borde), 0 0 10px var(--color-error-glow);
+}
+
+// Línea roja a la izquierda de un campo con error (mejora post-v2.23,
+// hallazgo real): antes era la clase de Tailwind border-l-red-600, pero
+// en modo oscuro perdía contra la regla de abajo que pone gris los
+// bordes normales (border-gray-100) — las dos fijan border-color, y esa
+// tenía más especificidad, así que ganaba ella. Con la variable del
+// sistema y !important, esta línea es la única dueña de ese borde: no
+// puede volver a perder contra ninguna otra regla, en ningún modo.
+.borde-izq-error {
+  border-left-color: var(--color-error-borde) !important;
 }
 
 .dark {

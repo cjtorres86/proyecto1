@@ -64,7 +64,7 @@
           [class.bg-red-50]="campo.invalido && campo.preguntaId !== campoActivoId"
           [class.fila-con-error-activa]="campo.invalido && campo.preguntaId === campoActivoId"
           [class.border-l-4]="campo.invalido"
-          [class.border-l-red-600]="campo.invalido"
+          [class.borde-izq-error]="campo.invalido"
           [class.bg-gray-100]="!campo.invalido && campo.preguntaId === campoActivoId"
           (click)="activarCampo(campo)">
           <span class="flex items-center gap-1.5 min-w-0">
