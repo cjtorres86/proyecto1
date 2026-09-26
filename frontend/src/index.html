@@ -8,6 +8,17 @@
   <meta name="color-scheme" content="light">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <!-- Modo oscuro (mejora post-v2.23, fase 2): aplica la clase "dark" ANTES
+       de que Angular arranque, para que no se vea un parpadeo de tema
+       claro apenas carga la página si la persona ya había elegido oscuro.
+       ThemeService lee este mismo estado al construirse, sin repetirlo. -->
+  <script>
+    try {
+      if (localStorage.getItem('avance-sumarios-tema') === 'oscuro') {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) {}
+  </script>
 </head>
 <body>
   <app-root></app-root>

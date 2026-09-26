@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+/* Modo oscuro manual (mejora post-v2.23, fase 2): las utilidades dark:
+   (si se usan más adelante) reaccionan a la clase .dark puesta por
+   ThemeService, no a la preferencia del sistema operativo — el mismo
+   interruptor controla Tailwind, Angular Material y PrimeNG a la vez. */
+@custom-variant dark (&:where(.dark, .dark *));

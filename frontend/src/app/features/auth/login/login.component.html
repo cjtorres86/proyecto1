@@ -1,15 +1,17 @@
-<main class="min-h-full flex items-center justify-center bg-[#EDF1F7] px-4 py-10">
+<main class="min-h-full flex items-center justify-center bg-[#EDF1F7] dark:bg-[#0B1120] px-4 py-10 relative transition-colors duration-300">
+  <app-theme-toggle class="absolute top-5 right-5" />
+
   <div class="w-full max-w-[420px]">
     <header class="text-center mb-6">
-      <h1 class="text-[26px] leading-tight font-medium text-[#1E3A8A]">Avance de Sumarios</h1>
-      <p class="text-sm text-[#475569] mt-1.5 leading-relaxed">
+      <h1 class="text-[26px] leading-tight font-medium text-[#1E3A8A] dark:text-[#8FB2F5]">Avance de Sumarios</h1>
+      <p class="text-sm text-[#475569] dark:text-[#94A3B8] mt-1.5 leading-relaxed">
         Seguimiento de sumarios administrativos de los Servicios Locales de Educación Pública
       </p>
     </header>
 
-    <div class="bg-white rounded-lg border border-[#D9E0EA] border-t-4 border-t-[#1E3A8A] overflow-hidden">
+    <div class="bg-white dark:bg-[#141B2E] rounded-lg border border-[#D9E0EA] dark:border-[#28324A] border-t-4 border-t-[#1E3A8A] dark:border-t-[#5B7FD1] overflow-hidden transition-colors duration-300">
       <!-- Zona superior: ClaveÚnica (vista previa, sin integración todavía) -->
-      <section class="bg-[#F5F7FB] px-6 pt-5 pb-6 border-b border-[#D9E0EA]" aria-label="Ingreso con ClaveÚnica">
+      <section class="bg-[#F5F7FB] dark:bg-[#161D30] px-6 pt-5 pb-6 border-b border-[#D9E0EA] dark:border-[#28324A]" aria-label="Ingreso con ClaveÚnica">
         <div class="flex items-center justify-between gap-3 mb-2">
           <!-- Espacio para la imagen OFICIAL de ClaveÚnica (kit de la
                Secretaría de Gobierno Digital): se guarda como
@@ -18,11 +20,11 @@
           @if (logoClaveUnicaDisponible) {
             <img src="claveunica.svg" alt="ClaveÚnica" class="h-8 w-auto" (error)="logoClaveUnicaDisponible = false" />
           } @else {
-            <span class="text-base font-medium text-[#1E3A8A]">ClaveÚnica</span>
+            <span class="text-base font-medium text-[#1E3A8A] dark:text-[#8FB2F5]">ClaveÚnica</span>
           }
-          <span class="text-xs font-medium text-[#1E3A8A] bg-[#E3EAF6] rounded-full px-2.5 py-0.5">Próximamente</span>
+          <span class="text-xs font-medium text-[#1E3A8A] dark:text-[#8FB2F5] bg-[#E3EAF6] dark:bg-[#1E2A4A] rounded-full px-2.5 py-0.5">Próximamente</span>
         </div>
-        <p class="text-sm text-[#475569] mb-4">Ingresa con tu RUT y ClaveÚnica. Esta opción estará disponible pronto.</p>
+        <p class="text-sm text-[#475569] dark:text-[#94A3B8] mb-4">Ingresa con tu RUT y ClaveÚnica. Esta opción estará disponible pronto.</p>
 
         <form [formGroup]="claveUnicaForm" class="flex flex-col gap-1" aria-disabled="true">
           <mat-form-field appearance="outline">
@@ -39,9 +41,9 @@
 
       <!-- Separador entre los 2 accesos -->
       <div class="flex items-center gap-3 px-6 pt-5" aria-hidden="true">
-        <span class="h-px flex-1 bg-[#D9E0EA]"></span>
-        <span class="text-xs text-[#64748B]">o ingresa con tu usuario del sistema</span>
-        <span class="h-px flex-1 bg-[#D9E0EA]"></span>
+        <span class="h-px flex-1 bg-[#D9E0EA] dark:bg-[#28324A]"></span>
+        <span class="text-xs text-[#64748B] dark:text-[#7C8AA5]">o ingresa con tu usuario del sistema</span>
+        <span class="h-px flex-1 bg-[#D9E0EA] dark:bg-[#28324A]"></span>
       </div>
 
       <!-- Zona inferior: acceso actual del sistema (funcionamiento sin cambios) -->
@@ -55,7 +57,7 @@
             <mat-label>Contraseña</mat-label>
             <input matInput type="password" formControlName="contrasena" autocomplete="current-password" />
           </mat-form-field>
-          <button mat-flat-button class="!bg-[#1E3A8A] !text-white !rounded-md" type="submit" [disabled]="form.invalid || cargando">
+          <button mat-flat-button class="!bg-[#1E3A8A] dark:!bg-[#3E5A9E] !text-white !rounded-md" type="submit" [disabled]="form.invalid || cargando">
             {{ cargando ? 'Ingresando…' : 'Ingresar' }}
           </button>
         </form>

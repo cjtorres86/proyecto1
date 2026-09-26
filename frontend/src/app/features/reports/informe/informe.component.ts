@@ -5,6 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { DashboardApiService } from '../../dashboard/services/dashboard-api.service';
 import { CasesApiService } from '../../cases/services/cases-api.service';
+import { ThemeService } from '../../../core/services/theme.service';
 import { DashboardDeMes } from '../../../core/models/dashboard.model';
 import { CampoConValor } from '../../../core/models/case.model';
 import { AdvanceIndicatorComponent } from '../../dashboard/advance-indicator/advance-indicator.component';
@@ -73,9 +74,16 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     private readonly dashboardApi: DashboardApiService,
     private readonly casesApi: CasesApiService,
     private readonly titleService: Title,
+    private readonly theme: ThemeService,
   ) {}
 
   ngOnInit(): void {
+    // El Informe/PDF siempre se ve igual sin importar el tema elegido —
+    // es un documento que se imprime y se archiva, no una pantalla de
+    // trabajo (mismo motivo por el que ya se fuerza color-scheme claro
+    // en el <head>). No toca la preferencia guardada de la persona: al
+    // volver al resto del sistema, su tema sigue como lo dejó.
+    this.theme.forzarClaroSinGuardar();
     this.mes = this.route.snapshot.paramMap.get('mes') ?? '';
     this.anio = this.route.snapshot.paramMap.get('anio') ?? '';
     this.slep = this.route.snapshot.queryParamMap.get('slep');

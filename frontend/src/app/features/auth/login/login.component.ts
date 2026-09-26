@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { WorkspaceModeService } from '../../../core/services/workspace-mode.service';
+import { ThemeToggleComponent } from '../../../shared/theme-toggle/theme-toggle.component';
 
 // Login en 2 zonas (mejora post-v2.23):
 //
@@ -24,7 +25,7 @@ import { WorkspaceModeService } from '../../../core/services/workspace-mode.serv
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule],
+  imports: [CommonModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, ThemeToggleComponent],
   templateUrl: './login.component.html',
 })
 export class LoginComponent {

@@ -7,6 +7,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { AuthService } from '../core/services/auth.service';
 import { CaseStateService } from '../core/services/case-state.service';
 import { DownloadModalComponent } from '../features/reports/download-modal/download-modal.component';
+import { ThemeToggleComponent } from '../shared/theme-toggle/theme-toggle.component';
 
 // Hallazgo real (reportado directamente por el usuario, confirmado con
 // CSS calculado real vía Puppeteer): mat-toolbar[color="primary"] y
@@ -22,7 +23,7 @@ import { DownloadModalComponent } from '../features/reports/download-modal/downl
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, MatToolbarModule, MatButtonModule],
+  imports: [CommonModule, RouterOutlet, RouterLink, MatToolbarModule, MatButtonModule, ThemeToggleComponent],
   templateUrl: './layout.component.html',
 })
 export class LayoutComponent implements OnInit {

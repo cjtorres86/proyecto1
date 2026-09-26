@@ -37,13 +37,15 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideAnimationsAsync(),
     provideHttpClient(withInterceptors([authInterceptor])),
-    // darkModeSelector: false (hallazgo real): por defecto PrimeNG usa
-    // "system" y, si el computador está en modo oscuro, declara
-    // color-scheme: dark en :root — le gana al tema claro de Angular
-    // Material y el navegador pinta el texto en blanco sobre los fondos
-    // blancos del sistema (letras invisibles). El sistema solo tiene
-    // diseño claro, así que el modo oscuro automático queda apagado.
-    providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: false } } }),
+    // darkModeSelector: '.dark' (mejora post-v2.23, fase 2) — el mismo
+    // interruptor manual que controla Angular Material y Tailwind (ver
+    // ThemeService). Antes estaba en false porque PrimeNG, por su cuenta
+    // ("system"), activaba su propio oscuro según el sistema operativo,
+    // chocando con el tema claro fijo que tenía Angular Material en ese
+    // momento — pintaba letras blancas sobre fondos blancos. Ahora los 3
+    // (Material, PrimeNG, Tailwind) reaccionan a la MISMA clase, nunca
+    // cada uno por su cuenta, así que ese problema no puede repetirse.
+    providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: '.dark' } } }),
     { provide: APP_INITIALIZER, useFactory: restaurarSesion, multi: true },
   ],
 };

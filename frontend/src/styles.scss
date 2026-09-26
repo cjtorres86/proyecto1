@@ -17,6 +17,25 @@ html {
   ));
 }
 
+// Tema oscuro de Angular Material (mejora post-v2.23, fase 2) — mismo
+// mixin, mismas paletas, solo cambia theme-type y el selector que lo
+// activa. Verificado que Angular Material 19 soporta esto (compilé los
+// dos bloques y confirmé que .dark entrega valores de color realmente
+// distintos a los de html, no una copia). Todos los componentes de
+// Material (botones, campos, diálogos, stepper, lista) leen sus colores
+// de estas variables — quedan en modo oscuro solos, sin tocar cada uno.
+.dark {
+  @include mat.theme((
+    color: (
+      theme-type: dark,
+      primary: mat.$azure-palette,
+      tertiary: mat.$blue-palette,
+    ),
+    typography: Roboto,
+    density: 0,
+  ));
+}
+
 @import "primeicons/primeicons.css";
 
 /* You can add global styles to this file, and also import other style files */
@@ -58,5 +77,56 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 .mdc-notched-outline__notch {
   border-left-style: none;
   border-right-style: none;
+}
+
+// Modo oscuro (mejora post-v2.23, fase 2) — paleta propia para pantalla
+// oscura, no una simple inversión: grises azulados oscuros (nunca negro
+// puro, se ve barato) con el mismo azul institucional como base, en una
+// versión más luminosa donde hace falta contraste sobre fondo oscuro.
+//
+// :root { color-scheme } + su versión en .dark hacen que los controles
+// nativos del navegador (scrollbars, checkboxes sin estilo) sigan el
+// tema igual que el resto de la página.
+:root { color-scheme: light; }
+.dark { color-scheme: dark; }
+
+.dark {
+  background-color: #0B1120;
+  color: #E7ECF6;
+
+  // El panel/tarjeta blanco es, por lejos, el fondo más repetido en todo
+  // el sistema — cubrirlo acá da alcance real sin tocar cada componente.
+  .bg-white { background-color: #141B2E; }
+  .bg-gray-50, .bg-gray-100 { background-color: #1B2440; }
+  .bg-gray-200 { background-color: #242F4A; }
+
+  .text-gray-400 { color: #6B7690; }
+  .text-gray-500 { color: #8B96AD; }
+  .text-gray-600, .text-gray-700 { color: #AEB8CC; }
+  .text-gray-800, .text-gray-900 { color: #E7ECF6; }
+
+  .border-gray-100, .border-gray-200 { border-color: #28324A; }
+  .border-gray-300, .border-gray-400 { border-color: #38445E; }
+
+  .shadow, .shadow-md { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4); }
+
+  // El azul institucional (#1E3A8A) pierde contraste sobre fondo oscuro
+  // — se usa una versión más clara y luminosa solo para texto/borde, no
+  // para fondos sólidos (esos, como la barra superior, ya son oscuros y
+  // se ven bien igual en los dos temas).
+  .text-blue-800 { color: #7DA6F5; }
+  .border-blue-800 { border-color: #3E5A9E; }
+
+  // Franjas de color suave (avisos, filas resaltadas) — mismas familias,
+  // ajustadas para que el texto siga siendo legible sobre fondo oscuro.
+  .bg-red-50 { background-color: #3A1B24; }
+  .text-red-600, .text-red-700 { color: #F87171; }
+  .border-red-600 { border-color: #B91C1C; }
+  .bg-green-50 { background-color: #14301F; }
+  .text-green-700 { color: #4ADE80; }
+  .border-green-600 { border-color: #16A34A; }
+  .bg-amber-50 { background-color: #3A2C10; }
+  .text-amber-600, .text-amber-700 { color: #FBBF24; }
+  .border-amber-500 { border-color: #B45309; }
 }
 
