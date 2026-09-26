@@ -9,6 +9,7 @@ import { CasesModule } from './modules/cases/cases.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { UsersModule } from './modules/users/users.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { MensajesModule } from './modules/mensajes/mensajes.module';
 import { dataSourceOptions } from './database/data-source';
 
 @Module({
@@ -22,6 +23,7 @@ import { dataSourceOptions } from './database/data-source';
     DashboardModule,
     UsersModule,
     ReportsModule,
+    MensajesModule,
   ],
   controllers: [AppController],
 })

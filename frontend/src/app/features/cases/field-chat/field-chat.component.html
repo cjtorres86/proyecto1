@@ -1,0 +1,132 @@
+<section class="mt-5 pt-4 border-t border-gray-200" aria-label="Conversación del campo">
+  <h4 class="text-xs font-semibold uppercase text-gray-500 mb-3 flex items-center gap-1.5">
+    <i class="pi pi-comments text-[12px]"></i>
+    Conversación
+    @if (mensajes.length) { <span class="font-normal normal-case text-gray-400">({{ mensajes.length }})</span> }
+  </h4>
+
+  @if (cargando) {
+    <p class="text-xs text-gray-400 mb-3">Cargando conversación…</p>
+  } @else if (!mensajes.length) {
+    <p class="text-xs text-gray-400 mb-3">Aún no hay mensajes en este campo. Escribe el primero.</p>
+  }
+
+  <ol class="flex flex-col gap-2.5 mb-3">
+    @for (m of mensajes; track m.id) {
+      <li
+        [id]="'msg-' + m.id"
+        class="mensaje rounded-md border border-gray-200 p-2.5"
+        [class.bg-blue-50]="m.esMio && !m.eliminado"
+        [class.mensaje--resaltado]="resaltadoId === m.id"
+      >
+        <header class="flex items-center gap-2 mb-1.5">
+          <span class="inicial" aria-hidden="true">{{ inicial(m.autor.nombre) }}</span>
+          <div class="min-w-0 flex-1 leading-tight">
+            <div class="text-sm font-semibold text-gray-800 truncate">{{ m.autor.nombre }}</div>
+            <div class="text-[11px] text-gray-500 truncate">{{ m.autor.perfil }}</div>
+          </div>
+          <time class="text-[11px] text-gray-400 whitespace-nowrap">{{ m.creadoEn | date: 'dd-MM-yyyy HH:mm' }}</time>
+        </header>
+
+        @if (m.respuestaA; as cita) {
+          <button
+            type="button"
+            class="block w-full text-left text-xs border-l-2 border-blue-800 bg-gray-50 rounded px-2 py-1 mb-1.5 text-gray-600 cursor-pointer"
+            title="Ir al mensaje original"
+            (click)="irAMensaje(cita.id)"
+          >
+            <span class="font-medium">{{ cita.autor }}</span>:
+            <span [class.italic]="cita.eliminado">{{ cita.eliminado ? 'Mensaje eliminado' : cita.texto }}</span>
+          </button>
+        }
+
+        @if (m.eliminado) {
+          <p class="text-sm italic text-gray-400">Mensaje eliminado</p>
+        } @else if (editandoId === m.id) {
+          <textarea
+            [(ngModel)]="textoEdicion"
+            rows="3"
+            [maxlength]="largoMaximo"
+            class="w-full text-sm border border-gray-300 rounded p-1.5 bg-white text-gray-800 resize-y"
+            aria-label="Editar mensaje"
+          ></textarea>
+          @if (!esSuperadmin) {
+            <p class="text-[11px] text-amber-700 mt-1">Es tu única edición o borrado permitido para este mensaje.</p>
+          }
+          <div class="flex justify-end gap-1 mt-1.5">
+            <button type="button" class="text-xs rounded px-2 py-1 border border-gray-300 text-gray-600 cursor-pointer" (click)="cancelarEdicion()">Cancelar</button>
+            <button
+              type="button"
+              class="text-xs rounded px-2 py-1 bg-blue-800 text-white disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+              [disabled]="!textoEdicion.trim() || ocupado"
+              (click)="guardarEdicion(m)"
+            >
+              Guardar
+            </button>
+          </div>
+        } @else {
+          <p class="text-sm text-gray-800 whitespace-pre-line break-words">{{ m.texto }}@if (m.editado) {<span class="text-[11px] text-gray-400"> (editado)</span>}</p>
+        }
+
+        @if (!m.eliminado && editandoId !== m.id) {
+          <footer class="flex flex-wrap items-center gap-1 mt-2">
+            @for (r of reacciones; track r.tipo) {
+              <button
+                type="button"
+                class="reaccion"
+                [class.reaccion--mia]="m.reacciones[r.tipo].mia"
+                [attr.aria-pressed]="m.reacciones[r.tipo].mia"
+                [attr.aria-label]="r.etiqueta"
+                [title]="r.etiqueta"
+                [disabled]="ocupado"
+                (click)="reaccionar(m, r.tipo)"
+              >
+                <span aria-hidden="true">{{ r.emoji }}</span>
+                @if (m.reacciones[r.tipo].total) { <span class="text-[11px] text-gray-600">{{ m.reacciones[r.tipo].total }}</span> }
+              </button>
+            }
+            <span class="flex-1"></span>
+            <button type="button" class="text-[11px] text-blue-800 hover:underline cursor-pointer" (click)="responder(m)">Responder</button>
+            @if (m.puedeModificar) {
+              <button type="button" class="text-[11px] text-blue-800 hover:underline cursor-pointer" (click)="iniciarEdicion(m)">Editar</button>
+              <button type="button" class="text-[11px] text-red-700 hover:underline cursor-pointer" (click)="borrar(m)">Borrar</button>
+            }
+          </footer>
+        }
+      </li>
+    }
+  </ol>
+
+  <!-- Caja para escribir. "Respondiendo a…" aparece arriba si se eligió un
+       mensaje; la × lo cancela. Ctrl+Enter envía. -->
+  @if (respondiendoA) {
+    <div class="flex items-start justify-between gap-2 text-xs border-l-2 border-blue-800 bg-gray-50 rounded px-2 py-1 mb-1.5 text-gray-600">
+      <span class="min-w-0 truncate">Respondiendo a <strong>{{ respondiendoA.autor.nombre }}</strong>: {{ respondiendoA.texto }}</span>
+      <button type="button" class="text-gray-500 cursor-pointer leading-none text-sm" aria-label="Cancelar respuesta" (click)="respondiendoA = null">×</button>
+    </div>
+  }
+  <textarea
+    #cajaTexto
+    [(ngModel)]="texto"
+    rows="2"
+    [maxlength]="largoMaximo"
+    placeholder="Escribe un mensaje…"
+    class="w-full text-sm border border-gray-300 rounded p-1.5 bg-white text-gray-800 resize-y"
+    aria-label="Escribir mensaje"
+    (keydown.control.enter)="enviar()"
+  ></textarea>
+  <div class="flex justify-between items-center mt-1">
+    <span class="text-[11px] text-gray-400">Ctrl + Enter para enviar</span>
+    <button
+      type="button"
+      class="text-xs rounded px-3 py-1 border border-blue-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+      [class.bg-blue-800]="texto.trim()"
+      [class.text-white]="texto.trim()"
+      [class.text-blue-800]="!texto.trim()"
+      [disabled]="!texto.trim() || ocupado"
+      (click)="enviar()"
+    >
+      Enviar
+    </button>
+  </div>
+</section>

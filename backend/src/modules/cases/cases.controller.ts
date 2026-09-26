@@ -9,6 +9,7 @@ import { CasesService } from './cases.service';
 import { ImportacionService } from './importacion.service';
 import { CrearMesDto } from './dto/crear-mes.dto';
 import { MesDto } from './dto/mes.dto';
+import { verificarAccesoSlep } from './acceso-slep';
 import { Contenedor } from './entities/contenedor.entity';
 import { GuardarValoresDto } from './dto/guardar-valores.dto';
 
@@ -165,10 +166,7 @@ export class CasesController {
   // por un parámetro de ruta (TDD, sección 11.2.1) — necesario porque
   // getUno()/guardarValores() reciben el id del contenedor, no su SLEP.
   private verificarAlcance(slepDelContenedor: string, usuario: Usuario) {
-    if (usuario.esSuperadmin || usuario.alcance === 'todos') return;
-    if (usuario.alcance !== slepDelContenedor) {
-      throw new ForbiddenException(`No tienes acceso a los datos de ${slepDelContenedor}.`);
-    }
+    verificarAccesoSlep(slepDelContenedor, usuario);
   }
 
   // Equivalente a cargarDatosParaContenedor() del PMV (TDD, sección

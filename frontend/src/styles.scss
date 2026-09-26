@@ -116,6 +116,8 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   // se ven bien igual en los dos temas).
   .text-blue-800 { color: #7DA6F5; }
   .border-blue-800 { border-color: #3E5A9E; }
+  // Tinte de los mensajes propios en el chat por campo.
+  .bg-blue-50 { background-color: #17223D; }
 
   // Franjas de color suave (avisos, filas resaltadas) — mismas familias,
   // ajustadas para que el texto siga siendo legible sobre fondo oscuro.

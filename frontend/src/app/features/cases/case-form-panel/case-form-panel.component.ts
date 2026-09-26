@@ -1,10 +1,11 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription, combineLatest, switchMap, of, map } from 'rxjs';
+import { Subscription, combineLatest, switchMap, of, map, fromEvent, filter } from 'rxjs';
 import { CaseStateService } from '../../../core/services/case-state.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { MensajesService } from '../../../core/services/mensajes.service';
 import { CampoConValor, Contenedor } from '../../../core/models/case.model';
 
 // Equivalente a _renderPanelFormulario() + _guardarFormulario() del PMV
@@ -22,6 +23,19 @@ import { CampoConValor, Contenedor } from '../../../core/models/case.model';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './case-form-panel.component.html',
+  // Burbuja de mensajes sin leer (chat por campo): roja, con un rebote
+  // corto al aparecer, estilo notificación de red social.
+  styles: [`
+    .insignia-no-leidos {
+      min-width: 17px; height: 17px; padding: 0 5px; flex-shrink: 0;
+      border-radius: 999px; background: #EF4444; color: #fff;
+      font-size: 10px; font-weight: 700; line-height: 1;
+      display: inline-flex; align-items: center; justify-content: center;
+      box-shadow: 0 1px 3px rgba(239, 68, 68, 0.45);
+      animation: insignia-entrada 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes insignia-entrada { from { transform: scale(0); } to { transform: scale(1); } }
+  `],
 })
 export class CaseFormPanelComponent implements OnInit, OnDestroy {
   contenedor: Contenedor | null = null;
@@ -32,17 +46,19 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
   esTotalGeneral = false;
   totalContenedores = 0;
   campoActivoId: string | null = null;
-  private sub?: Subscription;
-  private subCampoActivo?: Subscription;
+  // Mensajes sin leer por campo (chat por campo) del formulario abierto.
+  noLeidos: Record<string, number> = {};
+  private readonly subs = new Subscription();
 
   constructor(
     private readonly caseState: CaseStateService,
     readonly authService: AuthService,
     private readonly notification: NotificationService,
+    private readonly mensajes: MensajesService,
   ) {}
 
   ngOnInit(): void {
-    this.sub = combineLatest([this.caseState.mesActivo$, this.caseState.slepActivo$])
+    this.subs.add(combineLatest([this.caseState.mesActivo$, this.caseState.slepActivo$])
       .pipe(
         switchMap(([mes, slepId]) => {
           this.esTotalGeneral = !slepId && !!mes;
@@ -64,16 +80,25 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
         this.campos = resultado?.campos ?? [];
         this.totalContenedores = resultado?.totalContenedores ?? 0;
         this.valoresEditados = {};
-      });
+        // Contadores del chat de ESTE formulario (el Total general no tiene chat).
+        this.mensajes.cargarNoLeidos(this.contenedor?.id ?? null);
+      }));
     // Resalta la fila del campo activo (mejora post-v2.23) — antes solo
     // el Inspector de Campo reaccionaba a esto, el Formulario no mostraba
     // ningún indicador visual de cuál fila estaba seleccionada.
-    this.subCampoActivo = this.caseState.campoActivo$.subscribe((id) => (this.campoActivoId = id));
+    this.subs.add(this.caseState.campoActivo$.subscribe((id) => (this.campoActivoId = id)));
+    this.subs.add(this.mensajes.noLeidos$.subscribe((conteos) => (this.noLeidos = conteos)));
+    // El chat no es en vivo: los contadores se refrescan al volver a la
+    // pestaña del sistema, para ver lo que otros escribieron mientras tanto.
+    this.subs.add(
+      fromEvent(document, 'visibilitychange')
+        .pipe(filter(() => document.visibilityState === 'visible' && !!this.contenedor))
+        .subscribe(() => this.mensajes.cargarNoLeidos(this.contenedor!.id)),
+    );
   }
 
   ngOnDestroy(): void {
-    this.sub?.unsubscribe();
-    this.subCampoActivo?.unsubscribe();
+    this.subs.unsubscribe();
   }
 
   get puedeEditar(): boolean {
