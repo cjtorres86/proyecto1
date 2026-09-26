@@ -25,6 +25,33 @@ import { ThemeToggleComponent } from '../shared/theme-toggle/theme-toggle.compon
   standalone: true,
   imports: [CommonModule, RouterOutlet, RouterLink, MatToolbarModule, MatButtonModule, ThemeToggleComponent],
   templateUrl: './layout.component.html',
+  styles: [`
+    .boton-salir {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.25s ease;
+    }
+    .boton-salir:hover, .boton-salir:focus-visible {
+      background: rgba(239, 68, 68, 0.4);
+      outline: none;
+    }
+    .boton-salir i {
+      font-size: 14px;
+      transition: transform 0.25s ease;
+    }
+    .boton-salir:hover i {
+      transform: translateX(2px);
+    }
+  `],
 })
 export class LayoutComponent implements OnInit {
   readonly mesActivo$;

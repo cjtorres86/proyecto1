@@ -1,29 +1,39 @@
 <div class="flex flex-col h-full">
   <mat-toolbar class="!bg-[#1E3A8A] !text-white flex justify-between">
+    <!-- Marca + navegación, de izquierda a derecha en el orden pedido.
+         "Descargar" se integra acá como palabra, mismo estilo que el
+         resto — antes era un ícono aparte a la derecha. -->
     <div class="flex items-center gap-3">
       <span class="font-bold">Avance de Sumarios</span>
-      <a routerLink="/" mat-button class="!text-white">Cases</a>
+      <a routerLink="/" mat-button class="!text-white">Paneles</a>
       @if (authService.can('gestionar_usuarios')) { <a routerLink="/usuarios" mat-button class="!text-white">Usuarios</a> }
       @if (authService.usuarioActual()?.esSuperadmin) { <a routerLink="/perfiles" mat-button class="!text-white">Perfiles</a> }
       @if (authService.can('exportar_informe')) { <a routerLink="/errores" mat-button class="!text-white">Errores</a> }
-    </div>
-    <div class="flex items-center gap-3">
-      <app-theme-toggle />
       @if (authService.can('exportar_excel') || authService.can('exportar_informe')) {
         @if (mesActivo$ | async; as mes) {
-          <button mat-icon-button class="!text-white" (click)="abrirDescargas(mes)" title="Descargar">
-            <i class="pi pi-download"></i>
-          </button>
+          <button mat-button class="!text-white" (click)="abrirDescargas(mes)">Descargar</button>
         } @else {
-          <button mat-icon-button class="!text-white" disabled title="Selecciona un mes primero">
-            <i class="pi pi-download"></i>
-          </button>
+          <button mat-button class="!text-white" disabled title="Selecciona un mes primero">Descargar</button>
         }
       }
+    </div>
+
+    <div class="flex items-center gap-4">
+      <app-theme-toggle />
+
+      <!-- Nombre arriba (más grande) y perfil abajo (chico) — apilados,
+           como el encabezado de cuenta de un panel de software moderno. -->
       @if (authService.usuarioActual(); as u) {
-        <span class="text-sm">{{ u.nombreParaMostrar }} ({{ u.esSuperadmin ? 'Superadmin' : u.perfil?.nombre }})</span>
+        <div class="flex flex-col items-end leading-tight">
+          <span class="text-[15px] font-semibold">{{ u.nombreParaMostrar }}</span>
+          <span class="text-[11px] text-blue-200">{{ u.esSuperadmin ? 'Superadmin' : u.perfil?.nombre }}</span>
+        </div>
       }
-      <button mat-icon-button class="!text-white" (click)="cerrarSesion()" title="Cerrar sesión">
+
+      <!-- Mismo nivel de cuidado que el interruptor de tema: círculo con
+           tinte rojizo sutil y la puerta "abriéndose" un poco al pasar el
+           mouse, en vez de un simple ícono plano. -->
+      <button type="button" class="boton-salir" (click)="cerrarSesion()" title="Cerrar sesión" aria-label="Cerrar sesión">
         <i class="pi pi-sign-out"></i>
       </button>
     </div>
