@@ -19,7 +19,7 @@ async function seed() {
       nombre: 'Admin',
       permisos: {
         vistas: ['dashboard', 'formulario', 'inspector'],
-        acciones: ['exportar_excel', 'exportar_informe', 'crear_mes'],
+        acciones: ['exportar_excel', 'exportar_informe', 'crear_mes', 'cerrar_mes'],
         gestion: ['gestionar_usuarios'],
       },
     }),
@@ -28,7 +28,7 @@ async function seed() {
       nombre: 'Validador (Checker)',
       permisos: {
         vistas: ['dashboard', 'formulario', 'inspector'],
-        acciones: ['exportar_excel', 'exportar_informe', 'crear_mes'],
+        acciones: ['exportar_excel', 'exportar_informe', 'crear_mes', 'cerrar_mes'],
         gestion: [],
       },
     }),

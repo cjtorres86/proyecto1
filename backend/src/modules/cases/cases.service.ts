@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, IsNull } from 'typeorm';
 import { Contenedor } from './entities/contenedor.entity';
 import { ValorCampo } from './entities/valor-campo.entity';
 import { ValidacionService, Validacion } from './validacion.service';
@@ -359,15 +359,55 @@ export class CasesService {
   // sección 7.9) — los meses no son datos acotados por alcance (crearMesVacio
   // siempre crea los 36 SLEP a la vez), así que la lista es la misma para
   // cualquier usuario autenticado.
-  async listarMesesDisponibles(): Promise<{ mes: string; anio: string }[]> {
+  //
+  // Incluye si el mes está cerrado (mejora post-v2.23): cerrado = todos sus
+  // contenedores tienen cerrado_en (se cierran juntos). Los contenedores
+  // eliminados (borrado lógico) no aparecen: el QueryBuilder de TypeORM
+  // agrega solo la condición "eliminado_en IS NULL".
+  async listarMesesDisponibles(): Promise<{ mes: string; anio: string; cerrado: boolean }[]> {
     const filas = await this.contenedores
       .createQueryBuilder('c')
-      .select('DISTINCT c.mes_consolidado', 'mes')
+      .select('c.mes_consolidado', 'mes')
       .addSelect('c.anio_consolidado', 'anio')
+      .addSelect('SUM(CASE WHEN c.cerrado_en IS NULL THEN 1 ELSE 0 END)', 'abiertos')
+      .groupBy('c.mes_consolidado')
+      .addGroupBy('c.anio_consolidado')
       .getRawMany();
     return filas
-      .map((f) => ({ mes: f.mes as string, anio: f.anio as string }))
+      .map((f) => ({ mes: f.mes as string, anio: f.anio as string, cerrado: Number(f.abiertos) === 0 }))
       .sort((a, b) => this.claveOrden(b.mes, b.anio) - this.claveOrden(a.mes, a.anio));
+  }
+
+  // Cierra el mes para todos (mejora post-v2.23): desde ahora nadie puede
+  // modificar sus datos, salvo el superadmin. Solo toca contenedores
+  // vigentes (no eliminados) que sigan abiertos.
+  async cerrarMes(mes: string, anio: string, usuarioId: string): Promise<{ cerrados: number }> {
+    const vigentes = await this.contenedores.count({ where: { mesConsolidado: mes, anioConsolidado: anio } });
+    if (!vigentes) throw new NotFoundException(`No existe el mes ${mes} ${anio}.`);
+    const resultado = await this.contenedores.update(
+      { mesConsolidado: mes, anioConsolidado: anio, cerradoEn: IsNull(), eliminadoEn: IsNull() },
+      { cerradoEn: new Date(), cerradoPorId: usuarioId },
+    );
+    if (!resultado.affected) throw new BadRequestException(`El mes ${mes} ${anio} ya estaba cerrado.`);
+    return { cerrados: resultado.affected };
+  }
+
+  // Elimina el mes de la interfaz SIN borrar datos (mejora post-v2.23):
+  // borrado lógico nativo de TypeORM (softDelete) — marca eliminado_en y
+  // quién lo hizo; contenedores y valores quedan en la base. Solo afecta a
+  // los contenedores vigentes de ese mes (una eliminación anterior del
+  // mismo mes conserva su fecha original). En una transacción: se marcan
+  // todos o ninguno.
+  async eliminarMes(mes: string, anio: string, usuarioId: string): Promise<{ eliminados: number }> {
+    return this.contenedores.manager.transaction(async (em) => {
+      const repo = em.getRepository(Contenedor);
+      const criterio = { mesConsolidado: mes, anioConsolidado: anio, eliminadoEn: IsNull() };
+      const vigentes = await repo.count({ where: criterio });
+      if (!vigentes) throw new NotFoundException(`No existe el mes ${mes} ${anio}.`);
+      await repo.update(criterio, { eliminadoPorId: usuarioId });
+      const resultado = await repo.softDelete(criterio);
+      return { eliminados: resultado.affected ?? vigentes };
+    });
   }
 
   // Histórico de un SLEP puntual (panel "Ver Histórico"): una fila por

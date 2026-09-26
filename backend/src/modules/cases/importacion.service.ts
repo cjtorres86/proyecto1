@@ -5,7 +5,6 @@ import * as ExcelJS from 'exceljs';
 import { Contenedor } from './entities/contenedor.entity';
 import { Pregunta } from '../forms/entities/pregunta.entity';
 import { FormularioPregunta } from '../forms/entities/formulario-pregunta.entity';
-import { CasesService } from './cases.service';
 
 // Equivalente a mapearEncabezadosAlCatalogo()/cargarDatosParaContenedor()
 // del PMV (TDD, sección 7.1/7.10) — mismo algoritmo de reconocimiento de
@@ -22,13 +21,17 @@ import { CasesService } from './cases.service';
 //   - el SLEP de esa fila debe ser el del contenedor (un Digitador no
 //     puede cargar por error los datos de otro SLEP).
 // Si algo falla, el mensaje dice exactamente qué.
+//
+// Vista previa, sin guardar (mejora post-v2.23): este servicio SOLO lee y
+// valida; devuelve los valores para que aparezcan en el formulario. Se
+// registran recién cuando el Digitador revisa y presiona "Guardar" (misma
+// ruta de guardado que el ingreso manual, con sus mismos controles).
 @Injectable()
 export class ImportacionService {
   constructor(
     @InjectRepository(Contenedor) private readonly contenedores: Repository<Contenedor>,
     @InjectRepository(Pregunta) private readonly preguntas: Repository<Pregunta>,
     @InjectRepository(FormularioPregunta) private readonly recetas: Repository<FormularioPregunta>,
-    private readonly casesService: CasesService,
   ) {}
 
   private normalizarEncabezado(t: string): string {
@@ -56,7 +59,7 @@ export class ImportacionService {
     return lista.length > maximo ? `${visibles} y ${lista.length - maximo} más` : visibles;
   }
 
-  async cargarDesdeExcel(contenedorId: string, buffer: Buffer): Promise<{ desconocidas: string[] }> {
+  async leerDesdeExcel(contenedorId: string, buffer: Buffer): Promise<{ valores: Record<string, string> }> {
     const contenedor = await this.contenedores.findOne({ where: { id: contenedorId } });
     if (!contenedor) throw new NotFoundException('Contenedor no encontrado.');
 
@@ -155,7 +158,6 @@ export class ImportacionService {
     // mayúsculas); se guarda siempre con su nombre oficial.
     valores['Q03'] = contenedor.slep;
 
-    await this.casesService.guardarValores(contenedorId, valores);
-    return { desconocidas: [] };
+    return { valores };
   }
 }

@@ -1,23 +1,40 @@
 <div class="flex flex-col h-full">
-  <div class="flex justify-between items-center mb-2">
+  <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
     <h3 class="font-bold text-sm uppercase text-gray-500">Formulario</h3>
-    <!-- Mismo estilo que los botones Formulario/Dashboard/Histórico
-         (app-mode-switcher). Es un <label> para abrir el selector de
-         archivo sin JavaScript; tabindex/keydown lo dejan usable con
-         teclado. Solo .xlsx: es el formato que lee ExcelJS. -->
+    <!-- "Cargar datos" y "Guardar": mismo estilo que los botones
+         Formulario/Dashboard/Histórico (app-mode-switcher). Guardar se
+         pinta sólido solo cuando hay cambios sin guardar. En un mes cerrado
+         ambos quedan desactivados (salvo superadmin). -->
     @if (puedeEditar && !esTotalGeneral && contenedor) {
-      <label
-        class="text-xs rounded px-2 py-1 border border-blue-800 text-blue-800 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-800"
-        [class.opacity-50]="cargandoArchivo"
-        [class.pointer-events-none]="cargandoArchivo"
-        tabindex="0"
-        (keydown.enter)="selectorArchivo.click()"
-        (keydown.space)="$event.preventDefault(); selectorArchivo.click()"
-        title="El Excel debe tener las preguntas del formulario como columnas y una sola fila con los datos de tu SLEP"
-      >
-        {{ cargandoArchivo ? 'Cargando…' : 'Cargar datos' }}
-        <input #selectorArchivo type="file" accept=".xlsx" class="hidden" (change)="onArchivoSeleccionado($event)" />
-      </label>
+      <div class="flex gap-1">
+        <!-- Es un <label> para abrir el selector de archivo sin JavaScript;
+             tabindex/keydown lo dejan usable con teclado. Solo .xlsx: es el
+             formato que lee ExcelJS. -->
+        <label
+          class="text-xs rounded px-2 py-1 border border-blue-800 text-blue-800 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-800"
+          [class.opacity-40]="mesCerrado || cargandoArchivo"
+          [class.pointer-events-none]="mesCerrado || cargandoArchivo"
+          [attr.aria-disabled]="mesCerrado"
+          [attr.tabindex]="mesCerrado ? -1 : 0"
+          (keydown.enter)="selectorArchivo.click()"
+          (keydown.space)="$event.preventDefault(); selectorArchivo.click()"
+          [title]="mesCerrado ? 'El mes está cerrado' : 'El Excel debe tener las preguntas del formulario como columnas y una sola fila con los datos de tu SLEP'"
+        >
+          {{ cargandoArchivo ? 'Cargando…' : 'Cargar datos' }}
+          <input #selectorArchivo type="file" accept=".xlsx" class="hidden" [disabled]="mesCerrado" (change)="onArchivoSeleccionado($event)" />
+        </label>
+        <button
+          class="text-xs rounded px-2 py-1 border border-blue-800 disabled:opacity-40 disabled:cursor-not-allowed"
+          [class.bg-blue-800]="puedeGuardar"
+          [class.text-white]="puedeGuardar"
+          [class.text-blue-800]="!puedeGuardar"
+          [disabled]="!puedeGuardar"
+          [title]="mesCerrado ? 'El mes está cerrado' : hayCambios ? 'Registrar los cambios' : 'No hay cambios por guardar'"
+          (click)="guardar()"
+        >
+          {{ guardando ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
     }
   </div>
 
@@ -31,6 +48,15 @@
         {{ contenedor!.slep }} — {{ contenedor!.filled }}/{{ contenedor!.total }} campos
       }
     </div>
+    @if (contenedor?.cerradoEn) {
+      <p class="text-xs text-gray-600 bg-gray-100 rounded px-2 py-1 mb-2 flex items-center gap-1.5">
+        <i class="pi pi-lock text-[11px]"></i>
+        {{ esSuperadmin ? 'Mes cerrado. Como superadmin, puedes modificarlo igual.' : 'Mes cerrado: sus datos ya no se pueden modificar.' }}
+      </p>
+    }
+    @if (hayCambios) {
+      <p class="text-xs text-amber-700 mb-2">Hay cambios sin guardar (marcados en naranjo).</p>
+    }
     <div class="flex-1 overflow-auto flex flex-col">
       @for (campo of campos; track campo.id) {
         <div
@@ -44,18 +70,18 @@
           @if (esEditable(campo)) {
             <input
               type="number"
-              class="w-20 text-right border border-gray-300 rounded px-1 text-sm"
+              class="w-20 text-right border rounded px-1 text-sm"
+              [class.border-gray-300]="!tieneCambio(campo)"
+              [class.border-amber-500]="tieneCambio(campo)"
+              [class.bg-amber-50]="tieneCambio(campo)"
               [value]="campo.valor"
               (input)="onValorChange(campo, $any($event.target).value)"
               (click)="$event.stopPropagation()" />
           } @else {
-            <span class="font-mono">{{ campo.valor || '—' }}</span>
+            <span class="font-mono" [class.text-amber-700]="tieneCambio(campo)">{{ campo.valor || '—' }}</span>
           }
         </div>
       }
     </div>
-    @if (puedeEditar && !esTotalGeneral) {
-      <button mat-flat-button class="!bg-[#1E3A8A] !text-white mt-2 w-full" [disabled]="guardando" (click)="guardar()">Guardar</button>
-    }
   }
 </div>

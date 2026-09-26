@@ -1,7 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
 import { Subscription, combineLatest, switchMap, of, map } from 'rxjs';
 import { CaseStateService } from '../../../core/services/case-state.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -21,7 +20,7 @@ import { CampoConValor, Contenedor } from '../../../core/models/case.model';
 @Component({
   selector: 'app-case-form-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './case-form-panel.component.html',
 })
 export class CaseFormPanelComponent implements OnInit, OnDestroy {
@@ -81,8 +80,32 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
     return this.authService.can('editar_formulario');
   }
 
+  get esSuperadmin(): boolean {
+    return !!this.authService.usuarioActual()?.esSuperadmin;
+  }
+
+  // Mes cerrado (mejora post-v2.23): nadie modifica, salvo el superadmin.
+  // El backend también lo rechaza; esto solo evita que se intente.
+  get mesCerrado(): boolean {
+    return !!this.contenedor?.cerradoEn && !this.esSuperadmin;
+  }
+
+  get hayCambios(): boolean {
+    return Object.keys(this.valoresEditados).length > 0;
+  }
+
+  // Guardar solo se activa con cambios pendientes (escritos a mano o
+  // traídos desde "Cargar datos") y en un mes que se pueda modificar.
+  get puedeGuardar(): boolean {
+    return this.hayCambios && !this.mesCerrado && !this.guardando;
+  }
+
+  tieneCambio(campo: CampoConValor): boolean {
+    return campo.preguntaId in this.valoresEditados;
+  }
+
   esEditable(campo: CampoConValor): boolean {
-    return !this.esTotalGeneral && this.puedeEditar && (campo.tipo === 'number' || campo.tipo === 'money');
+    return !this.esTotalGeneral && this.puedeEditar && !this.mesCerrado && (campo.tipo === 'number' || campo.tipo === 'money');
   }
 
   activarCampo(campo: CampoConValor): void {
@@ -106,33 +129,44 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
           this.valoresEditados = {};
         });
       },
-      error: () => {
+      error: (err) => {
         this.guardando = false;
-        this.notification.mostrar('No se pudieron guardar los datos.');
+        // Ej.: el mes se cerró mientras se editaba — el backend explica por qué.
+        this.notification.mostrar(err.error?.message ?? 'No se pudieron guardar los datos.', 7000);
       },
     });
   }
 
-  // Carga estricta (mejora post-v2.23): el backend valida el formato
-  // completo antes de guardar. Si lo rechaza, no se guardó nada y su
-  // mensaje dice exactamente qué falló (columnas faltantes, filas de más,
-  // otro SLEP…) — se muestra tal cual, con más tiempo en pantalla para
-  // alcanzar a leerlo.
+  // Cargar datos (mejora post-v2.23): el backend valida el Excel completo
+  // y devuelve sus valores SIN guardarlos. Aquí se vuelcan al formulario
+  // como cambios pendientes (marcados en naranjo) para que el Digitador
+  // los revise; quedan registrados recién al presionar "Guardar". Si el
+  // archivo no cumple el formato, el mensaje del backend dice exactamente
+  // qué falló y el formulario no cambia.
   onArchivoSeleccionado(event: Event): void {
-    if (!this.contenedor) return;
+    if (!this.contenedor || this.mesCerrado) return;
     const input = event.target as HTMLInputElement;
     const archivo = input.files?.[0];
     input.value = '';
     if (!archivo) return;
     this.cargandoArchivo = true;
     this.caseState.importarArchivo(this.contenedor.id, archivo).subscribe({
-      next: () => {
+      next: ({ valores }) => {
         this.cargandoArchivo = false;
-        this.notification.mostrar(`Datos cargados para ${this.contenedor!.slep} desde "${archivo.name}".`);
-        this.caseState.getContenedorConValores(this.contenedor!.id).subscribe((r) => {
-          this.contenedor = r.contenedor;
-          this.campos = r.campos;
-        });
+        let aplicados = 0;
+        for (const campo of this.campos) {
+          const nuevo = valores[campo.preguntaId];
+          if (nuevo === undefined || nuevo === campo.valor) continue;
+          campo.valor = nuevo;
+          this.valoresEditados[campo.preguntaId] = nuevo;
+          aplicados++;
+        }
+        this.notification.mostrar(
+          aplicados
+            ? `Datos de "${archivo.name}" cargados en el formulario (${aplicados} campos). Revísalos y presiona Guardar para registrarlos.`
+            : `"${archivo.name}" tiene los mismos datos que ya están guardados: no hay cambios.`,
+          7000,
+        );
       },
       error: (err) => {
         this.cargandoArchivo = false;

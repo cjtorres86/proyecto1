@@ -36,10 +36,20 @@ export class CasesApiService {
     return this.http.patch(`${environment.apiUrl}/cases/${id}/valores`, { valores });
   }
 
-  importarArchivo(id: string, archivo: File): Observable<{ desconocidas: string[] }> {
+  // Vista previa (mejora post-v2.23): valida el Excel y devuelve sus
+  // valores SIN guardarlos; se registran con guardarValores().
+  importarArchivo(id: string, archivo: File): Observable<{ valores: Record<string, string> }> {
     const formData = new FormData();
     formData.append('archivo', archivo);
-    return this.http.post<{ desconocidas: string[] }>(`${environment.apiUrl}/cases/${id}/importar`, formData);
+    return this.http.post<{ valores: Record<string, string> }>(`${environment.apiUrl}/cases/${id}/importar`, formData);
+  }
+
+  cerrarMes(mes: string, anio: string): Observable<{ cerrados: number }> {
+    return this.http.post<{ cerrados: number }>(`${environment.apiUrl}/cases/cerrar-mes`, { mes, anio });
+  }
+
+  eliminarMes(mes: string, anio: string): Observable<{ eliminados: number }> {
+    return this.http.post<{ eliminados: number }>(`${environment.apiUrl}/cases/eliminar-mes`, { mes, anio });
   }
 
   listarFormularios(): Observable<Formulario[]> {

@@ -1,19 +1,46 @@
 <div class="flex flex-col h-full">
-  <div class="flex justify-between items-center mb-2">
+  <!-- Botones en la esquina superior derecha, mismo estilo que el resto de
+       los paneles. Cerrar y Eliminar actúan sobre el mes elegido. -->
+  <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
     <h3 class="font-bold text-sm uppercase text-gray-500">Meses</h3>
-    @if (authService.can('crear_mes')) {
-      <button class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer" (click)="abrirAgregarMes()">+ Agregar Mes</button>
-    }
+    <div class="flex flex-wrap justify-end gap-1">
+      @if (authService.can('crear_mes')) {
+        <button class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer" (click)="abrirAgregarMes()">+ Agregar Mes</button>
+      }
+      @if (authService.can('cerrar_mes')) {
+        <button
+          class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          [disabled]="!mesActivo || mesActivoCerrado"
+          [title]="!mesActivo ? 'Selecciona un mes primero' : mesActivoCerrado ? 'Este mes ya está cerrado' : 'Cerrar el mes para todos'"
+          (click)="cerrarMesActivo()"
+        >
+          Cerrar mes
+        </button>
+      }
+      @if (authService.usuarioActual()?.esSuperadmin) {
+        <button
+          class="text-xs border border-red-700 text-red-700 rounded px-2 py-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          [disabled]="!mesActivo"
+          [title]="!mesActivo ? 'Selecciona un mes primero' : 'Eliminar el mes de la vista (los datos se conservan)'"
+          (click)="eliminarMesActivo()"
+        >
+          Eliminar mes
+        </button>
+      }
+    </div>
   </div>
   <div class="flex-1 overflow-auto flex flex-col gap-1">
     @for (m of meses; track m.mes + m.anio) {
       <button
-        class="text-left px-2 py-1.5 rounded text-sm border"
+        class="text-left px-2 py-1.5 rounded text-sm border flex items-center justify-between gap-2"
         [class.bg-blue-900]="esActivo(m)"
         [class.text-white]="esActivo(m)"
         [class.border-gray-200]="!esActivo(m)"
         (click)="seleccionar(m)">
-        {{ m.mes }} {{ m.anio }}
+        <span>{{ m.mes }} {{ m.anio }}</span>
+        @if (m.cerrado) {
+          <i class="pi pi-lock text-[11px] opacity-70" title="Mes cerrado" aria-label="Mes cerrado"></i>
+        }
       </button>
     }
   </div>

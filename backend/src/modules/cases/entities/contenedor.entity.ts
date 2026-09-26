@@ -1,6 +1,7 @@
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -58,4 +59,25 @@ export class Contenedor {
 
   @UpdateDateColumn({ name: 'actualizado_en' })
   actualizadoEn: Date;
+
+  // Cierre del mes (mejora post-v2.23): al cerrar un mes se marcan todos
+  // sus contenedores a la vez. Con cerradoEn != null nadie puede modificar
+  // los datos, salvo el superadmin (ver CasesController.verificarMesAbierto).
+  @Column({ name: 'cerrado_en', type: 'datetime', precision: 6, nullable: true })
+  cerradoEn: Date | null;
+
+  @Column({ name: 'cerrado_por_id', type: 'varchar', length: 36, nullable: true })
+  cerradoPorId: string | null;
+
+  // Eliminar mes SIN borrar datos (mejora post-v2.23): borrado lógico
+  // nativo de TypeORM. softDelete() solo marca la fecha; los datos
+  // quedan en la base. TypeORM excluye estas filas automáticamente de
+  // find()/findOne() y de los QueryBuilder, así que desaparecen de todo
+  // el sistema sin tocar cada consulta. Recrear el mismo mes genera
+  // contenedores nuevos; los eliminados quedan intactos.
+  @DeleteDateColumn({ name: 'eliminado_en', type: 'datetime', precision: 6, nullable: true })
+  eliminadoEn: Date | null;
+
+  @Column({ name: 'eliminado_por_id', type: 'varchar', length: 36, nullable: true })
+  eliminadoPorId: string | null;
 }

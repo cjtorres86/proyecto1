@@ -13,6 +13,9 @@ export interface Contenedor {
   // si hay al menos un campo con un valor numérico mayor que cero, sin
   // contar Ministerio/Subsecretaría/nombre del SLEP (siempre fijos).
   tieneDatosReales: boolean;
+  // Cierre del mes (mejora post-v2.23): con fecha = mes cerrado; nadie
+  // modifica datos salvo el superadmin (el backend también lo bloquea).
+  cerradoEn: string | null;
 }
 
 export interface CampoConValor {

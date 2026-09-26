@@ -113,11 +113,33 @@ export class CaseStateService {
     );
   }
 
-  importarArchivo(id: string, archivo: File): Observable<{ desconocidas: string[] }> {
-    return this.api.importarArchivo(id, archivo).pipe(
+  // Vista previa del Excel (mejora post-v2.23): no cambia nada en la base,
+  // así que no hay que recargar contenedores.
+  importarArchivo(id: string, archivo: File): Observable<{ valores: Record<string, string> }> {
+    return this.api.importarArchivo(id, archivo);
+  }
+
+  // Tras cerrar, se recargan los contenedores del mes activo para que
+  // cerradoEn llegue a todos los paneles (Formulario bloquea la edición).
+  cerrarMes(mes: MesActivo): Observable<{ cerrados: number }> {
+    return this.api.cerrarMes(mes.mes, mes.anio).pipe(
       tap(() => {
-        const mes = this.mesActivoSubject.value;
-        if (mes) this.recargarContenedores(mes);
+        const activo = this.mesActivoSubject.value;
+        if (activo?.mes === mes.mes && activo?.anio === mes.anio) this.recargarContenedores(activo);
+      }),
+    );
+  }
+
+  // Tras eliminar, si era el mes activo, se deselecciona: ya no existe
+  // en la interfaz.
+  eliminarMes(mes: MesActivo): Observable<{ eliminados: number }> {
+    return this.api.eliminarMes(mes.mes, mes.anio).pipe(
+      tap(() => {
+        const activo = this.mesActivoSubject.value;
+        if (activo?.mes === mes.mes && activo?.anio === mes.anio) {
+          this.setMesActivo(null);
+          this.contenedoresSubject.next([]);
+        }
       }),
     );
   }

@@ -8,9 +8,10 @@ import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { WorkspaceModeService } from '../../../core/services/workspace-mode.service';
 import { AgregarMesDialogComponent, NuevoMes } from '../agregar-mes-dialog/agregar-mes-dialog.component';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { environment } from '../../../../environments/environment';
 
-interface MesConDatos { mes: string; anio: string }
+interface MesConDatos { mes: string; anio: string; cerrado?: boolean }
 
 // Equivalente a _renderPanelMeses() del PMV — nunca llama a "repintar":
 // simplemente lee/publica el mes activo en CaseStateService, y quien
@@ -64,7 +65,7 @@ export class MonthsPanelComponent implements OnInit, OnDestroy {
   // en un backend con más historia se agregaría un endpoint dedicado;
   // por ahora alcanza con listar el mes que ya se sabe que existe.
   private cargarMesesDisponibles(): void {
-    this.http.get<{ mes: string; anio: string }[]>(`${environment.apiUrl}/cases/meses-disponibles`).subscribe({
+    this.http.get<MesConDatos[]>(`${environment.apiUrl}/cases/meses-disponibles`).subscribe({
       next: (lista) => (this.meses = lista),
       error: () => (this.meses = []),
     });
@@ -81,6 +82,63 @@ export class MonthsPanelComponent implements OnInit, OnDestroy {
       this.caseState.setMesActivo(mes);
       this.workspaceMode.irA('formulario');
     }
+  }
+
+  // El mes elegido está cerrado (según la lista, que trae el estado).
+  get mesActivoCerrado(): boolean {
+    return !!this.mesActivo && !!this.meses.find((m) => this.esActivo(m))?.cerrado;
+  }
+
+  // Cerrar mes (mejora post-v2.23): Admin, Validador y superadmin.
+  cerrarMesActivo(): void {
+    const mes = this.mesActivo;
+    if (!mes || this.mesActivoCerrado) return;
+    this.confirmar({
+      titulo: `Cerrar ${mes.mes} ${mes.anio}`,
+      mensaje: 'Al cerrar el mes, nadie podrá ingresar ni modificar datos en ningún SLEP.\nSolo el superadmin podrá hacer cambios después.',
+      textoConfirmar: 'Cerrar mes',
+    }, () =>
+      this.caseState.cerrarMes(mes).subscribe({
+        next: () => {
+          this.notification.mostrar(`${mes.mes} ${mes.anio} quedó cerrado.`);
+          this.cargarMesesDisponibles();
+        },
+        error: (err) => this.notification.mostrar(err.error?.message ?? 'No se pudo cerrar el mes.', 6000),
+      }),
+    );
+  }
+
+  // Eliminar mes (mejora post-v2.23): solo superadmin. Borrado lógico:
+  // los datos quedan en la base de datos.
+  eliminarMesActivo(): void {
+    const mes = this.mesActivo;
+    if (!mes) return;
+    this.confirmar({
+      titulo: `Eliminar ${mes.mes} ${mes.anio}`,
+      mensaje:
+        `El mes dejará de verse para todos los usuarios.\n` +
+        'Los datos no se borran: quedan guardados en la base de datos.\n' +
+        'Si vuelves a crear este mes, empezará vacío, sin tocar los datos anteriores.',
+      textoConfirmar: 'Eliminar mes',
+      peligroso: true,
+    }, () =>
+      this.caseState.eliminarMes(mes).subscribe({
+        next: () => {
+          this.notification.mostrar(`${mes.mes} ${mes.anio} fue eliminado de la vista. Sus datos siguen guardados.`, 5000);
+          this.cargarMesesDisponibles();
+        },
+        error: (err) => this.notification.mostrar(err.error?.message ?? 'No se pudo eliminar el mes.', 6000),
+      }),
+    );
+  }
+
+  private confirmar(data: ConfirmDialogData, alConfirmar: () => void): void {
+    this.dialog
+      .open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, { width: '440px', data })
+      .afterClosed()
+      .subscribe((confirmado) => {
+        if (confirmado) alConfirmar();
+      });
   }
 
   esActivo(mes: MesConDatos): boolean {

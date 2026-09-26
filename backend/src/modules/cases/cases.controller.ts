@@ -8,6 +8,8 @@ import { Usuario } from '../../auth/entities/usuario.entity';
 import { CasesService } from './cases.service';
 import { ImportacionService } from './importacion.service';
 import { CrearMesDto } from './dto/crear-mes.dto';
+import { MesDto } from './dto/mes.dto';
+import { Contenedor } from './entities/contenedor.entity';
 import { GuardarValoresDto } from './dto/guardar-valores.dto';
 
 @UseGuards(JwtAuthGuard, PermisosGuard)
@@ -22,6 +24,22 @@ export class CasesController {
   @Post('crear-mes')
   crearMes(@Body() dto: CrearMesDto, @UsuarioActual() usuario: Usuario) {
     return this.casesService.crearMesVacio(dto.mes, dto.anio, dto.formularioId, dto.sleps, usuario.id);
+  }
+
+  // Cerrar mes (mejora post-v2.23): Admin y Validador (permiso cerrar_mes)
+  // y el superadmin (sin restricción de permisos).
+  @Permisos('cerrar_mes')
+  @Post('cerrar-mes')
+  cerrarMes(@Body() dto: MesDto, @UsuarioActual() usuario: Usuario) {
+    return this.casesService.cerrarMes(dto.mes, dto.anio, usuario.id);
+  }
+
+  // Eliminar mes (mejora post-v2.23): exclusivo del superadmin. Es un
+  // borrado lógico — los datos se conservan en la base de datos.
+  @Post('eliminar-mes')
+  eliminarMes(@Body() dto: MesDto, @UsuarioActual() usuario: Usuario) {
+    if (!usuario.esSuperadmin) throw new ForbiddenException('Solo el superadmin puede eliminar un mes.');
+    return this.casesService.eliminarMes(dto.mes, dto.anio, usuario.id);
   }
 
   @Get()
@@ -123,7 +141,16 @@ export class CasesController {
   ) {
     const actual = await this.casesService.getContenedorConValores(id);
     this.verificarAlcance(actual.contenedor.slep, usuario);
+    this.verificarMesAbierto(actual.contenedor, usuario);
     return this.casesService.guardarValores(id, dto.valores);
+  }
+
+  // Mes cerrado (mejora post-v2.23): nadie modifica datos, salvo el
+  // superadmin. Se verifica en el servidor, no solo desactivando botones.
+  private verificarMesAbierto(contenedor: Contenedor, usuario: Usuario) {
+    if (contenedor.cerradoEn && !usuario.esSuperadmin) {
+      throw new ForbiddenException(`El mes ${contenedor.mesConsolidado} ${contenedor.anioConsolidado} está cerrado: ya no se pueden modificar sus datos.`);
+    }
   }
 
   // El alcance se verifica sobre el SLEP real del recurso ya cargado, no
@@ -137,14 +164,16 @@ export class CasesController {
   }
 
   // Equivalente a cargarDatosParaContenedor() del PMV (TDD, sección
-  // 7.10) — solo carga los datos del SLEP del propio contenedor, nunca
-  // crea contenedores nuevos (eso es exclusivo de crearMesVacio).
+  // 7.10) — lee y valida el Excel del SLEP del propio contenedor y devuelve
+  // sus valores SIN guardarlos (vista previa, mejora post-v2.23): se
+  // registran cuando el Digitador presiona "Guardar".
   @Permisos('editar_formulario')
   @Post(':id/importar')
   @UseInterceptors(FileInterceptor('archivo'))
   async importarArchivo(@Param('id') id: string, @UploadedFile() archivo: any, @UsuarioActual() usuario: Usuario) {
     const actual = await this.casesService.getContenedorConValores(id);
     this.verificarAlcance(actual.contenedor.slep, usuario);
-    return this.importacionService.cargarDesdeExcel(id, archivo.buffer);
+    this.verificarMesAbierto(actual.contenedor, usuario);
+    return this.importacionService.leerDesdeExcel(id, archivo.buffer);
   }
 }
