@@ -33,7 +33,15 @@ export class ConsolidadoService {
       .createQueryBuilder('v')
       .where('v.contenedor_id IN (:...ids)', { ids: contenedorIds })
       .getMany();
+    return { snapshot: this.consolidar(valores), totalContenedores: contenedorIds.length };
+  }
 
+  // La regla de consolidación, PURA (optimización de rendimiento): no
+  // consulta la base, solo agrega los valores que recibe. Así quien
+  // necesita varios meses (Histórico) trae todos los valores en UNA
+  // consulta y consolida cada mes en memoria — antes eran 2 consultas por
+  // mes, una detrás de otra. Mismo cálculo exacto en todos los casos.
+  consolidar(valores: { contenedorId: string; preguntaId: string; valor: string }[]): Snapshot {
     const porPregunta = new Map<string, { contenedorId: string; valor: string }[]>();
     valores.forEach((v) => {
       if (!porPregunta.has(v.preguntaId)) porPregunta.set(v.preguntaId, []);
@@ -71,7 +79,7 @@ export class ConsolidadoService {
       snapshot[preguntaId] = valoresNoVacios.reduce((a, v) => a + Number(v), 0);
     });
 
-    return { snapshot, totalContenedores: contenedorIds.length };
+    return snapshot;
   }
 
   async idsDelMes(mes: string, anio: string, alcance: string): Promise<string[]> {

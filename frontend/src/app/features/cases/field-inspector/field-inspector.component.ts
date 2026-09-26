@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subscription, combineLatest, switchMap, of, map } from 'rxjs';
+import { Subscription, combineLatest } from 'rxjs';
 import { CaseStateService } from '../../../core/services/case-state.service';
 import { CampoConValor } from '../../../core/models/case.model';
 import { ModeSwitcherComponent } from '../../../shared/mode-switcher/mode-switcher.component';
@@ -32,24 +32,16 @@ export class FieldInspectorComponent implements OnInit, OnDestroy {
 
   constructor(private readonly caseState: CaseStateService) {}
 
+  // Lee el formulario del flujo COMPARTIDO (optimización de rendimiento):
+  // antes volvía a pedir el formulario completo al servidor en CADA clic
+  // sobre un campo. Ahora tocar un campo no genera ningún pedido — solo
+  // cambia cuál se muestra, con los datos que ya están cargados.
   ngOnInit(): void {
-    this.sub = combineLatest([this.caseState.mesActivo$, this.caseState.slepActivo$, this.caseState.campoActivo$])
-      .pipe(
-        switchMap(([mes, slepId, campoId]) => {
-          if (slepId) {
-            return this.caseState.getContenedorConValores(slepId).pipe(map((r) => ({ campos: r.campos, campoId, contenedorId: slepId })));
-          }
-          if (mes) {
-            return this.caseState.getTotalGeneral(mes.mes, mes.anio).pipe(map((r) => ({ campos: r.campos, campoId, contenedorId: null })));
-          }
-          return of(null);
-        }),
-      )
-      .subscribe((resultado) => {
-        this.campos = resultado?.campos ?? [];
-        this.preguntaIdActivo = resultado?.campoId ?? null;
-        this.contenedorId = resultado?.contenedorId ?? null;
-      });
+    this.sub = combineLatest([this.caseState.detalleActivo$, this.caseState.campoActivo$]).subscribe(([detalle, campoId]) => {
+      this.campos = detalle?.campos ?? [];
+      this.contenedorId = detalle?.contenedor?.id ?? null;
+      this.preguntaIdActivo = campoId;
+    });
   }
 
   ngOnDestroy(): void {

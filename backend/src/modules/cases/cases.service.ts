@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, IsNull, Not } from 'typeorm';
 import { Contenedor } from './entities/contenedor.entity';
@@ -8,7 +9,7 @@ import { FormularioPregunta } from '../forms/entities/formulario-pregunta.entity
 import { Pregunta } from '../forms/entities/pregunta.entity';
 import { Slep } from '../forms/entities/slep.entity';
 import { ConsolidadoService } from '../dashboard/consolidado.service';
-import { DashboardService } from '../dashboard/dashboard.service';
+import { CAMPOS_AVANCE, DashboardService } from '../dashboard/dashboard.service';
 
 export interface CampoConValor {
   id: string; // 'c01'..'c44'
@@ -50,7 +51,7 @@ export class CasesService {
   // el catálogo de SLEP: un nombre mal escrito se rechaza entero, en vez
   // de crear un contenedor huérfano. Se crean en el orden del catálogo.
   async crearMesVacio(mes: string, anio: string, formularioId: string, slepsElegidos: string[], usuarioId: string | null) {
-    const yaExiste = await this.contenedores.findOne({ where: { mesConsolidado: mes, anioConsolidado: anio } });
+    const yaExiste = await this.contenedores.count({ where: { mesConsolidado: mes, anioConsolidado: anio } });
     if (yaExiste) {
       throw new BadRequestException(`Ya existe un mes ${mes} ${anio} cargado en el sistema.`);
     }
@@ -66,52 +67,63 @@ export class CasesService {
     }
     const sleps = catalogo.filter((s) => elegidos.has(s.nombre));
 
-    const nuevos: Contenedor[] = [];
-    for (const slepRow of sleps) {
-      const contenedor = this.contenedores.create({
+    // 2 escrituras en total, dentro de una transacción (optimización de
+    // rendimiento): antes eran 3 escrituras por SLEP, una tras otra (108
+    // para un mes completo), y si algo fallaba a mitad de camino el mes
+    // quedaba creado a medias. Los id se generan acá para poder armar los
+    // valores iniciales antes de insertar.
+    const nuevos = sleps.map((slepRow) => {
+      const id = randomUUID();
+      const valores = receta.flatMap((item) => {
+        const valor = item.pregunta.nombre === 'Servicio / SLEP' ? slepRow.nombre : (item.pregunta.valorFijo ?? '');
+        return valor ? [{ contenedorId: id, preguntaId: item.preguntaId, valor }] : [];
+      });
+      const contenedor = {
+        id,
         slep: slepRow.nombre,
         mesConsolidado: mes,
         anioConsolidado: anio,
         formularioId,
-        status: 'pending',
-        filled: 0,
+        status: 'pending' as const,
+        filled: valores.length,
         total: receta.length,
         creadoPorId: usuarioId,
-      });
-      const guardado = await this.contenedores.save(contenedor);
-
-      const valoresIniciales: ValorCampo[] = [];
-      let filled = 0;
-      for (const item of receta) {
-        let valor = '';
-        if (item.pregunta.nombre === 'Servicio / SLEP') valor = slepRow.nombre;
-        else if (item.pregunta.valorFijo) valor = item.pregunta.valorFijo;
-        if (valor !== '') {
-          valoresIniciales.push(this.valoresCampo.create({ contenedorId: guardado.id, preguntaId: item.preguntaId, valor }));
-          filled++;
-        }
-      }
-      if (valoresIniciales.length) await this.valoresCampo.save(valoresIniciales);
-      guardado.filled = filled;
-      await this.contenedores.save(guardado);
-      nuevos.push(guardado);
-    }
-    return nuevos;
+      };
+      return { contenedor, valores };
+    });
+    await this.contenedores.manager.transaction(async (em) => {
+      await em.getRepository(Contenedor).insert(nuevos.map((n) => n.contenedor));
+      const valores = nuevos.flatMap((n) => n.valores);
+      if (valores.length) await em.getRepository(ValorCampo).insert(valores);
+    });
+    return this.contenedores.find({ where: { id: In(nuevos.map((n) => n.contenedor.id)) }, order: { slep: 'ASC' } });
   }
 
   // Equivalente a guardarValoresManualmente() del PMV (TDD, sección
   // 13.7): única puerta para escribir valores — recalcula "filled" y
   // vuelve a correr las validaciones, igual que el motor de importación.
-  async guardarValores(contenedorId: string, valores: Record<string, string>) {
-    const contenedor = await this.contenedores.findOne({ where: { id: contenedorId } });
+  //
+  // Optimización de rendimiento: UNA sola escritura para todos los campos
+  // (upsert = "insertar o actualizar", ON DUPLICATE KEY UPDATE de MySQL).
+  // Antes, save() revisaba y actualizaba campo por campo — hasta 37
+  // escrituras sueltas. Devuelve el formulario ya actualizado, así el
+  // frontend no tiene que pedirlo de nuevo después de guardar.
+  async guardarValores(contenedor: Contenedor, valores: Record<string, string>): Promise<{ contenedor: Contenedor; campos: CampoConValor[] }> {
+    const filas = Object.entries(valores).map(([preguntaId, valor]) => ({ contenedorId: contenedor.id, preguntaId, valor: String(valor) }));
+    if (filas.length) await this.valoresCampo.upsert(filas, ['contenedorId', 'preguntaId']);
+    return this.detalleDe(contenedor);
+  }
+
+  // Un formulario (contenedor) por id, o error si no existe (o fue
+  // eliminado). Consulta liviana para verificar acceso antes de hacer algo.
+  async obtenerContenedor(contenedorId: string): Promise<Contenedor> {
+    // find() y no findOne(): el contenedor carga su formulario de forma
+    // automática (eager), y findOne con esa relación hace 2 consultas (una
+    // de "ids distintos" y otra de datos). Por id, find() trae lo mismo
+    // en 1 sola.
+    const [contenedor] = await this.contenedores.find({ where: { id: contenedorId } });
     if (!contenedor) throw new NotFoundException('Contenedor no encontrado.');
-
-    const filas: ValorCampo[] = Object.entries(valores).map(([preguntaId, valor]) =>
-      this.valoresCampo.create({ contenedorId, preguntaId, valor: String(valor) }),
-    );
-    if (filas.length) await this.valoresCampo.save(filas);
-
-    return this.revalidarYGuardar(contenedor);
+    return contenedor;
   }
 
   // Corre las validaciones de una receta contra un mapa posición->valor
@@ -139,11 +151,19 @@ export class CasesService {
     return resultadosPorCampo;
   }
 
-  // Recalcula "filled" y corre validateAllFieldsAndUpdateUI() (PMV) sobre
-  // este contenedor, y persiste status/filled.
-  private async revalidarYGuardar(contenedor: Contenedor) {
-    const receta = await this.recetas.find({ where: { formularioId: contenedor.formularioId } });
-    const valores = await this.valoresCampo.find({ where: { contenedorId: contenedor.id } });
+  // Un formulario con sus valores y el resultado de sus validaciones —
+  // equivalente a validateAllFieldsAndUpdateUI() + el panel Formulario del
+  // PMV. Recalcula "filled" y el estado ('ok' / 'no').
+  //
+  // Optimización de rendimiento: 2 consultas, en paralelo (antes 6, en
+  // fila, porque receta y valores se pedían 2 veces), y el estado se
+  // escribe SOLO si cambió — antes se escribía cada vez que alguien
+  // abría el formulario, aunque nada hubiera cambiado.
+  async detalleDe(contenedor: Contenedor): Promise<{ contenedor: Contenedor; campos: CampoConValor[] }> {
+    const [receta, valores] = await Promise.all([
+      this.recetas.find({ where: { formularioId: contenedor.formularioId }, relations: ['pregunta'], order: { posicionCanonica: 'ASC' } }),
+      this.valoresCampo.find({ where: { contenedorId: contenedor.id } }),
+    ]);
     const valorPorPregunta = new Map(valores.map((v) => [v.preguntaId, v.valor]));
 
     const valoresPorPosicion = new Map<number, string>();
@@ -151,38 +171,18 @@ export class CasesService {
       const v = valorPorPregunta.get(r.preguntaId);
       if (v !== undefined && v !== '') valoresPorPosicion.set(r.posicionCanonica, v);
     });
-
-    let filled = 0;
-    receta.forEach((r) => {
-      if (valorPorPregunta.get(r.preguntaId)) filled++;
-    });
-
+    const filled = receta.filter((r) => valorPorPregunta.get(r.preguntaId)).length;
     const validacionesPorCampo = this.evaluarTodasLasValidaciones(receta, valoresPorPosicion);
     const invalidFieldIds = [...validacionesPorCampo.entries()]
       .filter(([, resultados]) => resultados.some((r) => !r.cumple))
       .map(([id]) => id);
 
-    contenedor.filled = filled;
-    contenedor.status = invalidFieldIds.length ? 'no' : 'ok';
-    await this.contenedores.save(contenedor);
-    return { contenedor, invalidFieldIds, validacionesPorCampo };
-  }
-
-  // Ensambla un contenedor con sus valores y el resultado de validación
-  // — equivalente a lo que el panel Formulario del PMV mostraba.
-  async getContenedorConValores(contenedorId: string): Promise<{ contenedor: Contenedor; campos: CampoConValor[] }> {
-    const contenedor = await this.contenedores.findOne({ where: { id: contenedorId } });
-    if (!contenedor) throw new NotFoundException('Contenedor no encontrado.');
-
-    const { invalidFieldIds, validacionesPorCampo } = await this.revalidarYGuardar(contenedor);
-
-    const receta = await this.recetas.find({
-      where: { formularioId: contenedor.formularioId },
-      relations: ['pregunta'],
-      order: { posicionCanonica: 'ASC' },
-    });
-    const valores = await this.valoresCampo.find({ where: { contenedorId } });
-    const valorPorPregunta = new Map(valores.map((v) => [v.preguntaId, v.valor]));
+    const status = invalidFieldIds.length ? 'no' : 'ok';
+    if (contenedor.filled !== filled || contenedor.status !== status) {
+      contenedor.filled = filled;
+      contenedor.status = status;
+      await this.contenedores.update(contenedor.id, { filled, status });
+    }
 
     const campos: CampoConValor[] = receta.map((item) => {
       const id = 'c' + String(item.posicionCanonica).padStart(2, '0');
@@ -201,6 +201,10 @@ export class CasesService {
       };
     });
     return { contenedor, campos };
+  }
+
+  async getContenedorConValores(contenedorId: string): Promise<{ contenedor: Contenedor; campos: CampoConValor[] }> {
+    return this.detalleDe(await this.obtenerContenedor(contenedorId));
   }
 
   // "Formulario total general" (mejora post-v2.23): la misma lista de 37
@@ -320,23 +324,37 @@ export class CasesService {
   // que no se cumple, con su mensaje exacto. Reutiliza el mismo
   // ValidacionService que ya usa el guardado — nunca una segunda
   // implementación de las reglas.
+  //
+  // Optimización de rendimiento: 3 consultas en total, sin importar
+  // cuántos SLEP haya (antes 2 por SLEP, una tras otra: hasta 72+).
   async listarErroresDelMes(mes: string, anio: string, alcance: string) {
-    const contenedores = await this.listarPorMes(mes, anio, alcance);
-    const errores: { slep: string; campo: string; mensaje: string }[] = [];
+    const where: Record<string, string> = { mesConsolidado: mes, anioConsolidado: anio };
+    if (alcance !== 'todos') where.slep = alcance;
+    const contenedores = await this.contenedores.find({ where, order: { slep: 'ASC' } });
+    if (!contenedores.length) return [];
 
+    const [recetas, valores] = await Promise.all([
+      this.recetas.find({
+        where: { formularioId: In([...new Set(contenedores.map((c) => c.formularioId))]) },
+        relations: ['pregunta'],
+        order: { posicionCanonica: 'ASC' },
+      }),
+      this.valoresDe(contenedores.map((c) => c.id)),
+    ]);
+    const recetaPorFormulario = this.agrupar(recetas, (r) => r.formularioId);
+    const valoresPorContenedor = this.agrupar(valores, (v) => v.contenedorId);
+
+    const errores: { slep: string; campo: string; mensaje: string }[] = [];
     for (const c of contenedores) {
-      const receta = await this.recetas.find({ where: { formularioId: c.formularioId }, relations: ['pregunta'] });
-      const valores = await this.valoresCampo.find({ where: { contenedorId: c.id } });
-      const valorPorPregunta = new Map(valores.map((v) => [v.preguntaId, v.valor]));
+      const receta = recetaPorFormulario.get(c.formularioId) ?? [];
+      const valorPorPregunta = new Map((valoresPorContenedor.get(c.id) ?? []).map((v) => [v.preguntaId, v.valor]));
       const valoresPorPosicion = new Map<number, string>();
       receta.forEach((r) => {
         const v = valorPorPregunta.get(r.preguntaId);
         if (v !== undefined && v !== '') valoresPorPosicion.set(r.posicionCanonica, v);
       });
-
       receta.forEach((r) => {
-        const validaciones = (r.validaciones || []) as Validacion[];
-        validaciones.forEach((val) => {
+        ((r.validaciones || []) as Validacion[]).forEach((val) => {
           const res = this.validacionService.evaluarValidacion(val, valoresPorPosicion);
           if (res.aplica && !res.cumple) {
             errores.push({ slep: c.slep, campo: `${r.posicionCanonica}. ${r.pregunta.nombre}`, mensaje: res.msg ?? val.msgFail });
@@ -345,6 +363,41 @@ export class CasesService {
       });
     }
     return errores;
+  }
+
+  // --- Ayudantes para traer varios meses de una sola vez ---
+
+  // Formularios vigentes de todos los meses hasta el corte (inclusive), en
+  // UNA consulta — el filtro por mes se hace en memoria (son pocas filas:
+  // 36 por mes). alcance: 'todos' o el nombre de un SLEP.
+  private async contenedoresHastaCorte(hastaMes: string, hastaAnio: string, alcance: string): Promise<Contenedor[]> {
+    const corte = this.claveOrden(hastaMes, hastaAnio);
+    const where = alcance !== 'todos' ? { slep: alcance } : {};
+    const todos = await this.contenedores.find({ where, order: { slep: 'ASC' } });
+    return todos.filter((c) => this.claveOrden(c.mesConsolidado, c.anioConsolidado) <= corte);
+  }
+
+  // Valores de muchos formularios en UNA consulta (opcionalmente, solo
+  // algunos campos).
+  private async valoresDe(contenedorIds: string[], preguntaIds?: string[]): Promise<ValorCampo[]> {
+    if (!contenedorIds.length) return [];
+    return this.valoresCampo.find({
+      where: { contenedorId: In(contenedorIds), ...(preguntaIds ? { preguntaId: In(preguntaIds) } : {}) },
+    });
+  }
+
+  private agrupar<T>(filas: T[], clave: (fila: T) => string): Map<string, T[]> {
+    const grupos = new Map<string, T[]>();
+    filas.forEach((fila) => {
+      const k = clave(fila);
+      if (!grupos.has(k)) grupos.set(k, []);
+      grupos.get(k)!.push(fila);
+    });
+    return grupos;
+  }
+
+  private claveMes(mes: string, anio: string): string {
+    return `${mes}|${anio}`;
   }
 
   // Orden canónico de meses (Enero..Diciembre) — usado por
@@ -436,84 +489,89 @@ export class CasesService {
     });
   }
 
-  // Histórico de un SLEP puntual (panel "Ver Histórico"): una fila por
-  // mes (el más reciente arriba), una columna por cada uno de los 37
-  // campos del formulario estándar — siempre el mismo set de columnas,
-  // sin importar qué formulario tenía asignado el contenedor de ese mes
-  // en particular, para que la tabla nunca cambie de forma al recorrer
-  // los meses. Solo incluye meses hasta el mes de corte (inclusive) —
-  // nunca meses posteriores a donde está posicionado el usuario.
+  // Planilla detallada de UN SLEP (meses x 37 campos), hasta el mes activo
+  // inclusive — más reciente arriba. Siempre con la plantilla estándar de
+  // 37 campos.
+  //
+  // Optimización de rendimiento: 2 etapas de consultas en paralelo, sin
+  // importar cuántos meses haya (antes 2 consultas POR MES, en fila).
   async getHistoricoSlep(slep: string, hastaMes: string, hastaAnio: string) {
-    const meses = await this.mesesHastaCorte(hastaMes, hastaAnio);
-
-    const receta = await this.recetas.find({
-      where: { formularioId: 'seguimiento_disciplinario_37' },
-      relations: ['pregunta'],
-      order: { posicionCanonica: 'ASC' },
-    });
+    const [meses, receta, contenedores] = await Promise.all([
+      this.mesesHastaCorte(hastaMes, hastaAnio),
+      this.recetas.find({ where: { formularioId: 'seguimiento_disciplinario_37' }, relations: ['pregunta'], order: { posicionCanonica: 'ASC' } }),
+      this.contenedoresHastaCorte(hastaMes, hastaAnio, slep),
+    ]);
     const campos = receta.map((r) => ({
       id: 'c' + String(r.posicionCanonica).padStart(2, '0'),
       preguntaId: r.preguntaId,
       nombre: r.pregunta.nombre,
     }));
+    const valores = await this.valoresDe(contenedores.map((c) => c.id));
+    const valoresPorContenedor = this.agrupar(valores, (v) => v.contenedorId);
+    const contenedorPorMes = new Map<string, string>();
+    contenedores.forEach((c) => {
+      const k = this.claveMes(c.mesConsolidado, c.anioConsolidado);
+      if (!contenedorPorMes.has(k)) contenedorPorMes.set(k, c.id); // si hubiera duplicados, el primero (igual que antes)
+    });
 
-    const filas = [];
-    for (const m of meses) {
-      const contenedor = await this.contenedores.findOne({ where: { slep, mesConsolidado: m.mes, anioConsolidado: m.anio } });
-      let valorPorPregunta = new Map<string, string>();
-      if (contenedor) {
-        const valores = await this.valoresCampo.find({ where: { contenedorId: contenedor.id } });
-        valorPorPregunta = new Map(valores.map((v) => [v.preguntaId, v.valor]));
-      }
-      filas.push({
-        mes: m.mes,
-        anio: m.anio,
-        valores: campos.map((c) => valorPorPregunta.get(c.preguntaId) ?? ''),
-      });
-    }
-
+    const filas = meses.map((m) => {
+      const id = contenedorPorMes.get(this.claveMes(m.mes, m.anio));
+      const valorPorPregunta = new Map((id ? (valoresPorContenedor.get(id) ?? []) : []).map((v) => [v.preguntaId, v.valor]));
+      return { mes: m.mes, anio: m.anio, valores: campos.map((c) => valorPorPregunta.get(c.preguntaId) ?? '') };
+    });
     return { slep, campos, filas };
   }
 
-  // Gráfico de líneas del panel Histórico (mejora post-v2.23): el mismo
-  // % de avance del indicador del Dashboard (Procesos Cerrados ÷
-  // Sumarios Instruidos, DashboardService.calculateMetrics), mes a mes.
-  // Sirve para la línea general (alcance='todos') Y para la línea de
-  // cualquier SLEP puntual — mismo método, mismo motor de suma
-  // (ConsolidadoService) que ya alimenta el Dashboard, sin cálculo
-  // aparte ni fórmula duplicada.
+  // Gráfico de líneas del panel Histórico: el mismo % de avance del
+  // indicador del Dashboard (DashboardService.calculateMetrics), mes a
+  // mes. Sirve para la línea general (alcance='todos') Y para la de un SLEP
+  // puntual. La consolidación de cada mes es la MISMA regla del Dashboard
+  // (ConsolidadoService.consolidar), aplicada en memoria.
+  //
+  // Optimización de rendimiento: 2 etapas de consultas en paralelo (antes
+  // 2 por mes, en fila), y solo se traen los 2 campos de los que depende
+  // el avance (Q37 y Q45), no los 37.
   async getHistoricoAvance(hastaMes: string, hastaAnio: string, alcance: string): Promise<{ mes: string; anio: string; pct: number | null }[]> {
-    const meses = await this.mesesHastaCorte(hastaMes, hastaAnio);
-    const resultado: { mes: string; anio: string; pct: number | null }[] = [];
-    for (const m of meses) {
-      const ids = await this.consolidadoService.idsDelMes(m.mes, m.anio, alcance);
-      const { snapshot } = await this.consolidadoService.calcularConsolidado(ids);
-      const { pctAvance } = this.dashboardService.calculateMetrics(snapshot);
-      resultado.push({ mes: m.mes, anio: m.anio, pct: pctAvance });
-    }
-    return resultado;
+    const [meses, contenedores] = await Promise.all([
+      this.mesesHastaCorte(hastaMes, hastaAnio),
+      this.contenedoresHastaCorte(hastaMes, hastaAnio, alcance),
+    ]);
+    const valores = await this.valoresDe(contenedores.map((c) => c.id), CAMPOS_AVANCE);
+    const mesDeContenedor = new Map(contenedores.map((c) => [c.id, this.claveMes(c.mesConsolidado, c.anioConsolidado)]));
+    const valoresPorMes = this.agrupar(valores, (v) => mesDeContenedor.get(v.contenedorId)!);
+    return meses.map((m) => {
+      const snapshot = this.consolidadoService.consolidar(valoresPorMes.get(this.claveMes(m.mes, m.anio)) ?? []);
+      return { mes: m.mes, anio: m.anio, pct: this.dashboardService.calculateMetrics(snapshot).pctAvance };
+    });
   }
 
-  // Planilla general del panel Histórico (mejora post-v2.23): columnas =
-  // los 36 SLEP, filas = mes, valor = % de avance de ESE SLEP en ESE
-  // mes (0 si no hay datos o el SLEP no tiene sumarios instruidos ese
-  // mes). Reutiliza getRankingSeries() — ya calcula el % de los 36 SLEP
-  // para UN mes en 2 consultas — en vez de llamar a
-  // getHistoricoAvance() 36 veces (una por SLEP): acá se llama una vez
-  // por MES, no por SLEP, mucho más barato.
+  // Planilla general del panel Histórico: columnas = los SLEP del mes de
+  // corte, filas = mes, valor = % de avance de ESE SLEP en ESE mes (0 si no
+  // hay datos o no tiene sumarios instruidos). Misma fórmula que el Ranking
+  // (DashboardService.pctAvanceDe).
+  //
+  // Optimización de rendimiento: 2 etapas de consultas en paralelo (antes
+  // 2 por mes, en fila), solo con los campos Q37 y Q45.
   async getHistoricoAvanceTodosLosSlep(hastaMes: string, hastaAnio: string, alcance: string): Promise<{ sleps: string[]; filas: { mes: string; anio: string; valores: number[] }[] }> {
-    const where: Record<string, string> = { mesConsolidado: hastaMes, anioConsolidado: hastaAnio };
-    if (alcance !== 'todos') where.slep = alcance;
-    const contenedoresDelCorte = await this.contenedores.find({ where, order: { slep: 'ASC' } });
-    const sleps = contenedoresDelCorte.map((c) => c.slep);
+    const [meses, contenedores] = await Promise.all([
+      this.mesesHastaCorte(hastaMes, hastaAnio),
+      this.contenedoresHastaCorte(hastaMes, hastaAnio, alcance),
+    ]);
+    const corte = this.claveMes(hastaMes, hastaAnio);
+    const sleps = contenedores.filter((c) => this.claveMes(c.mesConsolidado, c.anioConsolidado) === corte).map((c) => c.slep);
 
-    const meses = await this.mesesHastaCorte(hastaMes, hastaAnio);
-    const filas = [];
-    for (const m of meses) {
-      const ranking = await this.dashboardService.getRankingSeries(m.mes, m.anio, alcance);
-      const pctPorSlep = new Map(ranking.map((r) => [r.slep, r.pct]));
-      filas.push({ mes: m.mes, anio: m.anio, valores: sleps.map((s) => pctPorSlep.get(s) ?? 0) });
-    }
+    const valores = await this.valoresDe(contenedores.map((c) => c.id), CAMPOS_AVANCE);
+    const valoresPorContenedor = this.agrupar(valores, (v) => v.contenedorId);
+    const pctPorMesYSlep = new Map<string, number | null>();
+    contenedores.forEach((c) => {
+      const vals = Object.fromEntries((valoresPorContenedor.get(c.id) ?? []).map((v) => [v.preguntaId, v.valor]));
+      pctPorMesYSlep.set(`${this.claveMes(c.mesConsolidado, c.anioConsolidado)}|${c.slep}`, this.dashboardService.pctAvanceDe(vals));
+    });
+    const filas = meses.map((m) => ({
+      mes: m.mes,
+      anio: m.anio,
+      valores: sleps.map((s) => pctPorMesYSlep.get(`${this.claveMes(m.mes, m.anio)}|${s}`) ?? 0),
+    }));
     return { sleps, filas };
   }
 }

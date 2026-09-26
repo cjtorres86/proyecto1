@@ -34,6 +34,11 @@ export interface Metricas {
 // Dashboard (codename en el PMV: RONGORONGO — sección 5.1). Capa de
 // datos, equivalente exacto a calculateMetrics()/getXSeriesPct() del PMV
 // — nunca dibuja nada, solo calcula (contrato de desacople, sección 5.5).
+// Los únicos campos de los que depende el % de avance (Sumarios
+// instruidos y Procesos cerrados) — quien solo necesita el avance trae
+// solo estos 2 campos, no los 37.
+export const CAMPOS_AVANCE = ['Q37', 'Q45'];
+
 @Injectable()
 export class DashboardService {
   constructor(
@@ -100,6 +105,15 @@ export class DashboardService {
 
   // Equivalente a getRankingSeries() del PMV — % de avance por SLEP,
   // ordenado de mayor a menor.
+  // % de avance de UN formulario (Procesos cerrados ÷ Sumarios
+  // instruidos), a partir de sus valores Q37/Q45. Una sola definición: la
+  // usan el Ranking y la planilla general del Histórico.
+  pctAvanceDe(valores: Record<string, string>): number | null {
+    const instr = Number(valores.Q37) || 0;
+    const cerr = Number(valores.Q45) || 0;
+    return instr > 0 ? Math.round((cerr / instr) * 1000) / 10 : null;
+  }
+
   async getRankingSeries(mes: string, anio: string, alcance: string): Promise<{ slep: string; pct: number | null }[]> {
     const where: Record<string, string> = { mesConsolidado: mes, anioConsolidado: anio };
     if (alcance !== 'todos') where.slep = alcance;
@@ -107,7 +121,7 @@ export class DashboardService {
     const valores = await this.valoresCampo
       .createQueryBuilder('v')
       .where('v.contenedor_id IN (:...ids)', { ids: contenedores.map((c) => c.id) })
-      .andWhere('v.pregunta_id IN (:...preg)', { preg: ['Q37', 'Q45'] })
+      .andWhere('v.pregunta_id IN (:...preg)', { preg: CAMPOS_AVANCE })
       .getMany();
     const porContenedor = new Map<string, Record<string, string>>();
     valores.forEach((v) => {
@@ -116,10 +130,7 @@ export class DashboardService {
     });
     return contenedores
       .map((c) => {
-        const vals = porContenedor.get(c.id) || {};
-        const instr = Number(vals.Q37) || 0;
-        const cerr = Number(vals.Q45) || 0;
-        const pct = instr > 0 ? Math.round((cerr / instr) * 1000) / 10 : null;
+        const pct = this.pctAvanceDe(porContenedor.get(c.id) || {});
         return { slep: c.slep, pct };
       })
       .sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));

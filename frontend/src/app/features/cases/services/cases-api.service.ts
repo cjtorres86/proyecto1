@@ -32,8 +32,9 @@ export class CasesApiService {
     return this.http.get<{ contenedor: Contenedor; campos: CampoConValor[] }>(`${environment.apiUrl}/cases/${id}`);
   }
 
-  guardarValores(id: string, valores: Record<string, string>): Observable<unknown> {
-    return this.http.patch(`${environment.apiUrl}/cases/${id}/valores`, { valores });
+  // Devuelve el formulario ya actualizado (con validaciones recalculadas).
+  guardarValores(id: string, valores: Record<string, string>): Observable<{ contenedor: Contenedor; campos: CampoConValor[] }> {
+    return this.http.patch<{ contenedor: Contenedor; campos: CampoConValor[] }>(`${environment.apiUrl}/cases/${id}/valores`, { valores });
   }
 
   // Vista previa (mejora post-v2.23): valida el Excel y devuelve sus

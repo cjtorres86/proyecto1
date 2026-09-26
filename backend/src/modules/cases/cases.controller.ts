@@ -136,9 +136,10 @@ export class CasesController {
 
   @Get(':id')
   async getUno(@Param('id') id: string, @UsuarioActual() usuario: Usuario) {
-    const resultado = await this.casesService.getContenedorConValores(id);
-    this.verificarAlcance(resultado.contenedor.slep, usuario);
-    return resultado;
+    // Primero el acceso (consulta liviana), después el detalle completo.
+    const contenedor = await this.casesService.obtenerContenedor(id);
+    this.verificarAlcance(contenedor.slep, usuario);
+    return this.casesService.detalleDe(contenedor);
   }
 
   @Permisos('editar_formulario')
@@ -148,10 +149,12 @@ export class CasesController {
     @Body() dto: GuardarValoresDto,
     @UsuarioActual() usuario: Usuario,
   ) {
-    const actual = await this.casesService.getContenedorConValores(id);
-    this.verificarAlcance(actual.contenedor.slep, usuario);
-    this.verificarMesAbierto(actual.contenedor, usuario);
-    return this.casesService.guardarValores(id, dto.valores);
+    // Verificación liviana (1 consulta) — antes armaba el formulario
+    // completo (6 consultas) solo para saber de qué SLEP era.
+    const contenedor = await this.casesService.obtenerContenedor(id);
+    this.verificarAlcance(contenedor.slep, usuario);
+    this.verificarMesAbierto(contenedor, usuario);
+    return this.casesService.guardarValores(contenedor, dto.valores);
   }
 
   // Mes cerrado (mejora post-v2.23): nadie modifica datos, salvo el
@@ -177,9 +180,9 @@ export class CasesController {
   @Post(':id/importar')
   @UseInterceptors(FileInterceptor('archivo'))
   async importarArchivo(@Param('id') id: string, @UploadedFile() archivo: any, @UsuarioActual() usuario: Usuario) {
-    const actual = await this.casesService.getContenedorConValores(id);
-    this.verificarAlcance(actual.contenedor.slep, usuario);
-    this.verificarMesAbierto(actual.contenedor, usuario);
+    const contenedor = await this.casesService.obtenerContenedor(id);
+    this.verificarAlcance(contenedor.slep, usuario);
+    this.verificarMesAbierto(contenedor, usuario);
     return this.importacionService.leerDesdeExcel(id, archivo.buffer);
   }
 }

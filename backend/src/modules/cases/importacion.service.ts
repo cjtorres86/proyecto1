@@ -60,7 +60,7 @@ export class ImportacionService {
   }
 
   async leerDesdeExcel(contenedorId: string, buffer: Buffer): Promise<{ valores: Record<string, string> }> {
-    const contenedor = await this.contenedores.findOne({ where: { id: contenedorId } });
+    const [contenedor] = await this.contenedores.find({ where: { id: contenedorId } }); // 1 consulta (ver CasesService.obtenerContenedor)
     if (!contenedor) throw new NotFoundException('Contenedor no encontrado.');
 
     const receta = await this.recetas.find({

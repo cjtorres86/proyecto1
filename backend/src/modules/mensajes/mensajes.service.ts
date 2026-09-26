@@ -184,7 +184,7 @@ export class MensajesService {
   // El formulario debe existir (y no estar eliminado) y la persona debe
   // tener acceso a su SLEP — la misma regla que los formularios.
   private async contenedorAccesible(contenedorId: string, usuario: Usuario): Promise<Contenedor> {
-    const contenedor = await this.contenedores.findOne({ where: { id: contenedorId } });
+    const [contenedor] = await this.contenedores.find({ where: { id: contenedorId } }); // 1 consulta (ver CasesService.obtenerContenedor)
     if (!contenedor) throw new NotFoundException('Formulario no encontrado.');
     verificarAccesoSlep(contenedor.slep, usuario);
     return contenedor;

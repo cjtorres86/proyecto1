@@ -1,7 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription, combineLatest, switchMap, of, map, fromEvent, filter } from 'rxjs';
+import { Subscription, fromEvent, filter } from 'rxjs';
 import { CaseStateService } from '../../../core/services/case-state.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -58,31 +58,24 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.subs.add(combineLatest([this.caseState.mesActivo$, this.caseState.slepActivo$])
-      .pipe(
-        switchMap(([mes, slepId]) => {
-          this.esTotalGeneral = !slepId && !!mes;
-          if (slepId) {
-            return this.caseState
-              .getContenedorConValores(slepId)
-              .pipe(map((r) => ({ contenedor: r.contenedor, campos: r.campos, totalContenedores: 0 })));
-          }
-          if (mes) {
-            return this.caseState
-              .getTotalGeneral(mes.mes, mes.anio)
-              .pipe(map((r) => ({ contenedor: null, campos: r.campos, totalContenedores: r.totalContenedores })));
-          }
-          return of(null);
-        }),
-      )
-      .subscribe((resultado) => {
-        this.contenedor = resultado?.contenedor ?? null;
-        this.campos = resultado?.campos ?? [];
-        this.totalContenedores = resultado?.totalContenedores ?? 0;
+    // El formulario abierto sale del flujo COMPARTIDO de CaseStateService
+    // (optimización de rendimiento): un solo pedido por formulario, que
+    // también usa el Inspector de Campo, y al guardar llega ya actualizado
+    // desde el servidor sin pedirlo de nuevo.
+    this.subs.add(
+      this.caseState.detalleActivo$.subscribe((detalle) => {
+        const contenedorAnterior = this.contenedor?.id ?? null;
+        this.esTotalGeneral = !!detalle && !detalle.contenedor;
+        this.contenedor = detalle?.contenedor ?? null;
+        this.campos = detalle?.campos ?? [];
+        this.totalContenedores = detalle?.totalContenedores ?? 0;
         this.valoresEditados = {};
-        // Contadores del chat de ESTE formulario (el Total general no tiene chat).
-        this.mensajes.cargarNoLeidos(this.contenedor?.id ?? null);
-      }));
+        // Contadores del chat: solo al cambiar de formulario (el Total
+        // general no tiene chat), no después de cada guardado.
+        const contenedorNuevo = this.contenedor?.id ?? null;
+        if (contenedorNuevo !== contenedorAnterior) this.mensajes.cargarNoLeidos(contenedorNuevo);
+      }),
+    );
     // Resalta la fila del campo activo (mejora post-v2.23) — antes solo
     // el Inspector de Campo reaccionaba a esto, el Formulario no mostraba
     // ningún indicador visual de cuál fila estaba seleccionada.
@@ -145,14 +138,10 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
     if (!this.contenedor) return;
     this.guardando = true;
     this.caseState.guardarValores(this.contenedor.id, this.valoresEditados).subscribe({
+      // El formulario actualizado llega solo, por el flujo compartido.
       next: () => {
         this.guardando = false;
-        this.notification.mostrar(`Datos guardados para ${this.contenedor!.slep}.`);
-        this.caseState.getContenedorConValores(this.contenedor!.id).subscribe((r) => {
-          this.contenedor = r.contenedor;
-          this.campos = r.campos;
-          this.valoresEditados = {};
-        });
+        this.notification.mostrar(`Datos guardados para ${this.contenedor?.slep ?? ''}.`);
       },
       error: (err) => {
         this.guardando = false;
