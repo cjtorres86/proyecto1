@@ -108,7 +108,15 @@ export class FieldChatComponent implements OnChanges, OnDestroy {
 
   responder(m: MensajeCampo): void {
     this.respondiendoA = m;
+    this.marcarLeido();
     this.cajaTexto?.nativeElement.focus();
+  }
+
+  // Tocar un mensaje puntual o empezar a escribir SÍ cuenta como "estoy al
+  // tanto" (mejora post-v2.23) — a diferencia de solo abrir el campo, que
+  // ya no marca nada (ver ngOnChanges/MensajesService.listar).
+  marcarLeido(): void {
+    this.mensajesService.marcarLeido(this.contenedorId, this.preguntaId);
   }
 
   iniciarEdicion(m: MensajeCampo): void {

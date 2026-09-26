@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { WorkspaceModeService } from '../../../core/services/workspace-mode.service';
+import { MensajesService } from '../../../core/services/mensajes.service';
 import { ThemeToggleComponent } from '../../../shared/theme-toggle/theme-toggle.component';
 
 // Login en 2 zonas (mejora post-v2.23):
@@ -42,6 +43,7 @@ export class LoginComponent {
     private readonly notification: NotificationService,
     private readonly workspaceMode: WorkspaceModeService,
     private readonly router: Router,
+    private readonly mensajes: MensajesService,
   ) {
     this.form = this.fb.group({
       usuario: ['', Validators.required],
@@ -64,6 +66,9 @@ export class LoginComponent {
         this.workspaceMode.fijarModoPorDefecto(res.usuario);
         this.notification.mostrar(`¡Hola ${usuario}! Ponte casco y cinturón de seguridad, ¡aquí vamos!`);
         this.router.navigate(['/']);
+        // Si hay un mensaje sin leer en cualquier parte del sistema, esto
+        // la reemplaza por la navegación directa a donde está.
+        this.mensajes.irANoLeidoSiExiste();
       },
       error: () => {
         this.cargando = false;

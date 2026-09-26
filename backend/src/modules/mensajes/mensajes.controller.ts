@@ -6,6 +6,20 @@ import { Usuario } from '../../auth/entities/usuario.entity';
 import { MensajesService } from './mensajes.service';
 import { CrearMensajeDto, EditarMensajeDto, ReaccionDto } from './dto/mensajes.dto';
 
+// Aviso al iniciar sesión (mejora post-v2.23) — ruta propia, aparte:
+// busca en CUALQUIER SLEP y mes al que la persona tenga acceso, no en
+// uno puntual, así que no encaja bajo /cases/:contenedorId/mensajes.
+@UseGuards(JwtAuthGuard, PermisosGuard)
+@Controller('mensajes')
+export class MensajesGlobalController {
+  constructor(private readonly mensajes: MensajesService) {}
+
+  @Get('proximo-no-leido')
+  proximoNoLeido(@UsuarioActual() usuario: Usuario) {
+    return this.mensajes.proximoNoLeido(usuario);
+  }
+}
+
 // Chat por campo, anidado bajo el formulario (contenedor) al que
 // pertenece. Sin @Permisos: el acceso lo decide MensajesService con la
 // misma regla por SLEP que los formularios.
@@ -23,6 +37,16 @@ export class MensajesController {
   listar(@Param('contenedorId') contenedorId: string, @Query('pregunta') preguntaId: string, @UsuarioActual() usuario: Usuario) {
     if (!preguntaId) throw new BadRequestException('Falta indicar el campo (pregunta).');
     return this.mensajes.listarHilo(contenedorId, preguntaId, usuario);
+  }
+
+  // Marcar leído (mejora post-v2.23) — ruta explícita: el frontend la
+  // dispara ante una interacción real (tocar un mensaje, responder,
+  // empezar a escribir), nunca con solo abrir el campo.
+  @Post('marcar-leido')
+  async marcarLeido(@Param('contenedorId') contenedorId: string, @Query('pregunta') preguntaId: string, @UsuarioActual() usuario: Usuario) {
+    if (!preguntaId) throw new BadRequestException('Falta indicar el campo (pregunta).');
+    await this.mensajes.marcarLeidoExplicito(contenedorId, preguntaId, usuario);
+    return { ok: true };
   }
 
   @Post()

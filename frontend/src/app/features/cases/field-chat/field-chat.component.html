@@ -18,6 +18,7 @@
         class="mensaje rounded-md border border-gray-200 p-2.5"
         [class.bg-blue-50]="m.esMio && !m.eliminado"
         [class.mensaje--resaltado]="resaltadoId === m.id"
+        (click)="marcarLeido()"
       >
         <header class="flex items-center gap-2 mb-1.5">
           <span class="inicial" aria-hidden="true">{{ inicial(m.autor.nombre) }}</span>
@@ -113,6 +114,7 @@
     placeholder="Escribe un mensaje…"
     class="w-full text-sm border border-gray-300 rounded p-1.5 bg-white text-gray-800 resize-y"
     aria-label="Escribir mensaje"
+    (focus)="marcarLeido()"
     (keydown.control.enter)="enviar()"
   ></textarea>
   <div class="flex justify-between items-center mt-1">

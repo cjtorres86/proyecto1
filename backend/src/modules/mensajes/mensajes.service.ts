@@ -44,9 +44,12 @@ export class MensajesService {
     @InjectRepository(FormularioPregunta) private readonly recetas: Repository<FormularioPregunta>,
   ) {}
 
-  // Conversación de un campo. Al leerla, queda marcada como leída hasta el
-  // último mensaje que la persona ve (fecha tomada de la base, no del
-  // reloj del servidor).
+  // Conversación de un campo — de solo lectura, NO marca nada como leído
+  // (mejora post-v2.23, hallazgo del propio uso: antes se marcaba solo con
+  // ABRIR el campo, aunque nadie hubiera leído nada de verdad). Marcar
+  // leído es una acción aparte (marcarLeido) — la dispara el frontend
+  // ante una interacción real: tocar un mensaje, responder, reaccionar,
+  // escribir.
   async listarHilo(contenedorId: string, preguntaId: string, usuario: Usuario): Promise<MensajeVista[]> {
     const contenedor = await this.contenedorAccesible(contenedorId, usuario);
     await this.validarPregunta(contenedor, preguntaId);
@@ -55,13 +58,23 @@ export class MensajesService {
       relations: { autor: { perfil: true }, respuestaA: { autor: true }, reacciones: true },
       order: { creadoEn: 'ASC', id: 'ASC' },
     });
-    if (filas.length) {
-      await this.lecturas.upsert(
-        { usuarioId: usuario.id, contenedorId, preguntaId, leidoHasta: filas[filas.length - 1].creadoEn },
-        ['usuarioId', 'contenedorId', 'preguntaId'],
-      );
-    }
     return filas.map((m) => this.aVista(m, usuario));
+  }
+
+  // Marca la conversación como leída hasta el mensaje más reciente (fecha
+  // tomada de la base, no del reloj del servidor). La llaman crear/editar/
+  // borrar/reaccionar (una interacción real ya implica haber leído) y el
+  // endpoint explícito que dispara el frontend al tocar un mensaje,
+  // responder o empezar a escribir.
+  private async marcarLeido(contenedorId: string, preguntaId: string, usuarioId: string): Promise<void> {
+    const ultimo = await this.mensajes.findOne({ where: { contenedorId, preguntaId }, order: { creadoEn: 'DESC' } });
+    if (!ultimo) return;
+    await this.lecturas.upsert({ usuarioId, contenedorId, preguntaId, leidoHasta: ultimo.creadoEn }, ['usuarioId', 'contenedorId', 'preguntaId']);
+  }
+
+  async marcarLeidoExplicito(contenedorId: string, preguntaId: string, usuario: Usuario): Promise<void> {
+    await this.contenedorAccesible(contenedorId, usuario);
+    await this.marcarLeido(contenedorId, preguntaId, usuario.id);
   }
 
   async crear(contenedorId: string, dto: CrearMensajeDto, usuario: Usuario): Promise<MensajeVista[]> {
@@ -77,6 +90,7 @@ export class MensajesService {
     await this.mensajes.save(
       this.mensajes.create({ contenedorId, preguntaId: dto.preguntaId, autorId: usuario.id, texto, respuestaAId: dto.respuestaAId ?? null }),
     );
+    await this.marcarLeido(contenedorId, dto.preguntaId, usuario.id);
     return this.listarHilo(contenedorId, dto.preguntaId, usuario);
   }
 
@@ -88,6 +102,7 @@ export class MensajesService {
     m.editadoEn = new Date();
     if (!usuario.esSuperadmin) m.cambioUsado = true;
     await this.mensajes.save(m);
+    await this.marcarLeido(contenedorId, m.preguntaId, usuario.id);
     return this.listarHilo(contenedorId, m.preguntaId, usuario);
   }
 
@@ -97,6 +112,7 @@ export class MensajesService {
     m.eliminadoPorId = usuario.id;
     if (!usuario.esSuperadmin) m.cambioUsado = true;
     await this.mensajes.save(m);
+    await this.marcarLeido(contenedorId, m.preguntaId, usuario.id);
     return this.listarHilo(contenedorId, m.preguntaId, usuario);
   }
 
@@ -110,6 +126,7 @@ export class MensajesService {
     const clave = { mensajeId, usuarioId: usuario.id, tipo };
     if (await this.reacciones.count({ where: clave })) await this.reacciones.delete(clave);
     else await this.reacciones.insert(clave);
+    await this.marcarLeido(contenedorId, m.preguntaId, usuario.id);
     return this.listarHilo(contenedorId, m.preguntaId, usuario);
   }
 
@@ -133,7 +150,36 @@ export class MensajesService {
     return Object.fromEntries(filas.map((f) => [f.preguntaId, Number(f.total)]));
   }
 
-  // --- Reglas compartidas ---
+  // Aviso al iniciar sesión (mejora post-v2.23): el mensaje sin leer MÁS
+  // RECIENTE en cualquier SLEP y mes al que la persona tenga acceso —
+  // suficiente para que el frontend seleccione mes, SLEP y campo y la
+  // lleve ahí directo. null si no hay nada nuevo. Nunca de sí misma (sus
+  // propios mensajes no son "novedad" para ella), nunca eliminados, y
+  // nunca de un mes que un superadmin haya eliminado de la vista
+  // (contenedor soft-delete) — no tendría sentido llevarla a un lugar que
+  // ya no se puede abrir.
+  async proximoNoLeido(usuario: Usuario): Promise<{ mes: string; anio: string; slep: string; preguntaId: string } | null> {
+    const qb = this.mensajes
+      .createQueryBuilder('m')
+      .innerJoin(Contenedor, 'c', 'c.id = m.contenedorId')
+      .leftJoin(
+        LecturaCampo,
+        'l',
+        'l.contenedorId = m.contenedorId AND l.preguntaId = m.preguntaId AND l.usuarioId = :usuarioId',
+        { usuarioId: usuario.id },
+      )
+      .select('c.mesConsolidado', 'mes')
+      .addSelect('c.anioConsolidado', 'anio')
+      .addSelect('c.slep', 'slep')
+      .addSelect('m.preguntaId', 'preguntaId')
+      .where('m.autorId <> :usuarioId', { usuarioId: usuario.id })
+      .andWhere('m.eliminadoEn IS NULL')
+      .andWhere('(l.leidoHasta IS NULL OR m.creadoEn > l.leidoHasta)')
+      .orderBy('m.creadoEn', 'DESC')
+      .limit(1);
+    if (!usuario.esSuperadmin && usuario.alcance !== 'todos') qb.andWhere('c.slep = :slep', { slep: usuario.alcance });
+    return (await qb.getRawOne()) ?? null;
+  }
 
   // El formulario debe existir (y no estar eliminado) y la persona debe
   // tener acceso a su SLEP — la misma regla que los formularios.

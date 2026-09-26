@@ -61,7 +61,8 @@
       @for (campo of campos; track campo.id) {
         <div
           class="flex justify-between items-center px-2 py-1.5 text-sm border-b border-gray-100 cursor-pointer"
-          [class.bg-red-50]="campo.invalido"
+          [class.bg-red-50]="campo.invalido && campo.preguntaId !== campoActivoId"
+          [class.fila-con-error-activa]="campo.invalido && campo.preguntaId === campoActivoId"
           [class.border-l-4]="campo.invalido"
           [class.border-l-red-600]="campo.invalido"
           [class.bg-gray-100]="!campo.invalido && campo.preguntaId === campoActivoId"

@@ -90,6 +90,44 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 :root { color-scheme: light; }
 .dark { color-scheme: dark; }
 
+// ============================================================
+// COLORES DE ESTADO Y SELECCIÓN (mejora post-v2.23)
+// ============================================================
+// Un solo lugar para los colores de "validación" y "selección" que se
+// repiten en el sistema (filas de un formulario, tarjetas de
+// validación, etc.) — cambiar uno de estos colores es editar ESTA
+// variable, no buscar el hex suelto en cada componente. Patrón a
+// seguir cuando se ordene el resto de la paleta del sistema más
+// adelante: agregar acá, con su versión clara y oscura, en vez de
+// escribir un color directo en una plantilla.
+:root {
+  // Campo con error (validación), sin seleccionar / seleccionado. El
+  // "activo" es a propósito más saturado ("fluor") — antes un campo con
+  // error se veía IGUAL estuviera seleccionado o no, así que no había
+  // forma de saber dónde estabas parado.
+  --color-error-bg: #FEF2F2;
+  --color-error-bg-activo: #FCA5A5;
+  --color-error-borde: #DC2626;
+  --color-error-glow: rgba(220, 38, 38, 0.35);
+
+  // Selección genérica (fila activa sin error).
+  --color-seleccion-bg: #F3F4F6;
+}
+.dark {
+  --color-error-bg: #3A1B24;
+  --color-error-bg-activo: #7A1F2B;
+  --color-error-borde: #EF4444;
+  --color-error-glow: rgba(239, 68, 68, 0.5);
+  --color-seleccion-bg: #242F4A;
+}
+
+// Fila de un campo con error, cuando además es la seleccionada — usa las
+// variables de arriba, nunca un color suelto.
+.fila-con-error-activa {
+  background-color: var(--color-error-bg-activo);
+  box-shadow: 0 0 0 1px var(--color-error-borde), 0 0 10px var(--color-error-glow);
+}
+
 .dark {
   background-color: #0B1120;
   color: #E7ECF6;

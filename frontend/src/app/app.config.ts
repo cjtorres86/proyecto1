@@ -10,6 +10,7 @@ import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { AuthService } from './core/services/auth.service';
 import { WorkspaceModeService } from './core/services/workspace-mode.service';
+import { MensajesService } from './core/services/mensajes.service';
 
 // Restaura la sesión al recargar la página (F9 — Auth): el token ya
 // vivía en localStorage, pero authService.usuarioActual() quedaba en
@@ -20,11 +21,18 @@ import { WorkspaceModeService } from './core/services/workspace-mode.service';
 function restaurarSesion() {
   const authService = inject(AuthService);
   const workspaceMode = inject(WorkspaceModeService);
+  const mensajes = inject(MensajesService);
   return () => {
     if (!authService.getToken()) return Promise.resolve();
     return firstValueFrom(
       authService.cargarSesion().pipe(
-        tap((usuario) => workspaceMode.fijarModoPorDefecto(usuario)),
+        tap((usuario) => {
+          workspaceMode.fijarModoPorDefecto(usuario);
+          // Igual que en el login: si hay un mensaje sin leer, lleva a la
+          // persona directo ahí también al recargar la página (F5), no
+          // solo al iniciar sesión de cero.
+          mensajes.irANoLeidoSiExiste();
+        }),
         catchError(() => of(null)),
       ),
     );
