@@ -2,14 +2,16 @@
   <div class="flex justify-between items-center mb-2 gap-2">
     <h3 class="font-bold text-sm uppercase text-gray-500">SLEP</h3>
     <div class="flex gap-1">
+      <!-- La etiqueta muestra lo que hará AL PRESIONAR, no el orden
+           actual: dice "Por avance" mientras está en A-Z (invita a
+           cambiar a avance), y "A-Z" mientras está por avance. -->
       <button
         class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer"
         [title]="ordenPorRanking ? 'Volver a orden alfabético' : 'Ordenar por avance'"
         (click)="alternarOrden()"
       >
-        {{ ordenPorRanking ? 'Por avance' : 'A-Z' }}
+        {{ ordenPorRanking ? 'A-Z' : 'Por avance' }}
       </button>
-      <button class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer" (click)="agregarSlep()">+ Agregar SLEP</button>
     </div>
   </div>
   @if ((contenedoresOrdenados$ | async)?.length) {

@@ -48,6 +48,11 @@ export class CasesApiService {
     return this.http.post<{ cerrados: number }>(`${environment.apiUrl}/cases/cerrar-mes`, { mes, anio });
   }
 
+  // Exclusivo del superadmin — el backend también lo verifica.
+  abrirMes(mes: string, anio: string): Observable<{ abiertos: number }> {
+    return this.http.post<{ abiertos: number }>(`${environment.apiUrl}/cases/abrir-mes`, { mes, anio });
+  }
+
   eliminarMes(mes: string, anio: string): Observable<{ eliminados: number }> {
     return this.http.post<{ eliminados: number }>(`${environment.apiUrl}/cases/eliminar-mes`, { mes, anio });
   }

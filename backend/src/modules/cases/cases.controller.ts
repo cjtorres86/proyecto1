@@ -34,6 +34,14 @@ export class CasesController {
     return this.casesService.cerrarMes(dto.mes, dto.anio, usuario.id);
   }
 
+  // Reabrir mes (mejora post-v2.23) — exclusivo del superadmin, igual
+  // que eliminar mes: nadie más puede deshacer un cierre.
+  @Post('abrir-mes')
+  abrirMes(@Body() dto: MesDto, @UsuarioActual() usuario: Usuario) {
+    if (!usuario.esSuperadmin) throw new ForbiddenException('Solo el superadmin puede reabrir un mes.');
+    return this.casesService.abrirMes(dto.mes, dto.anio);
+  }
+
   // Eliminar mes (mejora post-v2.23): exclusivo del superadmin. Es un
   // borrado lógico — los datos se conservan en la base de datos.
   @Post('eliminar-mes')

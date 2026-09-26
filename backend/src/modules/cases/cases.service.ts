@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, IsNull } from 'typeorm';
+import { Repository, In, IsNull, Not } from 'typeorm';
 import { Contenedor } from './entities/contenedor.entity';
 import { ValorCampo } from './entities/valor-campo.entity';
 import { ValidacionService, Validacion } from './validacion.service';
@@ -216,8 +216,20 @@ export class CasesService {
   // el total la incumpla es una señal real de que algo anda mal en
   // algún SLEP, vale la pena mostrarlo.
   async getTotalGeneralConValores(mes: string, anio: string, alcance: string): Promise<{ totalContenedores: number; campos: CampoConValor[] }> {
-    const ids = await this.consolidadoService.idsDelMes(mes, anio, alcance);
-    const { snapshot, totalContenedores } = await this.consolidadoService.calcularConsolidado(ids);
+    // La MISMA condición exacta que listarPorMes() (panel SLEP) — no se
+    // llama a listarPorMes() directo para evitar su cálculo de
+    // tieneDatosReales (trae los valores de los 36, innecesario solo
+    // para contar). Hallazgo real: se vio un caso donde el panel SLEP
+    // mostraba 36 y acá aparecían 20, sin una diferencia de lógica que lo
+    // explicara entre las dos consultas (estaban en servicios distintos).
+    // Repetir la MISMA condición, literal, en el mismo servicio que
+    // listarPorMes(), hace que los dos números sean imposibles de
+    // desalinear, sea cual sea la causa original.
+    const where: Record<string, string> = { mesConsolidado: mes, anioConsolidado: anio };
+    if (alcance !== 'todos') where.slep = alcance;
+    const ids = (await this.contenedores.find({ where })).map((c) => c.id);
+    const { snapshot } = await this.consolidadoService.calcularConsolidado(ids);
+    const totalContenedores = ids.length;
 
     const receta = await this.recetas.find({
       where: { formularioId: 'seguimiento_disciplinario_37' },
@@ -390,6 +402,20 @@ export class CasesService {
     );
     if (!resultado.affected) throw new BadRequestException(`El mes ${mes} ${anio} ya estaba cerrado.`);
     return { cerrados: resultado.affected };
+  }
+
+  // Reabre el mes (mejora post-v2.23) — exclusivo del superadmin, se
+  // verifica en el controlador. Limpia cerrado_en/cerrado_por_id de los
+  // contenedores vigentes de ese mes.
+  async abrirMes(mes: string, anio: string): Promise<{ abiertos: number }> {
+    const vigentes = await this.contenedores.count({ where: { mesConsolidado: mes, anioConsolidado: anio } });
+    if (!vigentes) throw new NotFoundException(`No existe el mes ${mes} ${anio}.`);
+    const resultado = await this.contenedores.update(
+      { mesConsolidado: mes, anioConsolidado: anio, cerradoEn: Not(IsNull()), eliminadoEn: IsNull() },
+      { cerradoEn: null, cerradoPorId: null },
+    );
+    if (!resultado.affected) throw new BadRequestException(`El mes ${mes} ${anio} ya estaba abierto.`);
+    return { abiertos: resultado.affected };
   }
 
   // Elimina el mes de la interfaz SIN borrar datos (mejora post-v2.23):

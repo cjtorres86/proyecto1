@@ -112,8 +112,4 @@ export class SlepPanelComponent implements OnInit, OnDestroy {
   tieneDatos(c: Contenedor): boolean {
     return c.tieneDatosReales;
   }
-
-  // Sin funcionalidad todavía — botón integrado a pedido, la lógica de
-  // crear un SLEP nuevo (y su permiso asociado) queda para más adelante.
-  agregarSlep(): void {}
 }

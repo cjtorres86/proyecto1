@@ -132,6 +132,17 @@ export class CaseStateService {
 
   // Tras eliminar, si era el mes activo, se deselecciona: ya no existe
   // en la interfaz.
+  // Tras reabrir, se recargan los contenedores para que cerradoEn=null
+  // llegue a todos los paneles.
+  abrirMes(mes: MesActivo): Observable<{ abiertos: number }> {
+    return this.api.abrirMes(mes.mes, mes.anio).pipe(
+      tap(() => {
+        const activo = this.mesActivoSubject.value;
+        if (activo?.mes === mes.mes && activo?.anio === mes.anio) this.recargarContenedores(activo);
+      }),
+    );
+  }
+
   eliminarMes(mes: MesActivo): Observable<{ eliminados: number }> {
     return this.api.eliminarMes(mes.mes, mes.anio).pipe(
       tap(() => {

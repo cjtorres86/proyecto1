@@ -7,14 +7,27 @@
       @if (authService.can('crear_mes')) {
         <button class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer" (click)="abrirAgregarMes()">+ Agregar Mes</button>
       }
-      @if (authService.can('cerrar_mes')) {
+      <!-- El botón se transforma según el estado del mes elegido: "Cerrar
+           mes" en uno abierto (Admin/Validador/superadmin), "Abrir mes" en
+           uno cerrado (exclusivo del superadmin — nadie más deshace un
+           cierre). -->
+      @if (!mesActivoCerrado && authService.can('cerrar_mes')) {
         <button
           class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          [disabled]="!mesActivo || mesActivoCerrado"
-          [title]="!mesActivo ? 'Selecciona un mes primero' : mesActivoCerrado ? 'Este mes ya está cerrado' : 'Cerrar el mes para todos'"
+          [disabled]="!mesActivo"
+          [title]="!mesActivo ? 'Selecciona un mes primero' : 'Cerrar el mes para todos'"
           (click)="cerrarMesActivo()"
         >
           Cerrar mes
+        </button>
+      }
+      @if (mesActivoCerrado && authService.usuarioActual()?.esSuperadmin) {
+        <button
+          class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer"
+          title="Reabrir el mes para todos"
+          (click)="abrirMesActivo()"
+        >
+          Abrir mes
         </button>
       }
       @if (authService.usuarioActual()?.esSuperadmin) {

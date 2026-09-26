@@ -95,7 +95,7 @@ export class MonthsPanelComponent implements OnInit, OnDestroy {
     if (!mes || this.mesActivoCerrado) return;
     this.confirmar({
       titulo: `Cerrar ${mes.mes} ${mes.anio}`,
-      mensaje: 'Al cerrar el mes, nadie podrá ingresar ni modificar datos en ningún SLEP.\nSolo el superadmin podrá hacer cambios después.',
+      mensaje: 'Al cerrar el mes, nadie podrá ingresar ni modificar datos en ningún SLEP.',
       textoConfirmar: 'Cerrar mes',
     }, () =>
       this.caseState.cerrarMes(mes).subscribe({
@@ -104,6 +104,27 @@ export class MonthsPanelComponent implements OnInit, OnDestroy {
           this.cargarMesesDisponibles();
         },
         error: (err) => this.notification.mostrar(err.error?.message ?? 'No se pudo cerrar el mes.', 6000),
+      }),
+    );
+  }
+
+  // Reabrir mes (mejora post-v2.23): exclusivo del superadmin, mismo
+  // botón que "Cerrar mes" — cambia de texto y de acción según el
+  // estado del mes elegido (ver esActivoCerrado más abajo).
+  abrirMesActivo(): void {
+    const mes = this.mesActivo;
+    if (!mes || !this.mesActivoCerrado) return;
+    this.confirmar({
+      titulo: `Abrir ${mes.mes} ${mes.anio}`,
+      mensaje: 'Se podrá volver a ingresar y modificar datos en este mes.',
+      textoConfirmar: 'Abrir mes',
+    }, () =>
+      this.caseState.abrirMes(mes).subscribe({
+        next: () => {
+          this.notification.mostrar(`${mes.mes} ${mes.anio} quedó abierto de nuevo.`);
+          this.cargarMesesDisponibles();
+        },
+        error: (err) => this.notification.mostrar(err.error?.message ?? 'No se pudo abrir el mes.', 6000),
       }),
     );
   }
