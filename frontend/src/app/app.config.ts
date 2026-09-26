@@ -29,9 +29,15 @@ function restaurarSesion() {
         tap((usuario) => {
           workspaceMode.fijarModoPorDefecto(usuario);
           // Igual que en el login: si hay un mensaje sin leer, lleva a la
-          // persona directo ahí también al recargar la página (F5), no
-          // solo al iniciar sesión de cero.
-          mensajes.irANoLeidoSiExiste();
+          // persona directo ahí también al recargar la página (F5) — pero
+          // SOLO si está en los paneles (hallazgo real: antes corría en
+          // cualquier página, y al abrir el Informe en otra pestaña la
+          // sacaba de ahí a los pocos segundos; lo mismo le pasaba al
+          // navegador invisible que genera el PDF, que se quedaba
+          // esperando un Informe que ya no estaba).
+          // window.location y no el Router: al arrancar, el Router todavía
+          // no navegó a ninguna parte.
+          if (window.location.pathname === '/') mensajes.irANoLeidoSiExiste();
         }),
         catchError(() => of(null)),
       ),

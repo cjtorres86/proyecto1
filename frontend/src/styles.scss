@@ -90,6 +90,18 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 :root { color-scheme: light; }
 .dark { color-scheme: dark; }
 
+// Movimiento reducido (accesibilidad + rendimiento): si el navegador pide
+// "reducir movimiento" (preferencia del sistema operativo de la persona,
+// o el generador de PDF del servidor), las animaciones y transiciones se
+// saltan y todo aparece directo en su estado final. Así el PDF no tiene
+// que esperar a que las barras terminen de "llenarse".
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+  }
+}
+
 // ============================================================
 // COLORES DE ESTADO Y SELECCIÓN (mejora post-v2.23)
 // ============================================================

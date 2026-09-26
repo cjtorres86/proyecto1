@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import puppeteer from 'puppeteer';
+import puppeteer, { Browser } from 'puppeteer';
 import { Usuario } from '../../auth/entities/usuario.entity';
 
 // PDF real del Informe Interactivo (mejora post-v2.23) — no es un
@@ -15,12 +15,77 @@ import { Usuario } from '../../auth/entities/usuario.entity';
 // de vida muy corta (2 minutos) y de un solo uso práctico, nunca la
 // sesión real del usuario. authGuard (frontend) sabe leer ese token
 // desde la URL.
+//
+// Rendimiento (optimización): antes se abría un Chrome NUEVO por cada PDF
+// y se cerraba al terminar — en el plan gratuito de Render (muy poco
+// procesador) solo arrancar Chrome ya cuesta varios segundos, y como cada
+// Chrome empezaba "sin memoria", volvía a descargar el sistema completo
+// desde Vercel. Ahora se reutiliza UN Chrome entre PDFs: desde el segundo
+// PDF no hay arranque y el sistema ya está en su caché. Se cierra solo
+// tras unos minutos sin uso (para no ocupar memoria, que en el plan
+// gratuito es poca) y se vuelve a abrir si se cae.
 @Injectable()
-export class PdfService {
+export class PdfService implements OnModuleDestroy {
+  private navegador: Promise<Browser> | null = null;
+  private cierrePorInactividad: NodeJS.Timeout | null = null;
+  private static readonly MINUTOS_INACTIVIDAD = 5;
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
   ) {}
+
+  async onModuleDestroy(): Promise<void> {
+    await this.cerrarNavegador();
+  }
+
+  // El Chrome compartido: se abre la primera vez que se pide un PDF (no al
+  // arrancar el servidor) y se reutiliza mientras siga vivo.
+  private obtenerNavegador(): Promise<Browser> {
+    if (this.cierrePorInactividad) clearTimeout(this.cierrePorInactividad);
+    if (!this.navegador) {
+      this.navegador = puppeteer
+        .launch({
+          headless: true,
+          // En Render/Docker apunta al Chromium del sistema (ver Dockerfile);
+          // en tu Windows local la variable no existe y Puppeteer usa el suyo.
+          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            // En Docker, la memoria compartida (/dev/shm) es muy chica y
+            // Chrome se pone lento o se cae; así usa el disco temporal.
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-extensions',
+            '--no-first-run',
+            '--no-default-browser-check',
+          ],
+        })
+        .then((navegador) => {
+          // Si Chrome se cae, la próxima vez se abre uno nuevo.
+          navegador.on('disconnected', () => (this.navegador = null));
+          return navegador;
+        })
+        .catch((error) => {
+          this.navegador = null;
+          throw error;
+        });
+    }
+    return this.navegador;
+  }
+
+  private programarCierre(): void {
+    if (this.cierrePorInactividad) clearTimeout(this.cierrePorInactividad);
+    this.cierrePorInactividad = setTimeout(() => void this.cerrarNavegador(), PdfService.MINUTOS_INACTIVIDAD * 60_000);
+  }
+
+  private async cerrarNavegador(): Promise<void> {
+    if (this.cierrePorInactividad) clearTimeout(this.cierrePorInactividad);
+    const pendiente = this.navegador;
+    this.navegador = null;
+    if (pendiente) await (await pendiente.catch(() => null))?.close().catch(() => undefined);
+  }
 
   async generarPdfInforme(usuario: Usuario, mes: string, anio: string, slep?: string): Promise<Buffer> {
     const token = this.jwtService.sign({ sub: usuario.id }, { expiresIn: '2m' });
@@ -28,37 +93,31 @@ export class PdfService {
     const slepQuery = slep ? `&slep=${encodeURIComponent(slep)}` : '';
     const url = `${frontendUrl}/informe/${encodeURIComponent(mes)}/${encodeURIComponent(anio)}?token=${token}${slepQuery}`;
 
-    // En Render/Docker, PUPPETEER_EXECUTABLE_PATH apunta al Chromium
-    // instalado por el sistema (ver Dockerfile) — en tu Windows local,
-    // esa variable no existe, así que Puppeteer sigue usando su propio
-    // Chrome descargado, sin ningún cambio de comportamiento ahí.
-    const browser = await puppeteer.launch({
-      headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    const navegador = await this.obtenerNavegador();
+    const page = await navegador.newPage();
     try {
-      const page = await browser.newPage();
       // Viewport más ancho que la hoja (816px) para que nada de la vista
       // previa quede recortado antes de pasar a modo impresión.
       await page.setViewport({ width: 1280, height: 1000 });
-      await page.goto(url, { waitUntil: 'networkidle0' });
+      // Sin animaciones: las barras aparecen directo en su valor final
+      // (ver regla prefers-reduced-motion en styles.scss). Antes había que
+      // esperar 1 segundo fijo a que terminaran de "llenarse".
+      await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+      // 'domcontentloaded' y no 'networkidle0': el Informe avisa
+      // explícitamente cuando está listo (__informeListo, abajo), así que
+      // no hace falta esperar a que TODA la red quede en silencio.
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
       // Espera la señal explícita del propio informe: datos pintados,
       // fuentes cargadas y ajuste a hoja carta ya calculado (ver
-      // InformeComponent.programarAjuste). Nada de tiempos adivinados
-      // para esta parte.
+      // InformeComponent.programarAjuste).
       await page.waitForFunction(
         () => (window as unknown as Record<string, unknown>)['__informeListo'] === true,
-        { timeout: 20000 },
+        { timeout: 30000 },
       );
-      // Las barras (CIC, Procedimientos, Sanciones, ranking, el
-      // indicador de avance) arrancan en 0% y suben a su valor real con
-      // una transición de 700ms (el efecto de "se va llenando solo").
-      // Sin esta espera, Puppeteer capturaba la página en el mismo
-      // instante en que esa animación recién empezaba — las barras
-      // salían invisibles, no por un bug de renderizado sino porque
-      // literalmente estaban en 0% en el momento exacto de la foto.
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // 2 cuadros de pantalla: garantiza que las barras ya tomaron su valor
+      // final (se asigna en el cuadro siguiente al render) — en vez de un
+      // segundo fijo adivinado.
+      await page.evaluate(() => new Promise<void>((listo) => requestAnimationFrame(() => requestAnimationFrame(() => listo()))));
       // Fuerza explícitamente el modo impresión antes de capturar.
       await page.emulateMediaType('print');
       // URL limpia para el pie de página — a propósito NO se usa
@@ -87,7 +146,9 @@ export class PdfService {
       });
       return Buffer.from(pdf);
     } finally {
-      await browser.close();
+      // Se cierra la pestaña, no Chrome: queda listo para el próximo PDF.
+      await page.close().catch(() => undefined);
+      this.programarCierre();
     }
   }
 }
