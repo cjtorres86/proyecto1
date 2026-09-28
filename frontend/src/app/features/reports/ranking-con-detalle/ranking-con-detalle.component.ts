@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RankingDetalleFila } from '../services/reports-api.service';
 import { TooltipHojaComponent, TooltipHojaFila } from '../tooltip-hoja/tooltip-hoja.component';
@@ -37,10 +37,18 @@ import { TooltipHojaComponent, TooltipHojaFila } from '../tooltip-hoja/tooltip-h
     }
   `,
 })
-export class RankingConDetalleComponent {
+export class RankingConDetalleComponent implements OnChanges {
   @Input({ required: true }) ranking: RankingDetalleFila[] = [];
 
   slepConMouseEncima: RankingDetalleFila | null = null;
+
+  // Si el Informe pide datos nuevos (por ejemplo, al cambiar de SLEP
+  // desde InformeComponent) mientras alguien tenía el mouse sobre una
+  // fila, este objeto ya no pertenece a la lista nueva — sin esto, el
+  // tooltip seguiría mostrando el SLEP anterior con sus datos viejos.
+  ngOnChanges(): void {
+    this.slepConMouseEncima = null;
+  }
 
   filasDe(fila: RankingDetalleFila): TooltipHojaFila[] {
     return fila.campos.map((c) => ({ etiqueta: `${c.numero}. ${c.nombre}`, valor: c.valor }));

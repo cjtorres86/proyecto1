@@ -100,7 +100,6 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // esa interacción, nada más.
   rankingDetalle: RankingDetalleFila[] = [];
   rankingDetalleCargado = false;
-  slepConMouseEncima: RankingDetalleFila | null = null;
 
   // Tooltips de los totales del Dashboard (mejora post-v2.23): qué campo
   // tiene el mouse encima ahora mismo. El desglose sale del MISMO
@@ -169,16 +168,34 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     return campo ? `${campo.numero}. ${campo.nombre}` : preguntaId;
   }
 
-  // Cambiar de SLEP (mejora post-v2.23): recarga la misma página con el
-  // nuevo ?slep= — más simple y confiable que volver a pedir cada dato
-  // por separado (Dashboard, Formulario, Errores, Ranking, los 4 a la
-  // vez) y no arriesga quedar con datos de 2 SLEP mezclados a medio pedir.
+  // Cambiar de SLEP (mejora post-v2.23, corrección): NO abandona la
+  // página — antes usaba window.location.href, y el navegador volvía a
+  // descargar el sistema completo desde cero (se sentía como "generar
+  // todo el informe de nuevo"). Ahora solo se piden los datos otra vez;
+  // la URL se actualiza con Location.replaceState (mismo mecanismo que
+  // ya usa abrirImpresion), que cambia la dirección SIN navegar — así un
+  // enlace compartido o F5 abren directo en el SLEP elegido.
   cambiarSlep(nuevoSlep: string | null): void {
+    this.selectorSlepAbierto = false;
+    if (nuevoSlep === this.slep) return;
+    this.slep = nuevoSlep;
+
     const params = new URLSearchParams();
-    if (nuevoSlep) params.set('slep', nuevoSlep);
+    if (this.slep) params.set('slep', this.slep);
     if (this.tipo !== 'general') params.set('tipo', this.tipo);
     const query = params.toString();
-    window.location.href = `/informe/${encodeURIComponent(this.mes)}/${encodeURIComponent(this.anio)}${query ? '?' + query : ''}`;
+    this.location.replaceState(`/informe/${encodeURIComponent(this.mes)}/${encodeURIComponent(this.anio)}${query ? '?' + query : ''}`);
+
+    // Mismo mensaje "Cargando…" de la primera carga, mientras llegan los
+    // datos del SLEP nuevo — nunca se mezclan datos de 2 SLEP distintos.
+    this.datos = null;
+    this.camposFormulario = [];
+    this.errores = [];
+    this.erroresCargados = false;
+    this.rankingDetalle = [];
+    this.rankingDetalleCargado = false;
+    this.campoConMouseEncima = null;
+    this.cargarDatos();
   }
 
   ngOnInit(): void {
@@ -199,6 +216,17 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.anio = this.route.snapshot.paramMap.get('anio') ?? '';
     this.slep = this.route.snapshot.queryParamMap.get('slep');
     this.casesApi.listarSlep().subscribe((lista) => (this.catalogoSleps = lista.map((s) => s.nombre)));
+    this.cargarDatos();
+  }
+
+  // Pide los datos según this.mes/anio/tipo/slep actuales (mejora
+  // post-v2.23): separado de ngOnInit para poder llamarlo de nuevo al
+  // cambiar de SLEP, sin abandonar la página — antes cambiarSlep()
+  // navegaba con window.location.href, y el navegador volvía a
+  // descargar el sistema completo desde cero, no solo a pedir los datos
+  // nuevos. Mismo mensaje "Cargando…" que la primera carga, mientras
+  // llegan.
+  private cargarDatos(): void {
     // Título real de la pestaña (reemplaza el genérico "Frontend"): es el
     // nombre sugerido al guardar y el que usa el pie del PDF.
     const sufijoTitulo = this.slep ? ` - ${this.slep}` : '';
