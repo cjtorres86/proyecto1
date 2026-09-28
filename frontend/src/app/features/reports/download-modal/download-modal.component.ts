@@ -73,20 +73,25 @@ export class DownloadModalComponent {
   // por SLEP (mismo mecanismo del Dashboard por SLEP) y el ranking se
   // esconde solo, sin código nuevo para eso.
   verInforme(): void {
-    const slepQuery = this.data.slep ? `?slep=${encodeURIComponent(this.data.slep)}` : '';
-    window.open(`/informe/${this.data.mes}/${this.data.anio}${slepQuery}`, '_blank');
+    this.abrirInforme(false);
   }
 
-  // Ahora pide el PDF real al backend (Puppeteer, ver PdfService) —
-  // deja de depender de que el navegador del usuario tenga bien
-  // configurada la impresión.
+  // PDF (opción B): abre el Informe en otra pestaña y el propio Informe
+  // lanza la ventana de impresión del navegador apenas termina de
+  // dibujarse, lista para "Guardar como PDF". Lo arma el computador de la
+  // persona, al instante — antes lo armaba el servidor gratuito de Render
+  // desde cero (abrir Chrome, cargar el sistema, pedir los datos…) y
+  // tardaba mucho.
   descargarPDF(): void {
-    this.descargando = true;
-    const sufijo = this.data.slep ? `_${this.data.slep}` : '';
-    this.reportsApi.descargarInformePdf(this.data.mes, this.data.anio, this.data.slep ?? undefined).subscribe({
-      next: (blob) => { this.descargarBlob(blob, `Avance_de_Sumarios_${this.data.mes}_${this.data.anio}${sufijo}.pdf`); this.descargando = false; },
-      error: () => { this.notification.mostrar('No se pudo generar el PDF.'); this.descargando = false; },
-    });
+    this.abrirInforme(true);
+  }
+
+  private abrirInforme(imprimir: boolean): void {
+    const params = new URLSearchParams();
+    if (this.data.slep) params.set('slep', this.data.slep);
+    if (imprimir) params.set('imprimir', '1');
+    const query = params.toString();
+    window.open(`/informe/${encodeURIComponent(this.data.mes)}/${encodeURIComponent(this.data.anio)}${query ? '?' + query : ''}`, '_blank');
   }
 
   cerrar(): void {

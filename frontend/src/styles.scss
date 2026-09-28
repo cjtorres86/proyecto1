@@ -93,14 +93,17 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 // Movimiento reducido (accesibilidad + rendimiento): si el navegador pide
 // "reducir movimiento" (preferencia del sistema operativo de la persona,
 // o el generador de PDF del servidor), las animaciones y transiciones se
-// saltan y todo aparece directo en su estado final. Así el PDF no tiene
-// que esperar a que las barras terminen de "llenarse".
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0s !important;
-    transition-duration: 0s !important;
-  }
+// saltan y todo aparece directo en su estado final.
+@mixin sin-movimiento {
+  animation-duration: 0s !important;
+  transition-duration: 0s !important;
 }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { @include sin-movimiento; }
+}
+// Lo mismo, a pedido: la pestaña del Informe abierta desde el botón "PDF"
+// (InformeComponent, ?imprimir=1) para imprimir las barras ya completas.
+.sin-animaciones *, .sin-animaciones *::before, .sin-animaciones *::after { @include sin-movimiento; }
 
 // ============================================================
 // COLORES DE ESTADO Y SELECCIÓN (mejora post-v2.23)

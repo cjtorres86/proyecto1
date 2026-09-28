@@ -21,12 +21,6 @@ export class ReportsApiService {
     return this.http.get(`${environment.apiUrl}/reports/informe`, { params: { mes, anio }, responseType: 'blob' });
   }
 
-  descargarInformePdf(mes: string, anio: string, slep?: string): Observable<Blob> {
-    const params: Record<string, string> = { mes, anio };
-    if (slep) params['slep'] = slep;
-    return this.http.get(`${environment.apiUrl}/reports/informe-pdf`, { params, responseType: 'blob' });
-  }
-
   listarErrores(mes: string, anio: string): Observable<ErrorFila[]> {
     return this.http.get<ErrorFila[]>(`${environment.apiUrl}/cases/errores`, { params: { mes, anio } });
   }

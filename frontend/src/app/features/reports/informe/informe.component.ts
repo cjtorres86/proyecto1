@@ -1,5 +1,5 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, QueryList, ViewChildren } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -68,6 +68,9 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @ViewChildren('contenidoHoja') contenidosHojas!: QueryList<ElementRef<HTMLElement>>;
   private subHojas?: Subscription;
+  // Llegó desde el botón "PDF" (?imprimir=1): al terminar de dibujarse,
+  // abre sola la ventana de impresión del navegador ("Guardar como PDF").
+  private imprimirAlCargar = false;
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -75,6 +78,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     private readonly casesApi: CasesApiService,
     private readonly titleService: Title,
     private readonly theme: ThemeService,
+    private readonly location: Location,
   ) {}
 
   ngOnInit(): void {
@@ -84,6 +88,11 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     // en el <head>). No toca la preferencia guardada de la persona: al
     // volver al resto del sistema, su tema sigue como lo dejó.
     this.theme.forzarClaroSinGuardar();
+    this.imprimirAlCargar = this.route.snapshot.queryParamMap.get('imprimir') === '1';
+    // Sin animaciones en esta pestaña: la impresión debe tomar las barras
+    // ya en su valor final, no a medio "llenarse" (ver .sin-animaciones en
+    // styles.scss).
+    if (this.imprimirAlCargar) document.documentElement.classList.add('sin-animaciones');
     this.mes = this.route.snapshot.paramMap.get('mes') ?? '';
     this.anio = this.route.snapshot.paramMap.get('anio') ?? '';
     this.slep = this.route.snapshot.queryParamMap.get('slep');
@@ -106,6 +115,18 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subHojas?.unsubscribe();
+    document.documentElement.classList.remove('sin-animaciones');
+  }
+
+  // Abre la ventana de impresión una sola vez. Antes quita "imprimir" de
+  // la dirección (con el Location de Angular), para que recargar la
+  // pestaña no la vuelva a abrir. Espera 2 cuadros de pantalla para que
+  // todo esté dibujado en su estado final.
+  private abrirImpresion(): void {
+    this.imprimirAlCargar = false;
+    const slep = this.slep ? `?slep=${encodeURIComponent(this.slep)}` : '';
+    this.location.replaceState(`/informe/${encodeURIComponent(this.mes)}/${encodeURIComponent(this.anio)}${slep}`);
+    requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
   }
 
   private programarAjuste(): void {
@@ -118,6 +139,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
       document.fonts.ready.then(() => {
         this.calcularAjusteImpresion();
         (window as unknown as Record<string, unknown>)['__informeListo'] = true;
+        if (this.imprimirAlCargar) this.abrirImpresion();
       });
     });
   }
