@@ -376,6 +376,45 @@ export class CasesService {
     return errores;
   }
 
+  // Ranking Interactivo (mejora post-v2.23): el ranking de un mes, pero
+  // con el detalle completo de cada SLEP (sus campos, con nombre y
+  // valor) — alimenta los tooltips del Ranking Interactivo. 3 consultas
+  // en total, sin importar cuántos SLEP haya — sin esto, pasar el mouse
+  // sobre cada uno dispararía hasta 36 pedidos aparte.
+  async getRankingConDetalle(
+    mes: string,
+    anio: string,
+    alcance: string,
+  ): Promise<{ slep: string; pct: number | null; campos: { numero: number; nombre: string; valor: string }[] }[]> {
+    const where: Record<string, string> = { mesConsolidado: mes, anioConsolidado: anio };
+    if (alcance !== 'todos') where.slep = alcance;
+    const contenedores = await this.contenedores.find({ where, order: { slep: 'ASC' } });
+    if (!contenedores.length) return [];
+
+    const [recetas, valores] = await Promise.all([
+      this.recetas.find({
+        where: { formularioId: In([...new Set(contenedores.map((c) => c.formularioId))]) },
+        relations: ['pregunta'],
+        order: { posicionCanonica: 'ASC' },
+      }),
+      this.valoresDe(contenedores.map((c) => c.id)),
+    ]);
+    const recetaPorFormulario = this.agrupar(recetas, (r) => r.formularioId);
+    const valoresPorContenedor = this.agrupar(valores, (v) => v.contenedorId);
+
+    return contenedores
+      .map((c) => {
+        const receta = recetaPorFormulario.get(c.formularioId) ?? [];
+        const valorPorPregunta = new Map((valoresPorContenedor.get(c.id) ?? []).map((v) => [v.preguntaId, v.valor]));
+        return {
+          slep: c.slep,
+          pct: this.dashboardService.pctAvanceDe(Object.fromEntries(valorPorPregunta)),
+          campos: receta.map((r) => ({ numero: r.posicionCanonica, nombre: r.pregunta.nombre, valor: valorPorPregunta.get(r.preguntaId) ?? '' })),
+        };
+      })
+      .sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
+  }
+
   // --- Ayudantes para traer varios meses de una sola vez ---
 
   // Formularios vigentes de todos los meses hasta el corte (inclusive), en

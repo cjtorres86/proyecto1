@@ -70,6 +70,12 @@ export class DownloadModalComponent {
         },
         {
           tipo: 'html',
+          titulo: 'Ranking Interactivo',
+          descripcion: 'Solo el ranking — pasa el mouse sobre un SLEP para ver sus 37 campos.',
+          accion: () => this.verRankingInteractivo(),
+        },
+        {
+          tipo: 'html',
           titulo: 'Informe de Errores — Interactivo',
           descripcion: 'Solo los errores de validación del mes, para revisar en pantalla.',
           accion: () => this.verInformeErrores(),
@@ -161,6 +167,15 @@ export class DownloadModalComponent {
 
   descargarPDFErrores(): void {
     this.abrirInforme(true, true);
+  }
+
+  // Ranking Interactivo (mejora post-v2.23): ruta propia (no el Informe)
+  // porque no es para imprimir — los tooltips no existen en un PDF.
+  verRankingInteractivo(): void {
+    const params = new URLSearchParams();
+    if (this.data.slep) params.set('slep', this.data.slep);
+    const query = params.toString();
+    window.open(`/ranking-interactivo/${encodeURIComponent(this.data.mes)}/${encodeURIComponent(this.data.anio)}${query ? '?' + query : ''}`, '_blank');
   }
 
   private abrirInforme(imprimir: boolean, soloErrores: boolean): void {

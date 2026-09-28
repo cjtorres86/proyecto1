@@ -7,6 +7,7 @@ import { CasesComponent } from './features/cases/cases/cases.component';
 import { UserConfigComponent } from './features/users/user-config/user-config.component';
 import { ProfileConfigComponent } from './features/users/profile-config/profile-config.component';
 import { InformeComponent } from './features/reports/informe/informe.component';
+import { RankingInteractivoComponent } from './features/reports/ranking-interactivo/ranking-interactivo.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -14,6 +15,7 @@ export const routes: Routes = [
   // documento para ver/imprimir, no una pantalla de trabajo. Igual
   // protegida por authGuard: los datos del informe no son públicos.
   { path: 'informe/:mes/:anio', component: InformeComponent, canActivate: [authGuard] },
+  { path: 'ranking-interactivo/:mes/:anio', component: RankingInteractivoComponent, canActivate: [authGuard] },
   {
     path: '',
     component: LayoutComponent,

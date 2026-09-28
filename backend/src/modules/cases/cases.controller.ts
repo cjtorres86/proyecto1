@@ -74,6 +74,18 @@ export class CasesController {
     return this.casesService.listarErroresDelMes(mes, anio, this.resolverAlcance(usuario, slepPedido));
   }
 
+  // Ranking Interactivo (mejora post-v2.23): mismo permiso y patrón de
+  // alcance que los demás datos del Informe.
+  @Get('ranking-detalle')
+  async rankingDetalle(
+    @Query('mes') mes: string,
+    @Query('anio') anio: string,
+    @Query('slep') slepPedido: string | undefined,
+    @UsuarioActual() usuario: Usuario,
+  ) {
+    return this.casesService.getRankingConDetalle(mes, anio, this.resolverAlcance(usuario, slepPedido));
+  }
+
   // Antes de ':id' por la misma razón que 'meses-disponibles' y 'errores'.
   @Get('historico')
   async getHistorico(

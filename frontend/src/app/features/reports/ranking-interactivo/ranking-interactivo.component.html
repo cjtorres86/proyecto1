@@ -1,0 +1,55 @@
+<div class="min-h-screen bg-gray-50 flex">
+  <!-- Carril izquierdo, reservado para el tooltip (pedido explícito: al
+       lado izquierdo de la hoja, no pegado al cursor). Vacío la mayor
+       parte del tiempo; el tooltip es "fixed" así que no empuja nada al
+       aparecer. -->
+  <div class="w-[300px] shrink-0 hidden lg:block"></div>
+
+  <main class="flex-1 max-w-3xl mx-auto px-6 py-8 w-full">
+    <h1 class="text-lg font-bold text-[#1E3A8A]">Ranking Interactivo</h1>
+    <p class="text-sm text-gray-500 mt-1 mb-6">
+      {{ mes }} {{ anio }}{{ slep ? ', ' + slep : '' }} — pasa el mouse sobre un SLEP para ver el detalle de sus 37 campos.
+    </p>
+
+    @if (cargando) {
+      <p class="text-gray-400 text-sm">Cargando…</p>
+    } @else if (!ranking.length) {
+      <p class="text-gray-400 text-sm">No hay datos para este mes.</p>
+    } @else {
+      <div class="flex flex-col">
+        @for (fila of ranking; track fila.slep; let i = $index) {
+          <div
+            class="flex items-center gap-3 py-2 border-b border-gray-100 cursor-default rounded px-2 -mx-2 transition-colors"
+            [class.bg-blue-50]="slepConMouseEncima === fila"
+            (mouseenter)="slepConMouseEncima = fila"
+            (mouseleave)="slepConMouseEncima = null"
+          >
+            <span class="w-6 text-xs text-gray-400 shrink-0">{{ i + 1 }}</span>
+            <span class="w-36 text-sm truncate shrink-0" [title]="fila.slep">{{ fila.slep }}</span>
+            <div class="flex-1 bg-gray-100 rounded h-3 overflow-hidden">
+              <div class="h-full" [style.width.%]="fila.pct ?? 0" [style.background]="colorBarra(fila.pct)"></div>
+            </div>
+            <span class="w-12 text-right text-xs text-gray-500 font-mono shrink-0">{{ fila.pct === null ? '—' : fila.pct + '%' }}</span>
+          </div>
+        }
+      </div>
+    }
+  </main>
+
+  <!-- Tooltip: fijo en el margen izquierdo de toda la hoja (no relativo a
+       la fila), con su propio scroll porque un formulario tiene 37
+       campos — no cabrían todos en pantallas más bajas. -->
+  @if (slepConMouseEncima; as s) {
+    <div class="fixed top-20 left-4 w-[300px] max-h-[80vh] overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg p-4 hidden lg:block">
+      <h3 class="text-sm font-bold text-gray-800 border-b border-gray-100 pb-2 mb-2">{{ s.slep }}</h3>
+      <dl class="flex flex-col gap-1">
+        @for (c of s.campos; track c.numero) {
+          <div class="flex justify-between gap-2 text-[11px]">
+            <dt class="text-gray-500 truncate">{{ c.numero }}. {{ c.nombre }}</dt>
+            <dd class="font-mono text-gray-800 shrink-0">{{ c.valor || '—' }}</dd>
+          </div>
+        }
+      </dl>
+    </div>
+  }
+</div>
