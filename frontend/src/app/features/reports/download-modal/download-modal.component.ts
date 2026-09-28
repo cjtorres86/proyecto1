@@ -50,7 +50,7 @@ export class DownloadModalComponent {
   descargarExcelGeneral(): void {
     this.descargando = true;
     this.reportsApi.descargarExcelGeneral().subscribe({
-      next: (blob) => { this.descargarBlob(blob, 'GDP-SLEP_Consolidado_General.xlsx'); this.descargando = false; },
+      next: (blob) => { this.descargarBlob(blob, 'GDP-SLEP_Consolidado_por_Mes.xlsx'); this.descargando = false; },
       error: () => { this.notification.mostrar('No se pudo descargar el Excel.'); this.descargando = false; },
     });
   }

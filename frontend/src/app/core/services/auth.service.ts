@@ -46,13 +46,6 @@ export class AuthService {
     return localStorage.getItem(TOKEN_KEY);
   }
 
-  // Solo para la página /informe cuando la abre Puppeteer (generación
-  // de PDF, ver PdfService en el backend) — un token de 2 minutos, no
-  // la sesión normal. authGuard lo usa antes de que este componente
-  // llegue a cargar.
-  usarTokenTemporal(token: string): void {
-    localStorage.setItem(TOKEN_KEY, token);
-  }
 
   // Equivalente a AuthService.can() del PMV — ayuda de interfaz (oculta
   // botones); la verificación que de verdad importa la hace el backend.

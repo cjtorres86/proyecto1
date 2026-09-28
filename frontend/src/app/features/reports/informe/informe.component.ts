@@ -14,8 +14,9 @@ import { TotalAndBarsGroupComponent } from '../../dashboard/total-and-bars-group
 import { RankingComponent } from '../../dashboard/ranking/ranking.component';
 
 // Informe Interactivo: página real de Angular que reutiliza los mismos
-// componentes del Dashboard. El PDF es esta misma página capturada por
-// Puppeteer en el servidor.
+// componentes del Dashboard. El PDF es esta misma página impresa por el
+// navegador de la persona ("Guardar como PDF"; el botón "PDF" la abre con
+// ?imprimir=1 y la ventana de impresión aparece sola).
 //
 // Hojas y ajuste a carta (Letter): cada hoja impresa tiene un alto fijo
 // MENOR que el área imprimible de la página, con corte de página, así que
@@ -57,8 +58,8 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // formulario real de ese SLEP, sin ningún cálculo nuevo.
   camposFormulario: CampoConValor[] = [];
 
-  // Geometría (96 px por pulgada). Carta = 816 x 1056 px. Márgenes del PDF
-  // (pdf.service.ts y @page en styles.scss): 1cm arriba/lados, 1,5cm abajo
+  // Geometría (96 px por pulgada). Carta = 816 x 1056 px. Márgenes de
+  // impresión (@page en styles.scss): 1cm arriba/lados, 1,5cm abajo
   // para el pie -> área imprimible ~740 x 961 px. La hoja impresa mide
   // 940 px de alto (holgura de seguridad bajo 961) con 24 px de padding.
   private readonly anchoContenidoPx = 736;          // ancho fijo del contenido (pantalla e impresión)
@@ -134,11 +135,10 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     setTimeout(() => {
       this.calcularAjusteImpresion();
       // Se recalcula cuando terminan de cargar las fuentes (Roboto puede
-      // llegar después y cambiar levemente las alturas). Recién ahí se
-      // avisa a Puppeteer que el informe está listo para capturar.
+      // llegar después y cambiar levemente las alturas). Recién ahí, si se
+      // llegó desde el botón "PDF", se abre la ventana de impresión.
       document.fonts.ready.then(() => {
         this.calcularAjusteImpresion();
-        (window as unknown as Record<string, unknown>)['__informeListo'] = true;
         if (this.imprimirAlCargar) this.abrirImpresion();
       });
     });

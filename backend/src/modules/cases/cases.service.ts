@@ -10,6 +10,7 @@ import { Pregunta } from '../forms/entities/pregunta.entity';
 import { Slep } from '../forms/entities/slep.entity';
 import { ConsolidadoService } from '../dashboard/consolidado.service';
 import { CAMPOS_AVANCE, DashboardService } from '../dashboard/dashboard.service';
+import { claveOrdenMes } from '../../common/orden-meses';
 
 export interface CampoConValor {
   id: string; // 'c01'..'c44'
@@ -400,17 +401,11 @@ export class CasesService {
     return `${mes}|${anio}`;
   }
 
-  // Orden canónico de meses (Enero..Diciembre) — usado por
-  // listarMesesDisponibles(), getHistoricoSlep() y
-  // getHistoricoAvance()/getHistoricoAvanceTodosLosSlep() para el mismo
-  // corte "hasta el mes activo, nunca después". Un solo lugar, en vez de
-  // 3 copias de la misma lista y la misma fórmula.
-  private static readonly ORDEN_MESES = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-  ];
+  // claveOrdenMes: en backend/src/common/orden-meses.ts (mejora post-v2.23)
+  // — el mismo criterio lo usa ahora también el Excel general, para que
+  // sus hojas salgan en el mismo orden que ve el resto del sistema.
   private claveOrden(mes: string, anio: string): number {
-    return Number(anio) * 100 + CasesService.ORDEN_MESES.indexOf(mes);
+    return claveOrdenMes(mes, anio);
   }
   // Todos los meses disponibles, hasta hastaMes/hastaAnio inclusive
   // (nunca después) — más reciente primero.

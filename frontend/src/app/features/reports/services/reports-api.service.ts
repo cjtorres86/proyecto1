@@ -17,10 +17,6 @@ export class ReportsApiService {
     return this.http.get(`${environment.apiUrl}/reports/excel/por-slep`, { responseType: 'blob' });
   }
 
-  descargarInforme(mes: string, anio: string): Observable<Blob> {
-    return this.http.get(`${environment.apiUrl}/reports/informe`, { params: { mes, anio }, responseType: 'blob' });
-  }
-
   listarErrores(mes: string, anio: string): Observable<ErrorFila[]> {
     return this.http.get<ErrorFila[]>(`${environment.apiUrl}/cases/errores`, { params: { mes, anio } });
   }

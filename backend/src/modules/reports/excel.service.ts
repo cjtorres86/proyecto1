@@ -5,6 +5,7 @@ import { In, Repository } from 'typeorm';
 import { Contenedor } from '../cases/entities/contenedor.entity';
 import { ValorCampo } from '../cases/entities/valor-campo.entity';
 import { FormsService } from '../forms/forms.service';
+import { claveOrdenMes } from '../../common/orden-meses';
 import { Slep } from '../forms/entities/slep.entity';
 
 const STEP_ID_DEFECTO = 'seguimiento_disciplinario_37';
@@ -45,13 +46,19 @@ export class ExcelService {
     return { contenedores, valoresPorContenedor };
   }
 
+  // Del mes más reciente al más antiguo (mejora post-v2.23, hallazgo
+  // real): antes no tenía ORDER BY — las hojas salían en el orden que
+  // MySQL entregara las filas, que no es un orden real de nada. Mismo
+  // criterio que usa el resto del sistema (claveOrdenMes).
   private async mesesPresentes(): Promise<{ mes: string; anio: string }[]> {
     const filas = await this.contenedores
       .createQueryBuilder('c')
       .select('DISTINCT c.mes_consolidado', 'mes')
       .addSelect('c.anio_consolidado', 'anio')
       .getRawMany();
-    return filas.map((f) => ({ mes: f.mes, anio: f.anio }));
+    return filas
+      .map((f) => ({ mes: f.mes, anio: f.anio }))
+      .sort((a, b) => claveOrdenMes(b.mes, b.anio) - claveOrdenMes(a.mes, a.anio));
   }
 
   // Equivalente a construirLibroConsolidadoGeneral() del PMV — una hoja
