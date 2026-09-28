@@ -78,6 +78,6 @@ export class LayoutComponent implements OnInit {
 
   abrirDescargas(mes: { mes: string; anio: string } | null): void {
     if (!mes) return;
-    this.dialog.open(DownloadModalComponent, { width: '340px', data: { ...mes, slep: this.slepActivoNombre } });
+    this.dialog.open(DownloadModalComponent, { width: '440px', data: { ...mes, slep: this.slepActivoNombre } });
   }
 }

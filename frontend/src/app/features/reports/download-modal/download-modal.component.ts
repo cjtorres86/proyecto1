@@ -1,6 +1,6 @@
 import { Component, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { ReportsApiService } from '../services/reports-api.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -8,17 +8,82 @@ import { NotificationService } from '../../../core/services/notification.service
 
 export interface DownloadModalData { mes: string; anio: string; slep: string | null }
 
+// Tipo de archivo — decide el ícono y el color de cada fila (mejora
+// post-v2.23, rediseño). Un solo lugar para agregar una modalidad nueva
+// de descarga a futuro: basta un elemento más en \`opciones\`.
+export type TipoArchivo = 'excel' | 'pdf' | 'html';
+
+interface OpcionDescarga {
+  tipo: TipoArchivo;
+  titulo: string;
+  descripcion: string;
+  accion: () => void;
+}
+
 // Equivalente al modal único de descarga del PMV (TDD, sección 9.6) —
 // las mismas 4 modalidades, cada una visible u oculta según el permiso
 // y el alcance de quien lo abre.
 @Component({
   selector: 'app-download-modal',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, MatButtonModule],
+  imports: [CommonModule, MatButtonModule],
   templateUrl: './download-modal.component.html',
 })
 export class DownloadModalComponent {
   descargando = false;
+
+  // La lista completa de opciones, ya armada con su ícono/descripción —
+  // la plantilla solo recorre esto, sin repetir 6 bloques casi iguales.
+  // Se recalcula cada vez (getter): sus 2 primeras filas dependen del
+  // alcance de quien abrió la ventana.
+  get opciones(): OpcionDescarga[] {
+    const lista: OpcionDescarga[] = [];
+    if (this.authService.can('exportar_excel')) {
+      if (this.alcanceEsTodos) {
+        lista.push({
+          tipo: 'excel',
+          titulo: 'Consolidado por Mes',
+          descripcion: 'Los 36 SLEP, una hoja por mes.',
+          accion: () => this.descargarExcelGeneral(),
+        });
+      }
+      lista.push({
+        tipo: 'excel',
+        titulo: this.textoConsolidadoPorSlep,
+        descripcion: this.alcanceEsTodos ? 'Cada SLEP en su propia hoja, con todos sus meses.' : 'Todos tus meses, en una sola hoja.',
+        accion: () => this.descargarExcelPorSlep(),
+      });
+    }
+    if (this.authService.can('exportar_informe')) {
+      lista.push(
+        {
+          tipo: 'html',
+          titulo: 'Informe General — Interactivo',
+          descripcion: 'Dashboard, ranking, formulario y errores, para revisar en pantalla.',
+          accion: () => this.verInformeGeneral(),
+        },
+        {
+          tipo: 'pdf',
+          titulo: 'Informe General — PDF',
+          descripcion: 'El mismo informe, listo para guardar o imprimir.',
+          accion: () => this.descargarPDFGeneral(),
+        },
+        {
+          tipo: 'html',
+          titulo: 'Informe de Errores — Interactivo',
+          descripcion: 'Solo los errores de validación del mes, para revisar en pantalla.',
+          accion: () => this.verInformeErrores(),
+        },
+        {
+          tipo: 'pdf',
+          titulo: 'Informe de Errores — PDF',
+          descripcion: 'Los mismos errores, listos para guardar o imprimir.',
+          accion: () => this.descargarPDFErrores(),
+        },
+      );
+    }
+    return lista;
+  }
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: DownloadModalData,

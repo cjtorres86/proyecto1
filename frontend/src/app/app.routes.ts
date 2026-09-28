@@ -6,7 +6,6 @@ import { LoginComponent } from './features/auth/login/login.component';
 import { CasesComponent } from './features/cases/cases/cases.component';
 import { UserConfigComponent } from './features/users/user-config/user-config.component';
 import { ProfileConfigComponent } from './features/users/profile-config/profile-config.component';
-import { ErrorReportTableComponent } from './features/reports/error-report-table/error-report-table.component';
 import { InformeComponent } from './features/reports/informe/informe.component';
 
 export const routes: Routes = [
@@ -23,7 +22,6 @@ export const routes: Routes = [
       { path: '', component: CasesComponent },
       { path: 'usuarios', component: UserConfigComponent, canActivate: [permissionGuard('gestionar_usuarios')] },
       { path: 'perfiles', component: ProfileConfigComponent },
-      { path: 'errores', component: ErrorReportTableComponent, canActivate: [permissionGuard('exportar_informe')] },
     ],
   },
 ];

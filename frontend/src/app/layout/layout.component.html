@@ -8,7 +8,6 @@
       <a routerLink="/" mat-button class="!text-white">Paneles</a>
       @if (authService.can('gestionar_usuarios')) { <a routerLink="/usuarios" mat-button class="!text-white">Usuarios</a> }
       @if (authService.usuarioActual()?.esSuperadmin) { <a routerLink="/perfiles" mat-button class="!text-white">Perfiles</a> }
-      @if (authService.can('exportar_informe')) { <a routerLink="/errores" mat-button class="!text-white">Errores</a> }
       @if (authService.can('exportar_excel') || authService.can('exportar_informe')) {
         @if (mesActivo$ | async; as mes) {
           <button mat-button class="!text-white" (click)="abrirDescargas(mes)">Descargar</button>
