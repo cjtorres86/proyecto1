@@ -9,7 +9,7 @@ export interface ErrorFila { slep: string; campo: string; formula: string; mensa
 export interface RankingDetalleFila {
   slep: string;
   pct: number | null;
-  campos: { numero: number; nombre: string; valor: string }[];
+  campos: { numero: number; preguntaId: string; nombre: string; valor: string }[];
 }
 
 @Injectable({ providedIn: 'root' })

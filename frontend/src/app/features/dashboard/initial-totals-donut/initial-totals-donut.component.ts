@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TooltipModule } from 'primeng/tooltip';
 import { Metricas } from '../../../core/models/dashboard.model';
@@ -23,6 +23,12 @@ import { SlepBreakdownDirective } from '../directives/slep-breakdown.directive';
 })
 export class InitialTotalsDonutComponent implements OnChanges {
   @Input() metricas: Metricas | null = null;
+  // Tooltip propio (mejora post-v2.23): el Informe pasa true acá para
+  // que el propio tooltip (PrimeNG, sigue al mouse) no aparezca — muestra
+  // el suyo, fijo al borde de la hoja, escuchando (sobreCampo). El
+  // Dashboard en vivo no toca este Input — sigue exactamente igual.
+  @Input() suprimirTooltipPropio = false;
+  @Output() sobreCampo = new EventEmitter<string | null>();
 
   readonly radio = 80;
   readonly grosor = 24;

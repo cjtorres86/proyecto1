@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TooltipModule } from 'primeng/tooltip';
 import { SerieItem } from '../../../core/models/dashboard.model';
@@ -23,6 +23,11 @@ export class TotalAndBarsGroupComponent implements OnChanges {
   @Input() diferencia?: number;
   @Input() tipoDiferencia?: string;
   @Input({ required: true }) series!: SerieItem[];
+  // Mismo mecanismo que InitialTotalsDonutComponent — ver ahí el porqué.
+  // Solo para el TOTAL (no las barras individuales ni la diferencia): es
+  // lo que se pidió para el Informe.
+  @Input() suprimirTooltipPropio = false;
+  @Output() sobreCampo = new EventEmitter<string | null>();
 
   // Arranca cada barra en 0 y, un instante después (un frame), la sube
   // a su porcentaje real — así la transición CSS de "width" tiene un

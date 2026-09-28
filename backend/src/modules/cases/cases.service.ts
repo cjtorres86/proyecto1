@@ -385,7 +385,7 @@ export class CasesService {
     mes: string,
     anio: string,
     alcance: string,
-  ): Promise<{ slep: string; pct: number | null; campos: { numero: number; nombre: string; valor: string }[] }[]> {
+  ): Promise<{ slep: string; pct: number | null; campos: { numero: number; preguntaId: string; nombre: string; valor: string }[] }[]> {
     const where: Record<string, string> = { mesConsolidado: mes, anioConsolidado: anio };
     if (alcance !== 'todos') where.slep = alcance;
     const contenedores = await this.contenedores.find({ where, order: { slep: 'ASC' } });
@@ -409,7 +409,12 @@ export class CasesService {
         return {
           slep: c.slep,
           pct: this.dashboardService.pctAvanceDe(Object.fromEntries(valorPorPregunta)),
-          campos: receta.map((r) => ({ numero: r.posicionCanonica, nombre: r.pregunta.nombre, valor: valorPorPregunta.get(r.preguntaId) ?? '' })),
+          campos: receta.map((r) => ({
+            numero: r.posicionCanonica,
+            preguntaId: r.preguntaId,
+            nombre: r.pregunta.nombre,
+            valor: valorPorPregunta.get(r.preguntaId) ?? '',
+          })),
         };
       })
       .sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));

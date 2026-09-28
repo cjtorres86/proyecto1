@@ -2,11 +2,13 @@
   <div
     [appSlepBreakdown]="totalFieldId"
     #tipTotal="appSlepBreakdown"
-    [pTooltip]="tipTotal.texto"
+    [pTooltip]="suprimirTooltipPropio ? '' : tipTotal.texto"
     [escape]="false"
     tooltipPosition="left"
     tooltipStyleClass="text-xs"
     class="text-center pr-4 border-r border-dotted border-gray-200"
+    (mouseenter)="sobreCampo.emit(totalFieldId)"
+    (mouseleave)="sobreCampo.emit(null)"
   >
     <div class="text-2xl font-bold">{{ total }}</div>
     <div class="text-xs text-gray-500">{{ totalLabel }}</div>

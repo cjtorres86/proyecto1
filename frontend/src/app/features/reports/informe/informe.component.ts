@@ -12,7 +12,8 @@ import { CampoConValor } from '../../../core/models/case.model';
 import { AdvanceIndicatorComponent } from '../../dashboard/advance-indicator/advance-indicator.component';
 import { InitialTotalsDonutComponent } from '../../dashboard/initial-totals-donut/initial-totals-donut.component';
 import { TotalAndBarsGroupComponent } from '../../dashboard/total-and-bars-group/total-and-bars-group.component';
-import { RankingComponent } from '../../dashboard/ranking/ranking.component';
+import { RankingConDetalleComponent } from '../ranking-con-detalle/ranking-con-detalle.component';
+import { TooltipHojaComponent, TooltipHojaFila } from '../tooltip-hoja/tooltip-hoja.component';
 
 // Informe Interactivo: página real de Angular que reutiliza los mismos
 // componentes del Dashboard. El PDF es esta misma página impresa por el
@@ -31,7 +32,7 @@ import { RankingComponent } from '../../dashboard/ranking/ranking.component';
 @Component({
   selector: 'app-informe',
   standalone: true,
-  imports: [CommonModule, AdvanceIndicatorComponent, InitialTotalsDonutComponent, TotalAndBarsGroupComponent, RankingComponent],
+  imports: [CommonModule, AdvanceIndicatorComponent, InitialTotalsDonutComponent, TotalAndBarsGroupComponent, RankingConDetalleComponent, TooltipHojaComponent],
   templateUrl: './informe.component.html',
   styles: [`
     @media print {
@@ -98,6 +99,12 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   rankingDetalleCargado = false;
   slepConMouseEncima: RankingDetalleFila | null = null;
 
+  // Tooltips de los totales del Dashboard (mejora post-v2.23): qué campo
+  // tiene el mouse encima ahora mismo. El desglose sale del MISMO
+  // rankingDetalle ya cargado (todos los campos de los 36 SLEP) — no
+  // hace falta pedirle nada nuevo al servidor.
+  campoConMouseEncima: string | null = null;
+
   // 'errores' fluye libre en varias hojas (sin ajuste-a-una-hoja);
   // 'ranking' y 'general' sí usan ese ajuste, como el Dashboard y el
   // Formulario.
@@ -135,7 +142,21 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   get listoParaMostrar(): boolean {
     if (this.tipo === 'errores') return this.erroresCargados;
     if (this.tipo === 'ranking') return this.rankingDetalleCargado;
-    return !!this.datos && this.camposFormulario.length > 0 && this.erroresCargados;
+    return !!this.datos && this.camposFormulario.length > 0 && this.erroresCargados && this.rankingDetalleCargado;
+  }
+
+  // Desglose por SLEP de UN campo (mejora post-v2.23), para el tooltip de
+  // los totales del Dashboard — derivado de rankingDetalle (ya cargado),
+  // sin pedir nada nuevo. Solo SLEP con datos reales en ese campo.
+  filasDesgloseCampo(preguntaId: string): TooltipHojaFila[] {
+    return this.rankingDetalle
+      .map((f) => ({ etiqueta: f.slep, valor: f.campos.find((c) => c.preguntaId === preguntaId)?.valor ?? '' }))
+      .filter((f) => f.valor !== '');
+  }
+
+  tituloDesgloseCampo(preguntaId: string): string {
+    const campo = this.rankingDetalle[0]?.campos.find((c) => c.preguntaId === preguntaId);
+    return campo ? `${campo.numero}. ${campo.nombre}` : preguntaId;
   }
 
   ngOnInit(): void {
@@ -182,6 +203,14 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
       });
       this.casesApi.getTotalGeneral(this.mes, this.anio, this.slep ?? undefined).subscribe((r) => {
         this.camposFormulario = r.campos;
+        this.programarAjuste();
+      });
+      // También en modo general: alimenta el Ranking (ahora con tooltip
+      // de detalle, igual que la hoja "Ranking Interactivo") y los
+      // tooltips de los totales del Dashboard.
+      this.reportsApi.getRankingDetalle(this.mes, this.anio, this.slep ?? undefined).subscribe((lista) => {
+        this.rankingDetalle = lista;
+        this.rankingDetalleCargado = true;
         this.programarAjuste();
       });
     }

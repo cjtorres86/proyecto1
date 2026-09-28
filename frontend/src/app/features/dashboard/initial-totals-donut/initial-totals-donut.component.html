@@ -5,11 +5,13 @@
         <div
           [appSlepBreakdown]="'Q04'"
           #tipQ04="appSlepBreakdown"
-          [pTooltip]="tipQ04.texto"
+          [pTooltip]="suprimirTooltipPropio ? '' : tipQ04.texto"
           [escape]="false"
           tooltipPosition="left"
           tooltipStyleClass="text-xs"
           class="text-2xl font-bold"
+          (mouseenter)="sobreCampo.emit('Q04')"
+          (mouseleave)="sobreCampo.emit(null)"
         >
           {{ metricas.totalCasos }}
         </div>
@@ -19,11 +21,13 @@
         <div
           [appSlepBreakdown]="'Q05'"
           #tipQ05="appSlepBreakdown"
-          [pTooltip]="tipQ05.texto"
+          [pTooltip]="suprimirTooltipPropio ? '' : tipQ05.texto"
           [escape]="false"
           tooltipPosition="left"
           tooltipStyleClass="text-xs"
           class="text-2xl font-bold"
+          (mouseenter)="sobreCampo.emit('Q05')"
+          (mouseleave)="sobreCampo.emit(null)"
         >
           {{ metricas.totalLicencias }}
         </div>
@@ -52,11 +56,13 @@
         <div
           [appSlepBreakdown]="'Q06'"
           #tipQ06="appSlepBreakdown"
-          [pTooltip]="tipQ06.texto"
+          [pTooltip]="suprimirTooltipPropio ? '' : tipQ06.texto"
           [escape]="false"
           tooltipPosition="left"
           tooltipStyleClass="text-xs"
           class="absolute inset-0 flex items-center justify-center text-xl font-bold"
+          (mouseenter)="sobreCampo.emit('Q06')"
+          (mouseleave)="sobreCampo.emit(null)"
         >
           {{ metricas.totalFuncionarios }}
         </div>
