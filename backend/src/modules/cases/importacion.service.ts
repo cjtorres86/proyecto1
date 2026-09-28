@@ -59,7 +59,7 @@ export class ImportacionService {
     return lista.length > maximo ? `${visibles} y ${lista.length - maximo} más` : visibles;
   }
 
-  async leerDesdeExcel(contenedorId: string, buffer: Buffer): Promise<{ valores: Record<string, string> }> {
+  async leerDesdeExcel(contenedorId: string, buffer: Buffer): Promise<{ valores: Record<string, string>; slep: string }> {
     const [contenedor] = await this.contenedores.find({ where: { id: contenedorId } }); // 1 consulta (ver CasesService.obtenerContenedor)
     if (!contenedor) throw new NotFoundException('Contenedor no encontrado.');
 
@@ -158,6 +158,6 @@ export class ImportacionService {
     // mayúsculas); se guarda siempre con su nombre oficial.
     valores['Q03'] = contenedor.slep;
 
-    return { valores };
+    return { valores, slep: contenedor.slep };
   }
 }

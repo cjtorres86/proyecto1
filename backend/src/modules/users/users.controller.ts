@@ -8,6 +8,7 @@ import { UsersService } from './users.service';
 import { CrearUsuarioDto } from './dto/crear-usuario.dto';
 import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto';
 import { CrearPerfilDto } from './dto/crear-perfil.dto';
+import { Bitacora } from '../bitacora/decorators/bitacora.decorator';
 
 @UseGuards(JwtAuthGuard, PermisosGuard)
 @Controller()
@@ -21,12 +22,14 @@ export class UsersController {
   }
 
   @Permisos('gestionar_usuarios')
+  @Bitacora({ accion: 'usuario_creado', descripcion: (req) => `Creó el usuario "${req.body.usuario}".` })
   @Post('users')
   crearUsuario(@Body() dto: CrearUsuarioDto) {
     return this.usersService.crearUsuario(dto);
   }
 
   @Permisos('gestionar_usuarios')
+  @Bitacora({ accion: 'usuario_editado', descripcion: (_req, r) => `Editó el usuario "${r.usuario}".` })
   @Patch('users/:id')
   actualizarUsuario(@Param('id') id: string, @Body() dto: ActualizarUsuarioDto) {
     return this.usersService.actualizarUsuario(id, dto);
@@ -41,6 +44,7 @@ export class UsersController {
     return this.usersService.listarPerfiles();
   }
 
+  @Bitacora({ accion: 'perfil_creado', descripcion: (req) => `Creó el perfil "${req.body.nombre}".` })
   @Post('perfiles')
   crearPerfil(@Body() dto: CrearPerfilDto, @UsuarioActual() usuario: Usuario) {
     if (!usuario.esSuperadmin) {

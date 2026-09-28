@@ -36,7 +36,12 @@ export class AuthService {
     return this.http.post<Usuario>(`${environment.apiUrl}/auth/me`, {}).pipe(tap((u) => this.usuarioActualSignal.set(u)));
   }
 
+  // Bitácora (mejora post-v2.23): se avisa al servidor ANTES de borrar el
+  // token (el pedido necesita ir con la sesión todavía válida) — sin
+  // esperar la respuesta: cerrar sesión no debe demorarse por esto, ni
+  // fallar si el pedido no llega a completarse.
   logout(): void {
+    this.http.post(`${environment.apiUrl}/auth/logout`, {}).subscribe({ error: () => undefined });
     localStorage.removeItem(TOKEN_KEY);
     this.usuarioActualSignal.set(null);
     this.router.navigate(['/login']);

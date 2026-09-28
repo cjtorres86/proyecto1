@@ -5,6 +5,7 @@ import { UsuarioActual } from '../../auth/decorators/usuario-actual.decorator';
 import { Usuario } from '../../auth/entities/usuario.entity';
 import { MensajesService } from './mensajes.service';
 import { CrearMensajeDto, EditarMensajeDto, ReaccionDto } from './dto/mensajes.dto';
+import { Bitacora } from '../bitacora/decorators/bitacora.decorator';
 
 // Aviso al iniciar sesión (mejora post-v2.23) — ruta propia, aparte:
 // busca en CUALQUIER SLEP y mes al que la persona tenga acceso, no en
@@ -49,11 +50,13 @@ export class MensajesController {
     return { ok: true };
   }
 
+  @Bitacora({ accion: 'mensaje_creado', descripcion: (req) => `Escribió un mensaje en el campo ${req.body.preguntaId}${req.body.respuestaAId ? ' (respondiendo a otro mensaje)' : ''}.` })
   @Post()
   crear(@Param('contenedorId') contenedorId: string, @Body() dto: CrearMensajeDto, @UsuarioActual() usuario: Usuario) {
     return this.mensajes.crear(contenedorId, dto, usuario);
   }
 
+  @Bitacora({ accion: 'mensaje_editado', descripcion: () => 'Editó un mensaje del chat.' })
   @Patch(':mensajeId')
   editar(
     @Param('contenedorId') contenedorId: string,
@@ -64,11 +67,13 @@ export class MensajesController {
     return this.mensajes.editar(contenedorId, mensajeId, dto.texto, usuario);
   }
 
+  @Bitacora({ accion: 'mensaje_eliminado', descripcion: () => 'Borró un mensaje del chat.' })
   @Delete(':mensajeId')
   borrar(@Param('contenedorId') contenedorId: string, @Param('mensajeId') mensajeId: string, @UsuarioActual() usuario: Usuario) {
     return this.mensajes.borrar(contenedorId, mensajeId, usuario);
   }
 
+  @Bitacora({ accion: 'mensaje_reaccion', descripcion: (req) => `Reaccionó a un mensaje del chat (${req.body.tipo}).` })
   @Post(':mensajeId/reacciones')
   reaccionar(
     @Param('contenedorId') contenedorId: string,

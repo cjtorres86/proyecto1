@@ -1,0 +1,85 @@
+<div class="flex flex-col h-full gap-3">
+  <h1 class="text-lg font-bold text-[#1E3A8A]">Bitácora de usuarios</h1>
+
+  <!-- Filtros: se aplican al presionar "Filtrar", no en cada tecla. -->
+  <div class="flex flex-wrap items-end gap-2 bg-white border border-gray-200 rounded p-3">
+    <div class="flex flex-col gap-0.5">
+      <label class="text-[11px] text-gray-500">Usuario</label>
+      <select [(ngModel)]="filtroUsuarioId" class="text-xs border border-gray-300 rounded px-2 py-1.5 bg-white min-w-[140px]">
+        <option value="">Todos</option>
+        @for (u of usuarios; track u.id) {
+          <option [value]="u.id">{{ u.nombreParaMostrar }}</option>
+        }
+      </select>
+    </div>
+    <div class="flex flex-col gap-0.5">
+      <label class="text-[11px] text-gray-500">Acción</label>
+      <select [(ngModel)]="filtroAccion" class="text-xs border border-gray-300 rounded px-2 py-1.5 bg-white min-w-[160px]">
+        <option value="">Todas</option>
+        @for (op of opcionesAccion; track op[0]) {
+          <option [value]="op[0]">{{ op[1] }}</option>
+        }
+      </select>
+    </div>
+    <div class="flex flex-col gap-0.5">
+      <label class="text-[11px] text-gray-500">Desde</label>
+      <input type="date" [(ngModel)]="filtroDesde" class="text-xs border border-gray-300 rounded px-2 py-1.5 bg-white" />
+    </div>
+    <div class="flex flex-col gap-0.5">
+      <label class="text-[11px] text-gray-500">Hasta</label>
+      <input type="date" [(ngModel)]="filtroHasta" class="text-xs border border-gray-300 rounded px-2 py-1.5 bg-white" />
+    </div>
+    <div class="flex flex-col gap-0.5 flex-1 min-w-[160px]">
+      <label class="text-[11px] text-gray-500">Buscar en la descripción</label>
+      <input type="text" [(ngModel)]="filtroTexto" (keydown.enter)="filtrar()" placeholder="Ej: Barrancas, Excel…" class="text-xs border border-gray-300 rounded px-2 py-1.5 bg-white w-full" />
+    </div>
+    <button (click)="filtrar()" class="text-xs rounded px-3 py-1.5 bg-blue-800 text-white cursor-pointer">Filtrar</button>
+    <button (click)="limpiarFiltros()" class="text-xs rounded px-3 py-1.5 border border-gray-300 text-gray-600 cursor-pointer">Limpiar</button>
+  </div>
+
+  <div class="flex-1 overflow-auto bg-white border border-gray-200 rounded">
+    @if (cargando) {
+      <p class="text-sm text-gray-400 p-4">Cargando…</p>
+    } @else if (!filas.length) {
+      <p class="text-sm text-gray-400 p-4">No hay registros con estos filtros.</p>
+    } @else {
+      <table class="w-full text-xs border-collapse">
+        <thead class="sticky top-0 bg-gray-50">
+          <tr class="border-b border-gray-200 text-left text-gray-500">
+            <th class="py-2 px-3 font-medium">Fecha</th>
+            <th class="py-2 px-3 font-medium">Hora</th>
+            <th class="py-2 px-3 font-medium">Usuario</th>
+            <th class="py-2 px-3 font-medium">Perfil</th>
+            <th class="py-2 px-3 font-medium">IP</th>
+            <th class="py-2 px-3 font-medium">Acción</th>
+            <th class="py-2 px-3 font-medium">Descripción</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (f of filas; track f.id) {
+            <tr class="border-b border-gray-100">
+              <td class="py-1.5 px-3 whitespace-nowrap">{{ f.creadoEn | date: 'dd-MM-yyyy' }}</td>
+              <td class="py-1.5 px-3 whitespace-nowrap font-mono">{{ f.creadoEn | date: 'HH:mm:ss' }}</td>
+              <td class="py-1.5 px-3 font-semibold whitespace-nowrap">{{ f.usuarioNombre }}</td>
+              <td class="py-1.5 px-3 whitespace-nowrap">{{ f.perfilNombre }}</td>
+              <td class="py-1.5 px-3 font-mono text-gray-500 whitespace-nowrap">{{ f.ip }}</td>
+              <td class="py-1.5 px-3 whitespace-nowrap">{{ etiquetas[f.accion] ?? f.accion }}</td>
+              <td class="py-1.5 px-3 text-gray-700">{{ f.descripcion }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  <!-- Paginación: la arma el servidor (no toda la bitácora cargada de
+       una vez, que con el tiempo puede tener miles de filas). -->
+  <div class="flex items-center justify-between text-xs text-gray-500">
+    <span>{{ total }} {{ total === 1 ? 'registro' : 'registros' }}</span>
+    <div class="flex items-center gap-2">
+      <button (click)="irAPagina(pagina - 1)" [disabled]="pagina <= 1" class="border border-gray-300 rounded px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">Anterior</button>
+      <span>Página {{ pagina }} de {{ totalPaginas }}</span>
+      <button (click)="irAPagina(pagina + 1)" [disabled]="pagina >= totalPaginas" class="border border-gray-300 rounded px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">Siguiente</button>
+    </div>
+  </div>
+</div>

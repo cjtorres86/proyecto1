@@ -5,6 +5,13 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Confía en el encabezado X-Forwarded-For (mejora post-v2.23, Bitácora):
+  // Render pone el backend detrás de un proxy — sin esto, request.ip
+  // siempre daría la IP interna del proxy, la MISMA para todo el mundo,
+  // no la de quien realmente hizo la petición. En desarrollo local
+  // (sin proxy de por medio) esto no cambia nada.
+  app.getHttpAdapter().getInstance().set('trust proxy', true);
+
   // Cualquier DTO con class-validator se valida automáticamente en cada
   // endpoint, sin que cada Controller tenga que acordarse de hacerlo —
   // mismo espíritu que el motor de validación del PMV (sección 6.3 del

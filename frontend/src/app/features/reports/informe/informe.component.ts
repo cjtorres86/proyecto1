@@ -6,6 +6,7 @@ import { Subscription } from 'rxjs';
 import { DashboardApiService } from '../../dashboard/services/dashboard-api.service';
 import { CasesApiService } from '../../cases/services/cases-api.service';
 import { ReportsApiService, ErrorFila, RankingDetalleFila } from '../services/reports-api.service';
+import { BitacoraApiService } from '../../bitacora/services/bitacora-api.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { DashboardDeMes } from '../../../core/models/dashboard.model';
 import { CampoConValor } from '../../../core/models/case.model';
@@ -142,6 +143,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     private readonly theme: ThemeService,
     private readonly location: Location,
     private readonly reportsApi: ReportsApiService,
+    private readonly bitacoraApi: BitacoraApiService,
   ) {}
 
   // Todo lo que hace falta según el tipo de informe ya llegó — recién
@@ -230,7 +232,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Título real de la pestaña (reemplaza el genérico "Frontend"): es el
     // nombre sugerido al guardar y el que usa el pie del PDF.
     const sufijoTitulo = this.slep ? ` - ${this.slep}` : '';
-    const nombreInforme = this.tipo === 'errores' ? 'Informe de Errores' : this.tipo === 'ranking' ? 'Ranking' : 'Informe Avance de Sumarios';
+    const nombreInforme = this.nombreInforme();
     this.titleService.setTitle(`${nombreInforme} - ${this.mes} ${this.anio}${sufijoTitulo}`);
 
     if (this.tipo === 'ranking') {
@@ -283,8 +285,29 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // la dirección (con el Location de Angular), para que recargar la
   // pestaña no la vuelva a abrir. Espera 2 cuadros de pantalla para que
   // todo esté dibujado en su estado final.
+  private nombreInforme(): string {
+    return this.tipo === 'errores' ? 'Informe de Errores' : this.tipo === 'ranking' ? 'Ranking' : 'Informe Avance de Sumarios';
+  }
+
+  // Bitácora (mejora post-v2.23): estas 2 acciones ocurren enteras en el
+  // navegador — no hay un pedido al backend que las represente por sí
+  // solo (el PDF lo arma window.print(), y "ver el Informe" ya cargó sus
+  // datos por otros pedidos que ya se registran solos) — por eso se
+  // avisa acá, explícitamente. vistaRegistrada evita avisar 2 veces: este
+  // método se llama cada vez que termina de cargar una de las fuentes de
+  // datos (Dashboard, Formulario, Errores, Ranking).
+  private vistaRegistrada = false;
+  private registrarVistaSiCorresponde(): void {
+    if (this.vistaRegistrada || this.imprimirAlCargar) return;
+    this.vistaRegistrada = true;
+    const sufijo = this.slep ? ` — ${this.slep}` : '';
+    this.bitacoraApi.registrarEvento('informe_visto', `Vio el ${this.nombreInforme()} — ${this.mes} ${this.anio}${sufijo}.`);
+  }
+
   private abrirImpresion(): void {
     this.imprimirAlCargar = false;
+    const sufijo = this.slep ? ` — ${this.slep}` : '';
+    this.bitacoraApi.registrarEvento('informe_pdf_descargado', `Descargó el PDF de ${this.nombreInforme()} — ${this.mes} ${this.anio}${sufijo}.`);
     const params = new URLSearchParams();
     if (this.slep) params.set('slep', this.slep);
     if (this.tipo !== 'general') params.set('tipo', this.tipo);
@@ -298,6 +321,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // hace falta esperar a que los datos y las fuentes estén listos.
   private programarAjuste(): void {
     if (!this.listoParaMostrar) return;
+    this.registrarVistaSiCorresponde();
     if (this.tipo === 'errores') {
       document.fonts.ready.then(() => {
         if (this.imprimirAlCargar) this.abrirImpresion();

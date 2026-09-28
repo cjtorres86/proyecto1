@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
+import { superadminGuard } from './core/guards/superadmin.guard';
+import { BitacoraComponent } from './features/bitacora/bitacora/bitacora.component';
 import { LayoutComponent } from './layout/layout.component';
 import { LoginComponent } from './features/auth/login/login.component';
 import { CasesComponent } from './features/cases/cases/cases.component';
@@ -22,6 +24,7 @@ export const routes: Routes = [
       { path: '', component: CasesComponent },
       { path: 'usuarios', component: UserConfigComponent, canActivate: [permissionGuard('gestionar_usuarios')] },
       { path: 'perfiles', component: ProfileConfigComponent },
+      { path: 'bitacora', component: BitacoraComponent, canActivate: [superadminGuard] },
     ],
   },
 ];

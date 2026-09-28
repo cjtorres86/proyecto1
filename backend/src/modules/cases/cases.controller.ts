@@ -12,6 +12,7 @@ import { MesDto } from './dto/mes.dto';
 import { verificarAccesoSlep } from './acceso-slep';
 import { Contenedor } from './entities/contenedor.entity';
 import { GuardarValoresDto } from './dto/guardar-valores.dto';
+import { Bitacora } from '../bitacora/decorators/bitacora.decorator';
 
 @UseGuards(JwtAuthGuard, PermisosGuard)
 @Controller('cases')
@@ -22,6 +23,7 @@ export class CasesController {
   ) {}
 
   @Permisos('crear_mes')
+  @Bitacora({ accion: 'mes_creado', descripcion: (req) => `Creó ${req.body.mes} ${req.body.anio} para ${req.body.sleps?.length ?? 0} SLEP.` })
   @Post('crear-mes')
   crearMes(@Body() dto: CrearMesDto, @UsuarioActual() usuario: Usuario) {
     return this.casesService.crearMesVacio(dto.mes, dto.anio, dto.formularioId, dto.sleps, usuario.id);
@@ -30,6 +32,7 @@ export class CasesController {
   // Cerrar mes (mejora post-v2.23): Admin y Validador (permiso cerrar_mes)
   // y el superadmin (sin restricción de permisos).
   @Permisos('cerrar_mes')
+  @Bitacora({ accion: 'mes_cerrado', descripcion: (req) => `Cerró ${req.body.mes} ${req.body.anio}.` })
   @Post('cerrar-mes')
   cerrarMes(@Body() dto: MesDto, @UsuarioActual() usuario: Usuario) {
     return this.casesService.cerrarMes(dto.mes, dto.anio, usuario.id);
@@ -37,6 +40,7 @@ export class CasesController {
 
   // Reabrir mes (mejora post-v2.23) — exclusivo del superadmin, igual
   // que eliminar mes: nadie más puede deshacer un cierre.
+  @Bitacora({ accion: 'mes_abierto', descripcion: (req) => `Reabrió ${req.body.mes} ${req.body.anio}.` })
   @Post('abrir-mes')
   abrirMes(@Body() dto: MesDto, @UsuarioActual() usuario: Usuario) {
     if (!usuario.esSuperadmin) throw new ForbiddenException('Solo el superadmin puede reabrir un mes.');
@@ -45,6 +49,7 @@ export class CasesController {
 
   // Eliminar mes (mejora post-v2.23): exclusivo del superadmin. Es un
   // borrado lógico — los datos se conservan en la base de datos.
+  @Bitacora({ accion: 'mes_eliminado', descripcion: (req) => `Eliminó ${req.body.mes} ${req.body.anio} de la vista (los datos se conservan).` })
   @Post('eliminar-mes')
   eliminarMes(@Body() dto: MesDto, @UsuarioActual() usuario: Usuario) {
     if (!usuario.esSuperadmin) throw new ForbiddenException('Solo el superadmin puede eliminar un mes.');
@@ -150,6 +155,10 @@ export class CasesController {
     return slepPedido && slepPedido !== 'todos' ? slepPedido : 'todos';
   }
 
+  @Bitacora({
+    accion: 'formulario_visto',
+    descripcion: (_req, r) => `Vio el formulario de ${r.contenedor.slep} — ${r.contenedor.mesConsolidado} ${r.contenedor.anioConsolidado}.`,
+  })
   @Get(':id')
   async getUno(@Param('id') id: string, @UsuarioActual() usuario: Usuario) {
     // Primero el acceso (consulta liviana), después el detalle completo.
@@ -159,6 +168,14 @@ export class CasesController {
   }
 
   @Permisos('editar_formulario')
+  @Bitacora({
+    accion: 'formulario_guardado',
+    descripcion: (_req, r) => `Guardó cambios en ${r.contenedor.slep} — ${r.contenedor.mesConsolidado} ${r.contenedor.anioConsolidado}.`,
+    // Los valores tal como se enviaron — no es un "antes/después" (eso
+    // pediría una consulta extra solo para la bitácora), pero deja
+    // registrado exactamente qué se escribió.
+    detalle: (req) => req.body.valores,
+  })
   @Patch(':id/valores')
   async guardarValores(
     @Param('id') id: string,
@@ -193,6 +210,10 @@ export class CasesController {
   // sus valores SIN guardarlos (vista previa, mejora post-v2.23): se
   // registran cuando el Digitador presiona "Guardar".
   @Permisos('editar_formulario')
+  @Bitacora({
+    accion: 'excel_cargado',
+    descripcion: (_req, r) => `Cargó un Excel para revisión en ${r.slep}.`,
+  })
   @Post(':id/importar')
   @UseInterceptors(FileInterceptor('archivo'))
   async importarArchivo(@Param('id') id: string, @UploadedFile() archivo: any, @UsuarioActual() usuario: Usuario) {
