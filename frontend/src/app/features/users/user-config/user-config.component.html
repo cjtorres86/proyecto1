@@ -1,17 +1,94 @@
-<div class="flex justify-between items-center mb-3">
-  <h2 class="font-bold">Usuarios</h2>
-  <button mat-flat-button class="!bg-[#1E3A8A] !text-white" (click)="abrirNuevoUsuario()">+ Nuevo usuario</button>
+<div class="flex flex-col h-full gap-3">
+  <div class="flex justify-between items-center">
+    <h1 class="text-lg font-bold text-[#1E3A8A]">Usuarios</h1>
+    <button mat-flat-button class="!bg-[#1E3A8A] !text-white" (click)="abrirNuevoUsuario()">+ Nuevo usuario</button>
+  </div>
+
+  <!-- Filtros: mismo estilo que la Bitácora — se aplican al presionar
+       "Filtrar" (o al tocar un desplegable), no en cada tecla. -->
+  <div class="flex flex-wrap items-end gap-2 bg-white border border-gray-200 rounded p-3">
+    <div class="flex flex-col gap-0.5">
+      <label class="text-[11px] text-gray-500">Perfil</label>
+      <select [(ngModel)]="filtroPerfilId" (change)="filtrar()" class="text-xs border border-gray-300 rounded px-2 py-1.5 bg-white min-w-[140px]">
+        <option value="">Todos</option>
+        @for (p of perfiles; track p.id) { <option [value]="p.id">{{ p.nombre }}</option> }
+      </select>
+    </div>
+    <div class="flex flex-col gap-0.5">
+      <label class="text-[11px] text-gray-500">SLEP / Alcance</label>
+      <select [(ngModel)]="filtroAlcance" (change)="filtrar()" class="text-xs border border-gray-300 rounded px-2 py-1.5 bg-white min-w-[160px]">
+        <option value="">Todos</option>
+        @for (a of alcancesDisponibles; track a) { <option [value]="a">{{ a === 'todos' ? 'Todos los SLEP (alcance)' : a }}</option> }
+      </select>
+    </div>
+    <div class="flex flex-col gap-0.5">
+      <label class="text-[11px] text-gray-500">Estado</label>
+      <select [(ngModel)]="filtroEstado" (change)="filtrar()" class="text-xs border border-gray-300 rounded px-2 py-1.5 bg-white min-w-[120px]">
+        <option value="">Todos</option>
+        <option value="activo">Activo</option>
+        <option value="inactivo">Inactivo</option>
+        <option value="pendiente">Pendiente</option>
+      </select>
+    </div>
+    <div class="flex flex-col gap-0.5 flex-1 min-w-[160px]">
+      <label class="text-[11px] text-gray-500">Buscar</label>
+      <input type="text" [(ngModel)]="filtroTexto" (keydown.enter)="filtrar()" placeholder="Nombre, usuario o RUT…" class="text-xs border border-gray-300 rounded px-2 py-1.5 bg-white w-full" />
+    </div>
+    <button (click)="filtrar()" class="text-xs rounded px-3 py-1.5 bg-blue-800 text-white cursor-pointer">Filtrar</button>
+    <button (click)="limpiarFiltros()" class="text-xs rounded px-3 py-1.5 border border-gray-300 text-gray-600 cursor-pointer">Limpiar</button>
+  </div>
+
+  <div class="flex-1 overflow-auto bg-white border border-gray-200 rounded">
+    @if (cargando) {
+      <p class="text-sm text-gray-400 p-4">Cargando…</p>
+    } @else if (!filas.length) {
+      <p class="text-sm text-gray-400 p-4">No hay usuarios con estos filtros.</p>
+    } @else {
+      <table class="w-full text-xs border-collapse">
+        <thead class="sticky top-0 bg-gray-50">
+          <tr class="border-b border-gray-200 text-left text-gray-500">
+            <th class="py-2 px-3 font-medium">Nombre</th>
+            <th class="py-2 px-3 font-medium">Usuario</th>
+            <th class="py-2 px-3 font-medium">RUT</th>
+            <th class="py-2 px-3 font-medium">Perfil</th>
+            <th class="py-2 px-3 font-medium">SLEP / Alcance</th>
+            <th class="py-2 px-3 font-medium">Estado</th>
+            <th class="py-2 px-3 font-medium"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of filas; track u.id) {
+            <tr class="border-b border-gray-100" [class.opacity-60]="estadoDe(u) === 'inactivo'">
+              <td class="py-1.5 px-3 font-semibold whitespace-nowrap">{{ u.nombreParaMostrar }}</td>
+              <td class="py-1.5 px-3 font-mono whitespace-nowrap">
+                @if (u.usuario) { {{ u.usuario }} } @else { <span class="text-gray-400 italic">— sin asignar —</span> }
+              </td>
+              <td class="py-1.5 px-3 font-mono text-gray-500 whitespace-nowrap">{{ u.rut ?? '—' }}</td>
+              <td class="py-1.5 px-3 whitespace-nowrap">{{ u.esSuperadmin ? 'Superadmin' : (u.perfil?.nombre ?? '—') }}</td>
+              <td class="py-1.5 px-3 whitespace-nowrap">{{ u.alcance === 'todos' ? 'Todos los SLEP' : u.alcance }}</td>
+              <td class="py-1.5 px-3 whitespace-nowrap">
+                @switch (estadoDe(u)) {
+                  @case ('activo') { <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-700">Activo</span> }
+                  @case ('inactivo') { <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-50 text-red-700">Inactivo</span> }
+                  @case ('pendiente') { <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500">Pendiente</span> }
+                }
+              </td>
+              <td class="py-1.5 px-3 whitespace-nowrap text-right">
+                <button (click)="editar(u)" class="text-[11px] text-blue-800 hover:underline cursor-pointer mr-2">
+                  {{ estadoDe(u) === 'pendiente' ? 'Completar' : 'Editar' }}
+                </button>
+                @if (u.usuario && !u.esSuperadmin) {
+                  <button (click)="cambiarActivo(u)" class="text-[11px] hover:underline cursor-pointer" [class.text-red-700]="u.activo" [class.text-green-700]="!u.activo">
+                    {{ u.activo ? 'Desactivar' : 'Activar' }}
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  <p class="text-xs text-gray-500">{{ filas.length }} de {{ todos.length }} {{ todos.length === 1 ? 'cuenta' : 'cuentas' }}</p>
 </div>
-<p-table [value]="usuarios" [paginator]="true" [rows]="10">
-  <ng-template pTemplate="header">
-    <tr><th>Usuario</th><th>Nombre</th><th>Perfil</th><th>Alcance</th></tr>
-  </ng-template>
-  <ng-template pTemplate="body" let-u>
-    <tr>
-      <td>{{ u.usuario }}</td>
-      <td>{{ u.nombreParaMostrar }}</td>
-      <td>{{ u.esSuperadmin ? 'Superadmin' : u.perfil?.nombre }}</td>
-      <td>{{ u.alcance }}</td>
-    </tr>
-  </ng-template>
-</p-table>

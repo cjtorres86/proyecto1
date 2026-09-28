@@ -29,10 +29,29 @@ export class UsersController {
   }
 
   @Permisos('gestionar_usuarios')
-  @Bitacora({ accion: 'usuario_editado', descripcion: (_req, r) => `Editó el usuario "${r.usuario}".` })
+  @Bitacora({
+    accion: 'usuario_editado',
+    descripcion: (_req, r) => `Editó la cuenta de "${r.nombreParaMostrar}"${r.usuario ? ` (usuario: ${r.usuario})` : ' (pendiente)'}.`,
+  })
   @Patch('users/:id')
   actualizarUsuario(@Param('id') id: string, @Body() dto: ActualizarUsuarioDto) {
     return this.usersService.actualizarUsuario(id, dto);
+  }
+
+  // Activar/desactivar (mejora post-v2.23): mismo permiso que editar —
+  // quien puede gestionar usuarios, puede prenderlos y apagarlos.
+  @Permisos('gestionar_usuarios')
+  @Bitacora({ accion: 'usuario_activado', descripcion: (_req, r) => `Activó la cuenta de "${r.nombreParaMostrar}".` })
+  @Post('users/:id/activar')
+  activarUsuario(@Param('id') id: string) {
+    return this.usersService.cambiarActivo(id, true);
+  }
+
+  @Permisos('gestionar_usuarios')
+  @Bitacora({ accion: 'usuario_desactivado', descripcion: (_req, r) => `Desactivó la cuenta de "${r.nombreParaMostrar}".` })
+  @Post('users/:id/desactivar')
+  desactivarUsuario(@Param('id') id: string) {
+    return this.usersService.cambiarActivo(id, false);
   }
 
   // Perfiles: listar es seguro para cualquier autenticado (se necesita

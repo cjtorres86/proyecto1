@@ -16,8 +16,22 @@ export class UsersApiService {
     return this.http.post<Usuario>(`${environment.apiUrl}/users`, dto);
   }
 
-  actualizarUsuario(id: string, dto: Partial<{ contrasena: string; nombreParaMostrar: string; alcance: string; perfilId: string }>): Observable<Usuario> {
+  // usuario: solo aceptado si la cuenta todavía no tenía uno (el backend
+  // lo verifica) — completa una cuenta pendiente. rut: preparación para
+  // ClaveÚnica.
+  actualizarUsuario(
+    id: string,
+    dto: Partial<{ usuario: string; contrasena: string; rut: string; nombreParaMostrar: string; alcance: string; perfilId: string }>,
+  ): Observable<Usuario> {
     return this.http.patch<Usuario>(`${environment.apiUrl}/users/${id}`, dto);
+  }
+
+  activarUsuario(id: string): Observable<Usuario> {
+    return this.http.post<Usuario>(`${environment.apiUrl}/users/${id}/activar`, {});
+  }
+
+  desactivarUsuario(id: string): Observable<Usuario> {
+    return this.http.post<Usuario>(`${environment.apiUrl}/users/${id}/desactivar`, {});
   }
 
   listarPerfiles(): Observable<Perfil[]> {

@@ -25,6 +25,8 @@ export const TIPOS_ACCION = [
   'mes_eliminado',
   'usuario_creado',
   'usuario_editado',
+  'usuario_activado',
+  'usuario_desactivado',
   'perfil_creado',
   'perfil_editado',
 ] as const;

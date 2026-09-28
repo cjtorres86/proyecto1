@@ -14,7 +14,11 @@ export class AuthService {
 
   async validarCredenciales(usuario: string, contrasena: string): Promise<Usuario | null> {
     const encontrado = await this.usuarios.findOne({ where: { usuario } });
-    if (!encontrado) return null;
+    // Cuenta pendiente (mejora post-v2.23): un SLEP registrado de
+    // antemano, sin usuario/clave todavía asignados — no puede entrar
+    // por este camino (bcrypt.compare tampoco funcionaría con un hash
+    // null). Cuenta desactivada: rechazada aunque la clave sea correcta.
+    if (!encontrado || !encontrado.contrasenaHash || !encontrado.activo) return null;
     const claveValida = await bcrypt.compare(contrasena, encontrado.contrasenaHash);
     return claveValida ? encontrado : null;
   }

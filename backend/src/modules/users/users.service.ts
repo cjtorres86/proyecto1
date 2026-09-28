@@ -36,13 +36,46 @@ export class UsersService {
     return resto;
   }
 
+  // Completar una cuenta pendiente, o editar una ya activa (mejora
+  // post-v2.23). "usuario" solo se acepta si la cuenta todavía no tenía
+  // uno — completar un SLEP pendiente por primera vez, nunca renombrar
+  // una cuenta que ya existe. Si se manda "usuario" nuevo, hace falta
+  // "contrasena" en el mismo pedido (o ya tenerla) — no tendría sentido
+  // una cuenta con usuario pero sin ninguna clave con la que entrar.
   async actualizarUsuario(id: string, dto: ActualizarUsuarioDto) {
     const usuario = await this.usuarios.findOne({ where: { id } });
     if (!usuario) throw new NotFoundException('Usuario no encontrado.');
+
+    if (dto.usuario && dto.usuario !== usuario.usuario) {
+      if (usuario.usuario) {
+        throw new BadRequestException('Esta cuenta ya tiene un usuario asignado; no se puede cambiar por acá.');
+      }
+      const enUso = await this.usuarios.findOne({ where: { usuario: dto.usuario } });
+      if (enUso) throw new BadRequestException(`Ya existe un usuario "${dto.usuario}".`);
+      if (!dto.contrasena) throw new BadRequestException('Para asignar un usuario nuevo, también hace falta una contraseña.');
+      usuario.usuario = dto.usuario;
+    }
+    if (dto.rut && dto.rut !== usuario.rut) {
+      const enUso = await this.usuarios.findOne({ where: { rut: dto.rut } });
+      if (enUso) throw new BadRequestException(`El RUT "${dto.rut}" ya está asociado a otra cuenta.`);
+      usuario.rut = dto.rut;
+    }
     if (dto.contrasena) usuario.contrasenaHash = await bcrypt.hash(dto.contrasena, 10);
     if (dto.nombreParaMostrar) usuario.nombreParaMostrar = dto.nombreParaMostrar;
     if (dto.alcance) usuario.alcance = dto.alcance;
     if (dto.perfilId) usuario.perfilId = dto.perfilId;
+    const guardado = await this.usuarios.save(usuario);
+    const { contrasenaHash, ...resto } = guardado;
+    return resto;
+  }
+
+  // Activar/desactivar (mejora post-v2.23): una cuenta desactivada no
+  // puede iniciar sesión (AuthService.validarCredenciales), sin borrar
+  // nada — conserva su historial en la Bitácora.
+  async cambiarActivo(id: string, activo: boolean) {
+    const usuario = await this.usuarios.findOne({ where: { id } });
+    if (!usuario) throw new NotFoundException('Usuario no encontrado.');
+    usuario.activo = activo;
     const guardado = await this.usuarios.save(usuario);
     const { contrasenaHash, ...resto } = guardado;
     return resto;
