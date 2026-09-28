@@ -57,6 +57,16 @@ export class LayoutComponent implements OnInit {
   readonly mesActivo$;
   private slepActivoNombre: string | null = null;
 
+  // Perfiles a los que se les esconde "Inicio" (mejora post-v2.23) —
+  // siempre están ya en esa vista, así que sobra. Todo lo demás
+  // (incluido Superadmin, que no tiene fila de perfil) sí lo ve.
+  private static readonly PERFILES_SIN_INICIO = ['perfil_digitador', 'perfil_validador'];
+
+  get mostrarInicio(): boolean {
+    const perfilId = this.authService.usuarioActual()?.perfil?.id;
+    return !perfilId || !LayoutComponent.PERFILES_SIN_INICIO.includes(perfilId);
+  }
+
   constructor(
     readonly authService: AuthService,
     private readonly caseState: CaseStateService,

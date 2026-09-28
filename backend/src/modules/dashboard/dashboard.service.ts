@@ -114,14 +114,24 @@ export class DashboardService {
     return instr > 0 ? Math.round((cerr / instr) * 1000) / 10 : null;
   }
 
-  async getRankingSeries(mes: string, anio: string, alcance: string): Promise<{ slep: string; pct: number | null }[]> {
+  // Los 3 campos que muestra la tabla del Ranking (mejora post-v2.23):
+  // Casos informados CGR (Q04) no forma parte del cálculo del % de
+  // avance, así que se pide aparte — CAMPOS_AVANCE sigue siendo
+  // exactamente los 2 de los que depende ESE cálculo, ver pctAvanceDe.
+  private static readonly CAMPOS_RANKING = ['Q04', ...CAMPOS_AVANCE];
+
+  async getRankingSeries(
+    mes: string,
+    anio: string,
+    alcance: string,
+  ): Promise<{ slep: string; pct: number | null; casosInformados: number; sumariosInstruidos: number; procesosCerrados: number }[]> {
     const where: Record<string, string> = { mesConsolidado: mes, anioConsolidado: anio };
     if (alcance !== 'todos') where.slep = alcance;
     const contenedores = await this.contenedores.find({ where });
     const valores = await this.valoresCampo
       .createQueryBuilder('v')
       .where('v.contenedor_id IN (:...ids)', { ids: contenedores.map((c) => c.id) })
-      .andWhere('v.pregunta_id IN (:...preg)', { preg: CAMPOS_AVANCE })
+      .andWhere('v.pregunta_id IN (:...preg)', { preg: DashboardService.CAMPOS_RANKING })
       .getMany();
     const porContenedor = new Map<string, Record<string, string>>();
     valores.forEach((v) => {
@@ -130,8 +140,14 @@ export class DashboardService {
     });
     return contenedores
       .map((c) => {
-        const pct = this.pctAvanceDe(porContenedor.get(c.id) || {});
-        return { slep: c.slep, pct };
+        const vals = porContenedor.get(c.id) || {};
+        return {
+          slep: c.slep,
+          pct: this.pctAvanceDe(vals),
+          casosInformados: Number(vals.Q04) || 0,
+          sumariosInstruidos: Number(vals.Q37) || 0,
+          procesosCerrados: Number(vals.Q45) || 0,
+        };
       })
       .sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
   }

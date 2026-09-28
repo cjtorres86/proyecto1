@@ -1,3 +1,11 @@
+export interface RankingFila {
+  slep: string;
+  pct: number | null;
+  casosInformados: number;
+  sumariosInstruidos: number;
+  procesosCerrados: number;
+}
+
 export interface SerieItem { id: string; label: string; valor: number; pct?: number }
 
 export interface Metricas {
@@ -16,5 +24,5 @@ export interface DashboardDeMes {
   cicPct: SerieItem[];
   procedimientosPct: SerieItem[];
   sancionesPct: SerieItem[];
-  ranking: { slep: string; pct: number | null }[];
+  ranking: RankingFila[];
 }

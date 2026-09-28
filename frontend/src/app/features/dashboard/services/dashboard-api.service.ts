@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { DashboardDeMes } from '../../../core/models/dashboard.model';
+import { RankingFila } from '../../../core/models/dashboard.model';
 
 // Capa de datos pura (TDD, sección 13.12) — igual que CasesApiService,
 // solo llamadas HTTP, sin estado propio.
@@ -28,7 +29,7 @@ export class DashboardApiService {
     });
   }
 
-  getRanking(mes: string, anio: string): Observable<{ slep: string; pct: number | null }[]> {
-    return this.http.get<{ slep: string; pct: number | null }[]>(`${environment.apiUrl}/dashboard/ranking`, { params: { mes, anio } });
+  getRanking(mes: string, anio: string): Observable<RankingFila[]> {
+    return this.http.get<RankingFila[]>(`${environment.apiUrl}/dashboard/ranking`, { params: { mes, anio } });
   }
 }

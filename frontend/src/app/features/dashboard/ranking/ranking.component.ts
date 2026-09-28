@@ -1,5 +1,6 @@
 import { Component, Input, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RankingFila } from '../../../core/models/dashboard.model';
 
 // Equivalente a renderRankingBars() del PMV — barra por SLEP, coloreada
 // por umbral (misma escala que el resto del Dashboard). Un solo
@@ -18,9 +19,25 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './ranking.component.html',
+  // Grillas de columnas (mejora post-v2.23): mismas 7 columnas en los 2
+  // modos — N°, SLEP, Casos informados, Sumarios instruidos, Procesos
+  // cerrados, barra, % — solo cambia cuánto espacio ocupa cada una según
+  // el contexto (panel angosto del Dashboard vs. hoja carta del Informe).
+  styles: [`
+    .grilla-ranking {
+      display: grid;
+      grid-template-columns: 1.3rem minmax(0, 1.3fr) 2.1rem 2.1rem 2.5rem minmax(0, 0.9fr) 2.1rem;
+      column-gap: 0.35rem;
+      align-items: center;
+    }
+    .grilla-ranking--compacta {
+      grid-template-columns: 1.1rem minmax(0, 1fr) 2rem 2rem 2.3rem minmax(0, 1.6fr) 1.9rem;
+      column-gap: 0.3rem;
+    }
+  `],
 })
 export class RankingComponent implements OnChanges {
-  @Input({ required: true }) ranking!: { slep: string; pct: number | null }[];
+  @Input({ required: true }) ranking!: RankingFila[];
   @Input() modoCompacto = false;
 
   // Mismo truco de animación que en total-and-bars-group.component.ts:
