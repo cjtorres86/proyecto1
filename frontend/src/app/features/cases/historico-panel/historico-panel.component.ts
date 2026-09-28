@@ -98,6 +98,9 @@ export class HistoricoPanelComponent implements OnInit, AfterViewInit, OnDestroy
   tablaGeneral: { sleps: string[]; filas: { mes: string; anio: string; valores: number[] }[] } | null = null;
 
   slepDestacado: string | null = null;
+  // % del mes activo de la línea protagonista — dibuja la línea de
+  // referencia punteada en el gráfico (ver HistoricoChartComponent).
+  valorReferencia: number | null = null;
   datosSlepDestacado: HistoricoSlep | null = null;
   // Título del gráfico: "Avance general" o, para un Digitador, "Avance de <su SLEP>".
   tituloGrafico = 'Avance general';
@@ -170,6 +173,7 @@ export class HistoricoPanelComponent implements OnInit, AfterViewInit, OnDestroy
           this.tablaGeneral = null;
           this.slepDestacado = null;
           this.datosSlepDestacado = null;
+          this.valorReferencia = null;
           return;
         }
 
@@ -179,8 +183,10 @@ export class HistoricoPanelComponent implements OnInit, AfterViewInit, OnDestroy
         this.anio = mesActivo.anio;
         this.slepDestacado = destacado;
 
-        // Eje X de izquierda (más antiguo) a derecha (mes activo).
-        this.etiquetasMeses = [...resultado.general].reverse().map(clave);
+        // Eje X de izquierda (mes activo, el más reciente) a derecha (el
+        // más antiguo) — el backend ya entrega los meses en ese orden
+        // (listarMesesDisponibles), así que no hace falta darlo vuelta.
+        this.etiquetasMeses = resultado.general.map(clave);
 
         // Alinea cualquier serie a las etiquetas del eje por NOMBRE de
         // mes (no por posición), con "sin datos" convertido a 0.
@@ -199,6 +205,13 @@ export class HistoricoPanelComponent implements OnInit, AfterViewInit, OnDestroy
         // siendo reconocible entre las grises.
         // Para un Digitador, "general" ya viene acotado a su SLEP: es SU
         // línea, así que va rotulada con su nombre y siempre en color.
+        // Línea de referencia (mejora post-v2.23): el % del mes activo de
+        // quien sea la línea "protagonista" ahora mismo — el SLEP
+        // destacado si hay uno marcado, o la General si no. Se calcula
+        // acá porque acá ya se sabe exactamente cuál es esa línea; el
+        // gráfico solo la dibuja.
+        this.valorReferencia = destacado ? pctMesActivo(resultado.porSlep.find((p) => p.slep === destacado)?.datos ?? []) : pctMesActivo(resultado.general);
+
         const serieGeneral: SerieHistoricoAvance = {
           etiqueta: slepPropio ?? 'General (36 SLEP)',
           datos: alinear(resultado.general),

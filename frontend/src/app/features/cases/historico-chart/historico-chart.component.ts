@@ -39,6 +39,10 @@ export class HistoricoChartComponent implements OnChanges {
   @Input() etiquetasMeses: string[] = [];
   @Input() series: SerieHistoricoAvance[] = [];
   @Input() alto = 780;
+  // % del mes activo de la línea protagonista (mejora post-v2.23) —
+  // dibuja una línea de referencia horizontal punteada en ese valor,
+  // para comparar de un vistazo contra los meses anteriores.
+  @Input() valorReferencia: number | null = null;
 
   chartData: unknown;
   chartOptions = {
@@ -77,28 +81,48 @@ export class HistoricoChartComponent implements OnChanges {
   };
 
   ngOnChanges(): void {
-    this.chartData = {
-      labels: this.etiquetasMeses,
-      datasets: this.series.map((s) => ({
-        label: s.etiqueta,
-        // order más bajo = dibujado al final = encima (ver comentario de
-        // clase): destacado 0, General 1, SLEP grises 2.
-        order: 2 - s.prioridad,
-        data: s.datos,
-        borderColor: s.color,
-        backgroundColor: s.color,
-        borderWidth: s.prioridad === 2 ? 3 : s.prioridad === 1 ? 2.5 : 1.5,
-        // Punto en cada mes, en todas las líneas por igual — antes solo
-        // las coloreadas tenían punto, las grises no; se ven más
-        // parejas así. tension muy baja (casi 0): tramos rectos entre
-        // un mes y el siguiente, sin la curva suavizada de Chart.js —
-        // así se nota mejor cada subida/bajada real, sin que la curva
-        // "redondee" el cambio.
-        pointRadius: 3,
-        pointHoverRadius: 4,
-        tension: 0.05,
-        spanGaps: true,
-      })),
-    };
+    const datasets: unknown[] = this.series.map((s) => ({
+      label: s.etiqueta,
+      // order más bajo = dibujado al final = encima (ver comentario de
+      // clase): destacado 0, General 1, SLEP grises 2.
+      order: 2 - s.prioridad,
+      data: s.datos,
+      borderColor: s.color,
+      backgroundColor: s.color,
+      borderWidth: s.prioridad === 2 ? 3 : s.prioridad === 1 ? 2.5 : 1.5,
+      // Punto en cada mes, en todas las líneas por igual — antes solo
+      // las coloreadas tenían punto, las grises no; se ven más
+      // parejas así. tension muy baja (casi 0): tramos rectos entre
+      // un mes y el siguiente, sin la curva suavizada de Chart.js —
+      // así se nota mejor cada subida/bajada real, sin que la curva
+      // "redondee" el cambio.
+      pointRadius: 3,
+      pointHoverRadius: 4,
+      tension: 0.05,
+      spanGaps: true,
+    }));
+
+    // Línea de referencia (mejora post-v2.23): un dataset más, no un
+    // plugin aparte — un valor CONSTANTE repetido en cada mes dibuja una
+    // recta horizontal. order: 3 (más alto que cualquier serie real, ver
+    // comentario de clase) la deja SIEMPRE detrás de las líneas, para que
+    // no tape ningún punto. Mismo color que la línea protagonista, así se
+    // lee de un vistazo a cuál pertenece.
+    if (this.valorReferencia !== null && this.etiquetasMeses.length) {
+      const colorReferencia = this.series.find((s) => s.prioridad >= 1)?.color ?? '#94A3B8';
+      datasets.push({
+        label: `Mes activo (${this.valorReferencia}%)`,
+        order: 3,
+        data: this.etiquetasMeses.map(() => this.valorReferencia),
+        borderColor: colorReferencia,
+        borderWidth: 1.5,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        tension: 0,
+      });
+    }
+
+    this.chartData = { labels: this.etiquetasMeses, datasets };
   }
 }
