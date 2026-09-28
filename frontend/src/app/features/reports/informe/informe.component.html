@@ -13,13 +13,51 @@
       <p class="text-gray-400 text-sm">Preparando tu PDF…</p>
     </div>
   }
-  <div class="print:hidden mb-4 flex justify-end w-[816px] mx-auto" [class.invisible]="imprimirAlCargar">
+  <!-- Barra lateral (mejora post-v2.23): imprimir + cambiar de SLEP,
+       pegada al lado izquierdo de la hoja (ver .barra-lateral-informe),
+       no arriba de ella como antes. -->
+  <div class="barra-lateral-informe print:hidden flex flex-col gap-2" [class.invisible]="imprimirAlCargar">
     <button
       (click)="imprimir()"
-      class="text-xs border border-blue-800 text-blue-800 rounded px-3 py-1.5 cursor-pointer"
+      class="text-xs border border-blue-800 text-blue-800 rounded px-3 py-1.5 cursor-pointer bg-white"
     >
       Imprimir / Guardar como PDF
     </button>
+
+    <!-- Selector de SLEP: un botón que despliega la lista de 36 hacia
+         abajo, del mismo ancho — la persona elige uno y la página se
+         recarga con ese SLEP (ver cambiarSlep()). -->
+    <div class="relative">
+      <button
+        (click)="selectorSlepAbierto = !selectorSlepAbierto"
+        class="w-full text-xs border border-gray-300 text-gray-700 rounded px-3 py-1.5 cursor-pointer bg-white flex items-center justify-between gap-1"
+      >
+        <span class="truncate">{{ slep ? slep : 'Todos los SLEP' }}</span>
+        <span class="text-gray-400 shrink-0">{{ selectorSlepAbierto ? '▲' : '▼' }}</span>
+      </button>
+      @if (selectorSlepAbierto) {
+        <!-- Fondo invisible: cerrar tocando afuera, sin una librería aparte. -->
+        <div class="fixed inset-0 z-10" (click)="selectorSlepAbierto = false"></div>
+        <div class="absolute z-20 top-full mt-1 w-full max-h-72 overflow-y-auto bg-white border border-gray-200 rounded shadow-lg">
+          <button
+            (click)="cambiarSlep(null)"
+            class="w-full text-left text-xs px-3 py-1.5 cursor-pointer hover:bg-gray-50"
+            [class.font-semibold]="!slep"
+          >
+            Todos los SLEP
+          </button>
+          @for (s of catalogoSleps; track s) {
+            <button
+              (click)="cambiarSlep(s)"
+              class="w-full text-left text-xs px-3 py-1.5 cursor-pointer hover:bg-gray-50"
+              [class.font-semibold]="s === slep"
+            >
+              {{ s }}
+            </button>
+          }
+        </div>
+      }
+    </div>
   </div>
 
   @if (!listoParaMostrar) {
@@ -32,12 +70,10 @@
     <div class="hoja-informe relative break-after-page block mx-auto bg-white shadow-md mb-6 w-[816px] min-h-[1056px] p-10 print:shadow-none print:mb-0 print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
       <div #contenidoHoja class="contenido-hoja flex flex-col gap-5 w-[736px] mx-auto">
         <header class="border-b border-gray-200 pb-4">
-          <h1 class="text-2xl font-bold text-[#1E3A8A]">Avance de Sumarios — Informe {{ mes }} {{ anio }}</h1>
-          @if (slep) {
-            <p class="text-sm text-gray-500 mt-1">SLEP: {{ slep }}</p>
-          } @else {
-            <p class="text-sm text-gray-500 mt-1">{{ datos.totalContenedores }} SLEP consolidados</p>
-          }
+          <h1 class="text-lg font-bold text-[#1E3A8A] flex items-baseline justify-between gap-2">
+            <span>Avance de Sumarios — Informe {{ mes }} {{ anio }}</span>
+            <span class="text-sm font-normal text-gray-500 shrink-0">{{ slep ? slep : datos.totalContenedores + ' SLEP consolidados' }}</span>
+          </h1>
         </header>
         <app-advance-indicator [pct]="datos.metricas.pctAvance" />
         <!-- Tooltips de detalle por SLEP (mejora post-v2.23): se apaga el

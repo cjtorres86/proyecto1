@@ -53,16 +53,19 @@ import { TooltipHojaComponent, TooltipHojaFila } from '../tooltip-hoja/tooltip-h
         break-inside: avoid;
       }
     }
-    /* Tooltip del Ranking Interactivo (mejora post-v2.23, corrección):
-       "absolute" respecto a la HOJA (que tiene position:relative), no
-       "fixed" respecto a la pantalla — así queda pegado al borde
-       izquierdo de la hoja siempre, sin importar cuán ancha sea la
-       ventana del navegador, en vez de quedar pegado al borde de la
-       pantalla en monitores anchos. */
-    .tooltip-ranking {
-      position: absolute;
-      top: 90px;
-      right: calc(100% + 20px);
+    /* Barra lateral (botón Imprimir + selector de SLEP), mejora
+       post-v2.23: "fixed" para que siga visible al hacer scroll en un
+       informe con varias hojas — calculada con el mismo truco que usa
+       TooltipHojaComponent: la hoja mide 816px y está centrada
+       (mx-auto), así que su borde izquierdo, en cualquier ancho de
+       ventana, está siempre a 50% - 408px. calc(50% + 428px) en "right"
+       deja la barra pegada a ESE borde (408px + 20px de aire), nunca al
+       borde de la pantalla. */
+    .barra-lateral-informe {
+      position: fixed;
+      top: 24px;
+      right: calc(50% + 428px);
+      width: 170px;
     }
   `],
 })
@@ -104,6 +107,13 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // rankingDetalle ya cargado (todos los campos de los 36 SLEP) — no
   // hace falta pedirle nada nuevo al servidor.
   campoConMouseEncima: string | null = null;
+
+  // Selector de SLEP (mejora post-v2.23): la lista completa de 36, para
+  // elegir uno distinto sin salir del Informe. Mismo catálogo que ya usa
+  // "Crear Mes" — si ya llegaron los 36 por rankingDetalle, se reutilizan
+  // (sin pedir nada de más); si no (tipo=errores), se piden aparte.
+  catalogoSleps: string[] = [];
+  selectorSlepAbierto = false;
 
   // 'errores' fluye libre en varias hojas (sin ajuste-a-una-hoja);
   // 'ranking' y 'general' sí usan ese ajuste, como el Dashboard y el
@@ -159,6 +169,18 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     return campo ? `${campo.numero}. ${campo.nombre}` : preguntaId;
   }
 
+  // Cambiar de SLEP (mejora post-v2.23): recarga la misma página con el
+  // nuevo ?slep= — más simple y confiable que volver a pedir cada dato
+  // por separado (Dashboard, Formulario, Errores, Ranking, los 4 a la
+  // vez) y no arriesga quedar con datos de 2 SLEP mezclados a medio pedir.
+  cambiarSlep(nuevoSlep: string | null): void {
+    const params = new URLSearchParams();
+    if (nuevoSlep) params.set('slep', nuevoSlep);
+    if (this.tipo !== 'general') params.set('tipo', this.tipo);
+    const query = params.toString();
+    window.location.href = `/informe/${encodeURIComponent(this.mes)}/${encodeURIComponent(this.anio)}${query ? '?' + query : ''}`;
+  }
+
   ngOnInit(): void {
     // El Informe/PDF siempre se ve igual sin importar el tema elegido —
     // es un documento que se imprime y se archiva, no una pantalla de
@@ -176,6 +198,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.mes = this.route.snapshot.paramMap.get('mes') ?? '';
     this.anio = this.route.snapshot.paramMap.get('anio') ?? '';
     this.slep = this.route.snapshot.queryParamMap.get('slep');
+    this.casesApi.listarSlep().subscribe((lista) => (this.catalogoSleps = lista.map((s) => s.nombre)));
     // Título real de la pestaña (reemplaza el genérico "Frontend"): es el
     // nombre sugerido al guardar y el que usa el pie del PDF.
     const sufijoTitulo = this.slep ? ` - ${this.slep}` : '';
