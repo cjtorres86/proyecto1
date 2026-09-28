@@ -72,8 +72,8 @@ export class DownloadModalComponent {
   // abrir el modal, se agrega a la URL — el Informe ya sabe filtrarse
   // por SLEP (mismo mecanismo del Dashboard por SLEP) y el ranking se
   // esconde solo, sin código nuevo para eso.
-  verInforme(): void {
-    this.abrirInforme(false);
+  verInformeGeneral(): void {
+    this.abrirInforme(false, false);
   }
 
   // PDF (opción B): abre el Informe en otra pestaña y el propio Informe
@@ -82,14 +82,27 @@ export class DownloadModalComponent {
   // persona, al instante — antes lo armaba el servidor gratuito de Render
   // desde cero (abrir Chrome, cargar el sistema, pedir los datos…) y
   // tardaba mucho.
-  descargarPDF(): void {
-    this.abrirInforme(true);
+  descargarPDFGeneral(): void {
+    this.abrirInforme(true, false);
   }
 
-  private abrirInforme(imprimir: boolean): void {
+  // Informe de Errores (mejora post-v2.23): la MISMA página del Informe,
+  // con ?tipo=errores — reutiliza toda la maquetación, el ajuste de
+  // impresión y el mecanismo de PDF del Informe General; solo cambia qué
+  // hoja(s) muestra.
+  verInformeErrores(): void {
+    this.abrirInforme(false, true);
+  }
+
+  descargarPDFErrores(): void {
+    this.abrirInforme(true, true);
+  }
+
+  private abrirInforme(imprimir: boolean, soloErrores: boolean): void {
     const params = new URLSearchParams();
     if (this.data.slep) params.set('slep', this.data.slep);
     if (imprimir) params.set('imprimir', '1');
+    if (soloErrores) params.set('tipo', 'errores');
     const query = params.toString();
     window.open(`/informe/${encodeURIComponent(this.data.mes)}/${encodeURIComponent(this.data.anio)}${query ? '?' + query : ''}`, '_blank');
   }

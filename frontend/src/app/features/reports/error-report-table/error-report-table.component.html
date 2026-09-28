@@ -6,15 +6,19 @@
     <ng-template pTemplate="header">
       <tr>
         <th pSortableColumn="slep">SLEP <p-sortIcon field="slep" /></th>
-        <th pSortableColumn="campo">Campo <p-sortIcon field="campo" /></th>
-        <th>Detalle</th>
+        <th pSortableColumn="campo">Pregunta <p-sortIcon field="campo" /></th>
+        <th>Fórmula</th>
+        <th>Explicación</th>
+        <th>Dato ingresado</th>
       </tr>
     </ng-template>
     <ng-template pTemplate="body" let-fila>
       <tr>
         <td class="font-semibold">{{ fila.slep }}</td>
         <td>{{ fila.campo }}</td>
+        <td class="font-mono text-xs text-gray-600">{{ fila.formula }}</td>
         <td class="text-red-700 text-sm">{{ fila.mensaje }}</td>
+        <td class="font-mono">{{ fila.valorIngresado || '—' }}</td>
       </tr>
     </ng-template>
   </p-table>

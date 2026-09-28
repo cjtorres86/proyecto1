@@ -65,9 +65,13 @@ export class CasesController {
   }
 
   @Get('errores')
-  async listarErrores(@Query('mes') mes: string, @Query('anio') anio: string, @UsuarioActual() usuario: Usuario) {
-    const alcance = usuario.esSuperadmin ? 'todos' : usuario.alcance;
-    return this.casesService.listarErroresDelMes(mes, anio, alcance);
+  async listarErrores(
+    @Query('mes') mes: string,
+    @Query('anio') anio: string,
+    @Query('slep') slepPedido: string | undefined,
+    @UsuarioActual() usuario: Usuario,
+  ) {
+    return this.casesService.listarErroresDelMes(mes, anio, this.resolverAlcance(usuario, slepPedido));
   }
 
   // Antes de ':id' por la misma razón que 'meses-disponibles' y 'errores'.

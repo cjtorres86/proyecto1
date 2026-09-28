@@ -5,6 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { DashboardApiService } from '../../dashboard/services/dashboard-api.service';
 import { CasesApiService } from '../../cases/services/cases-api.service';
+import { ReportsApiService, ErrorFila } from '../services/reports-api.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { DashboardDeMes } from '../../../core/models/dashboard.model';
 import { CampoConValor } from '../../../core/models/case.model';
@@ -40,6 +41,16 @@ import { RankingComponent } from '../../dashboard/ranking/ranking.component';
         height: var(--alto-impresion, auto);
         justify-content: space-between;
       }
+      // Hoja de errores: repite el encabezado de la tabla en cada hoja
+      // impresa nueva — técnica estándar de impresión, no algo propio de
+      // este sistema. Solo aplica a esta tabla (fuera de .contenido-hoja,
+      // que es la de ajuste-a-una-hoja de las demás).
+      .tabla-errores thead {
+        display: table-header-group;
+      }
+      .tabla-errores tr {
+        break-inside: avoid;
+      }
     }
   `],
 })
@@ -57,6 +68,15 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // sistema — pedirle un SLEP puntual en vez de 'todos' devuelve el
   // formulario real de ese SLEP, sin ningún cálculo nuevo.
   camposFormulario: CampoConValor[] = [];
+  // Hoja de errores (mejora post-v2.23): reutiliza EXACTAMENTE el mismo
+  // dato que ya alimenta la pantalla "Errores" del sistema — mismo
+  // endpoint, mismo cálculo, sin nada nuevo del lado del servidor.
+  // ?tipo=errores (InformeComponent al final del botón "Informe de
+  // Errores"): muestra SOLO esta hoja, sin Dashboard/Ranking/Formulario.
+  // Por defecto ('general'): esta hoja se agrega AL FINAL de las demás.
+  errores: ErrorFila[] = [];
+  erroresCargados = false;
+  soloErrores = false;
 
   // Geometría (96 px por pulgada). Carta = 816 x 1056 px. Márgenes de
   // impresión (@page en styles.scss): 1cm arriba/lados, 1,5cm abajo
@@ -71,7 +91,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   private subHojas?: Subscription;
   // Llegó desde el botón "PDF" (?imprimir=1): al terminar de dibujarse,
   // abre sola la ventana de impresión del navegador ("Guardar como PDF").
-  private imprimirAlCargar = false;
+  imprimirAlCargar = false; // leído por la plantilla (overlay "Preparando tu PDF…")
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -80,7 +100,17 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     private readonly titleService: Title,
     private readonly theme: ThemeService,
     private readonly location: Location,
+    private readonly reportsApi: ReportsApiService,
   ) {}
+
+  // Todo lo que hace falta según el tipo de informe ya llegó — recién
+  // ahí se muestra algo (nunca a medio cargar) y se puede intentar
+  // imprimir. "Informe de Errores": solo espera los errores. "Informe
+  // General": espera Dashboard, Formulario Y Errores (se agrega al final).
+  get listoParaMostrar(): boolean {
+    if (this.soloErrores) return this.erroresCargados;
+    return !!this.datos && this.camposFormulario.length > 0 && this.erroresCargados;
+  }
 
   ngOnInit(): void {
     // El Informe/PDF siempre se ve igual sin importar el tema elegido —
@@ -90,6 +120,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     // volver al resto del sistema, su tema sigue como lo dejó.
     this.theme.forzarClaroSinGuardar();
     this.imprimirAlCargar = this.route.snapshot.queryParamMap.get('imprimir') === '1';
+    this.soloErrores = this.route.snapshot.queryParamMap.get('tipo') === 'errores';
     // Sin animaciones en esta pestaña: la impresión debe tomar las barras
     // ya en su valor final, no a medio "llenarse" (ver .sin-animaciones en
     // styles.scss).
@@ -100,11 +131,23 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Título real de la pestaña (reemplaza el genérico "Frontend"): es el
     // nombre sugerido al guardar y el que usa el pie del PDF.
     const sufijoTitulo = this.slep ? ` - ${this.slep}` : '';
-    this.titleService.setTitle(`Informe Avance de Sumarios - ${this.mes} ${this.anio}${sufijoTitulo}`);
-    this.dashboardApi.getDashboard(this.mes, this.anio, this.slep ?? undefined).subscribe((datos) => (this.datos = datos));
-    this.casesApi
-      .getTotalGeneral(this.mes, this.anio, this.slep ?? undefined)
-      .subscribe((r) => (this.camposFormulario = r.campos));
+    const nombreInforme = this.soloErrores ? 'Informe de Errores' : 'Informe Avance de Sumarios';
+    this.titleService.setTitle(`${nombreInforme} - ${this.mes} ${this.anio}${sufijoTitulo}`);
+    this.reportsApi.listarErrores(this.mes, this.anio, this.slep ?? undefined).subscribe((lista) => {
+      this.errores = lista;
+      this.erroresCargados = true;
+      this.programarAjuste();
+    });
+    if (!this.soloErrores) {
+      this.dashboardApi.getDashboard(this.mes, this.anio, this.slep ?? undefined).subscribe((datos) => {
+        this.datos = datos;
+        this.programarAjuste();
+      });
+      this.casesApi.getTotalGeneral(this.mes, this.anio, this.slep ?? undefined).subscribe((r) => {
+        this.camposFormulario = r.campos;
+        this.programarAjuste();
+      });
+    }
   }
 
   ngAfterViewInit(): void {
@@ -125,12 +168,25 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // todo esté dibujado en su estado final.
   private abrirImpresion(): void {
     this.imprimirAlCargar = false;
-    const slep = this.slep ? `?slep=${encodeURIComponent(this.slep)}` : '';
-    this.location.replaceState(`/informe/${encodeURIComponent(this.mes)}/${encodeURIComponent(this.anio)}${slep}`);
+    const params = new URLSearchParams();
+    if (this.slep) params.set('slep', this.slep);
+    if (this.soloErrores) params.set('tipo', 'errores');
+    const query = params.toString();
+    this.location.replaceState(`/informe/${encodeURIComponent(this.mes)}/${encodeURIComponent(this.anio)}${query ? '?' + query : ''}`);
     requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
   }
 
+  // Con ?tipo=errores no hay hojas de ajuste-a-carta que calcular (la
+  // hoja de errores fluye libre en varias hojas, ver plantilla) — solo
+  // hace falta esperar a que los datos y las fuentes estén listos.
   private programarAjuste(): void {
+    if (!this.listoParaMostrar) return;
+    if (this.soloErrores) {
+      document.fonts.ready.then(() => {
+        if (this.imprimirAlCargar) this.abrirImpresion();
+      });
+      return;
+    }
     if (!this.contenidosHojas?.length) return;
     setTimeout(() => {
       this.calcularAjusteImpresion();

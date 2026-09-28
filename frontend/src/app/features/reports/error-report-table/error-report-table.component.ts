@@ -3,9 +3,7 @@ import { CommonModule } from '@angular/common';
 import { TableModule } from 'primeng/table';
 import { Subscription, switchMap, of } from 'rxjs';
 import { CaseStateService } from '../../../core/services/case-state.service';
-import { ReportsApiService } from '../services/reports-api.service';
-
-interface ErrorFila { slep: string; campo: string; mensaje: string }
+import { ReportsApiService, ErrorFila } from '../services/reports-api.service';
 
 // Informe de errores (TDD, sección 9.5) — tabla con muchas filas
 // potenciales, ordenable/filtrable: PrimeNG p-table, no Material

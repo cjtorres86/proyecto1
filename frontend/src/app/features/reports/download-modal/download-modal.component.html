@@ -11,8 +11,13 @@
       <button mat-stroked-button [disabled]="descargando" (click)="descargarExcelPorSlep()">{{ textoConsolidadoPorSlep }} (Excel)</button>
     }
     @if (authService.can('exportar_informe')) {
-      <button mat-stroked-button [disabled]="descargando" (click)="verInforme()">Informe Interactivo</button>
-      <button mat-stroked-button [disabled]="descargando" (click)="descargarPDF()">PDF</button>
+      <button mat-stroked-button [disabled]="descargando" (click)="verInformeGeneral()">Informe General — Interactivo</button>
+      <button mat-stroked-button [disabled]="descargando" (click)="descargarPDFGeneral()">Informe General — PDF</button>
+      <!-- Informe de Errores (mejora post-v2.23): mismo permiso que el
+           Informe General — reutiliza la misma pantalla de Errores del
+           sistema, solo que compuesta como su propio informe imprimible. -->
+      <button mat-stroked-button [disabled]="descargando" (click)="verInformeErrores()">Informe de Errores — Interactivo</button>
+      <button mat-stroked-button [disabled]="descargando" (click)="descargarPDFErrores()">Informe de Errores — PDF</button>
     }
   </div>
 </mat-dialog-content>

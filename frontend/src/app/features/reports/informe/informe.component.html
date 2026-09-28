@@ -1,5 +1,19 @@
 <div class="bg-gray-100 min-h-screen py-8 print:bg-white print:min-h-0 print:py-0">
-  <div class="print:hidden mb-4 flex justify-end w-[816px] mx-auto">
+  <!-- "Preparando tu PDF…" (mejora post-v2.23): al llegar desde el botón
+       "PDF" de la ventana Descargar, tapa el informe interactivo con un
+       mensaje simple mientras carga — la impresión SÍ necesita que la
+       página esté dibujada (no hay forma de saltarse eso), pero así la
+       persona no ve la pantalla completa con sus botones, solo un aviso
+       de que su PDF se está preparando. Desaparece justo antes de
+       imprimir (ver abrirImpresion()). print:hidden como respaldo: nunca
+       debe aparecer en el PDF, pase lo que pase.
+  -->
+  @if (imprimirAlCargar) {
+    <div class="fixed inset-0 z-50 bg-gray-50 flex items-center justify-center print:hidden">
+      <p class="text-gray-400 text-sm">Preparando tu PDF…</p>
+    </div>
+  }
+  <div class="print:hidden mb-4 flex justify-end w-[816px] mx-auto" [class.invisible]="imprimirAlCargar">
     <button
       (click)="imprimir()"
       class="text-xs border border-blue-800 text-blue-800 rounded px-3 py-1.5 cursor-pointer"
@@ -8,9 +22,10 @@
     </button>
   </div>
 
-  @if (!datos || !camposFormulario.length) {
-    <p class="text-gray-400 text-center">Cargando informe…</p>
+  @if (!listoParaMostrar) {
+    <p class="text-gray-400 text-center">{{ soloErrores ? 'Cargando informe de errores…' : 'Cargando informe…' }}</p>
   } @else {
+    @if (!soloErrores && datos) {
     <!-- HOJA 1: Dashboard -->
     <div class="hoja-informe break-after-page block mx-auto bg-white shadow-md mb-6 w-[816px] min-h-[1056px] p-10 print:shadow-none print:mb-0 print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
       <div #contenidoHoja class="contenido-hoja flex flex-col gap-5 w-[736px] mx-auto">
@@ -65,12 +80,11 @@
       </div>
     }
 
-    <!-- Última hoja siempre: Formulario con sus respuestas — el mismo
-         endpoint del "Formulario total general" del sistema, pidiendo
-         el SLEP puntual (?slep=...) en vez de 'todos' cuando aplica.
-         Sin break-after-page: siempre es la última, sea el informe
-         general (hoja 3) o por SLEP (hoja 2, sin ranking antes). -->
-    <div class="hoja-informe block mx-auto bg-white shadow-md w-[816px] min-h-[1056px] p-10 print:shadow-none print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
+    <!-- Formulario con sus respuestas — el mismo endpoint del "Formulario
+         total general" del sistema, pidiendo el SLEP puntual (?slep=...)
+         en vez de 'todos' cuando aplica. Con break-after-page: la hoja
+         de Errores viene siempre después (ver abajo). -->
+    <div class="hoja-informe break-after-page block mx-auto bg-white shadow-md mb-6 w-[816px] min-h-[1056px] p-10 print:shadow-none print:mb-0 print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
       <div #contenidoHoja class="contenido-hoja flex flex-col gap-3 w-[736px] mx-auto">
         <h2 class="text-lg font-bold text-[#1E3A8A]">Formulario — {{ slep ? slep : 'Total general' }}</h2>
         <div class="flex flex-col">
@@ -81,6 +95,49 @@
             </div>
           }
         </div>
+      </div>
+    </div>
+    }
+
+    <!-- Hoja de Errores (mejora post-v2.23): a diferencia de las demás,
+         NO tiene #contenidoHoja (no entra en el ajuste-a-una-hoja) ni
+         alto fijo — fluye libremente en tantas hojas carta como haga
+         falta, con el mismo tamaño de letra y estética del resto (ver
+         miga de estilo abajo). Siempre la última: sola cuando
+         ?tipo=errores, o después del Formulario en el informe general.
+         Sin break-after-page: es lo último que se imprime. -->
+    <div class="hoja-informe block mx-auto bg-white shadow-md w-[816px] min-h-[1056px] p-10 print:shadow-none print:w-full print:min-h-0 print:p-6">
+      <div class="flex flex-col gap-3 w-[736px] mx-auto">
+        <header class="border-b border-gray-200 pb-4">
+          <h2 class="text-lg font-bold text-[#1E3A8A]">Informe de Errores — {{ mes }} {{ anio }}</h2>
+          <p class="text-sm text-gray-500 mt-1">{{ slep ? slep : 'Todos los SLEP' }} — {{ errores.length }} {{ errores.length === 1 ? 'error' : 'errores' }} de validación</p>
+        </header>
+        @if (!errores.length) {
+          <p class="text-sm text-gray-400">Sin errores de validación.</p>
+        } @else {
+          <table class="tabla-errores w-full text-[11px] border-collapse">
+            <thead>
+              <tr class="border-b border-gray-300 text-left">
+                <th class="py-1.5 pr-2 w-[14%]">SLEP</th>
+                <th class="py-1.5 pr-2 w-[22%]">Pregunta</th>
+                <th class="py-1.5 pr-2 w-[24%]">Fórmula</th>
+                <th class="py-1.5 pr-2 w-[28%]">Explicación</th>
+                <th class="py-1.5 w-[12%]">Dato ingresado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of errores; track e.slep + e.campo + e.mensaje) {
+                <tr class="border-b border-gray-100 align-top">
+                  <td class="py-1 pr-2 font-semibold">{{ e.slep }}</td>
+                  <td class="py-1 pr-2">{{ e.campo }}</td>
+                  <td class="py-1 pr-2 font-mono text-[10px] text-gray-600">{{ e.formula }}</td>
+                  <td class="py-1 pr-2 text-red-700">{{ e.mensaje }}</td>
+                  <td class="py-1 font-mono">{{ e.valorIngresado || '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
       </div>
     </div>
   }

@@ -345,7 +345,11 @@ export class CasesService {
     const recetaPorFormulario = this.agrupar(recetas, (r) => r.formularioId);
     const valoresPorContenedor = this.agrupar(valores, (v) => v.contenedorId);
 
-    const errores: { slep: string; campo: string; mensaje: string }[] = [];
+    // formula y valorIngresado (mejora post-v2.23): ya se calculaban acá
+    // adentro para evaluar si el campo cumplía o no, pero se descartaban
+    // antes de llegar a la lista final. Los usa el Informe de Errores del
+    // Informe Interactivo/PDF, y de paso mejora esta misma pantalla.
+    const errores: { slep: string; campo: string; formula: string; mensaje: string; valorIngresado: string }[] = [];
     for (const c of contenedores) {
       const receta = recetaPorFormulario.get(c.formularioId) ?? [];
       const valorPorPregunta = new Map((valoresPorContenedor.get(c.id) ?? []).map((v) => [v.preguntaId, v.valor]));
@@ -358,7 +362,13 @@ export class CasesService {
         ((r.validaciones || []) as Validacion[]).forEach((val) => {
           const res = this.validacionService.evaluarValidacion(val, valoresPorPosicion);
           if (res.aplica && !res.cumple) {
-            errores.push({ slep: c.slep, campo: `${r.posicionCanonica}. ${r.pregunta.nombre}`, mensaje: res.msg ?? val.msgFail });
+            errores.push({
+              slep: c.slep,
+              campo: `${r.posicionCanonica}. ${r.pregunta.nombre}`,
+              formula: val.formula,
+              mensaje: res.msg ?? val.msgFail,
+              valorIngresado: valorPorPregunta.get(r.preguntaId) ?? '',
+            });
           }
         });
       });
