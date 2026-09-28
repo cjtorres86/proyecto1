@@ -5,7 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { DashboardApiService } from '../../dashboard/services/dashboard-api.service';
 import { CasesApiService } from '../../cases/services/cases-api.service';
-import { ReportsApiService, ErrorFila } from '../services/reports-api.service';
+import { ReportsApiService, ErrorFila, RankingDetalleFila } from '../services/reports-api.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { DashboardDeMes } from '../../../core/models/dashboard.model';
 import { CampoConValor } from '../../../core/models/case.model';
@@ -41,16 +41,27 @@ import { RankingComponent } from '../../dashboard/ranking/ranking.component';
         height: var(--alto-impresion, auto);
         justify-content: space-between;
       }
-      // Hoja de errores: repite el encabezado de la tabla en cada hoja
-      // impresa nueva — técnica estándar de impresión, no algo propio de
-      // este sistema. Solo aplica a esta tabla (fuera de .contenido-hoja,
-      // que es la de ajuste-a-una-hoja de las demás).
+      /* Hoja de errores: repite el encabezado de la tabla en cada hoja
+         impresa nueva — técnica estándar de impresión, no algo propio de
+         este sistema. Solo aplica a esta tabla (fuera de .contenido-hoja,
+         que es la de ajuste-a-una-hoja de las demás). */
       .tabla-errores thead {
         display: table-header-group;
       }
       .tabla-errores tr {
         break-inside: avoid;
       }
+    }
+    /* Tooltip del Ranking Interactivo (mejora post-v2.23, corrección):
+       "absolute" respecto a la HOJA (que tiene position:relative), no
+       "fixed" respecto a la pantalla — así queda pegado al borde
+       izquierdo de la hoja siempre, sin importar cuán ancha sea la
+       ventana del navegador, en vez de quedar pegado al borde de la
+       pantalla en monitores anchos. */
+    .tooltip-ranking {
+      position: absolute;
+      top: 90px;
+      right: calc(100% + 20px);
     }
   `],
 })
@@ -76,7 +87,21 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // Por defecto ('general'): esta hoja se agrega AL FINAL de las demás.
   errores: ErrorFila[] = [];
   erroresCargados = false;
-  soloErrores = false;
+
+  // Ranking Interactivo (mejora post-v2.23): hoja propia dentro del
+  // MISMO Informe (no una página aparte) — misma maquetación, mismo
+  // ajuste a una hoja carta y mismo mecanismo de PDF que las demás. Solo
+  // en modo interactivo tiene sentido el detalle al pasar el mouse: un
+  // PDF no puede reaccionar al mouse, así que en PDF se ve la tabla sin
+  // esa interacción, nada más.
+  rankingDetalle: RankingDetalleFila[] = [];
+  rankingDetalleCargado = false;
+  slepConMouseEncima: RankingDetalleFila | null = null;
+
+  // 'errores' fluye libre en varias hojas (sin ajuste-a-una-hoja);
+  // 'ranking' y 'general' sí usan ese ajuste, como el Dashboard y el
+  // Formulario.
+  tipo: 'general' | 'errores' | 'ranking' = 'general';
 
   // Geometría (96 px por pulgada). Carta = 816 x 1056 px. Márgenes de
   // impresión (@page en styles.scss): 1cm arriba/lados, 1,5cm abajo
@@ -108,7 +133,8 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // imprimir. "Informe de Errores": solo espera los errores. "Informe
   // General": espera Dashboard, Formulario Y Errores (se agrega al final).
   get listoParaMostrar(): boolean {
-    if (this.soloErrores) return this.erroresCargados;
+    if (this.tipo === 'errores') return this.erroresCargados;
+    if (this.tipo === 'ranking') return this.rankingDetalleCargado;
     return !!this.datos && this.camposFormulario.length > 0 && this.erroresCargados;
   }
 
@@ -120,7 +146,8 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     // volver al resto del sistema, su tema sigue como lo dejó.
     this.theme.forzarClaroSinGuardar();
     this.imprimirAlCargar = this.route.snapshot.queryParamMap.get('imprimir') === '1';
-    this.soloErrores = this.route.snapshot.queryParamMap.get('tipo') === 'errores';
+    const tipoPedido = this.route.snapshot.queryParamMap.get('tipo');
+    this.tipo = tipoPedido === 'errores' || tipoPedido === 'ranking' ? tipoPedido : 'general';
     // Sin animaciones en esta pestaña: la impresión debe tomar las barras
     // ya en su valor final, no a medio "llenarse" (ver .sin-animaciones en
     // styles.scss).
@@ -131,14 +158,24 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Título real de la pestaña (reemplaza el genérico "Frontend"): es el
     // nombre sugerido al guardar y el que usa el pie del PDF.
     const sufijoTitulo = this.slep ? ` - ${this.slep}` : '';
-    const nombreInforme = this.soloErrores ? 'Informe de Errores' : 'Informe Avance de Sumarios';
+    const nombreInforme = this.tipo === 'errores' ? 'Informe de Errores' : this.tipo === 'ranking' ? 'Ranking' : 'Informe Avance de Sumarios';
     this.titleService.setTitle(`${nombreInforme} - ${this.mes} ${this.anio}${sufijoTitulo}`);
+
+    if (this.tipo === 'ranking') {
+      this.reportsApi.getRankingDetalle(this.mes, this.anio, this.slep ?? undefined).subscribe((lista) => {
+        this.rankingDetalle = lista;
+        this.rankingDetalleCargado = true;
+        this.programarAjuste();
+      });
+      return;
+    }
+
     this.reportsApi.listarErrores(this.mes, this.anio, this.slep ?? undefined).subscribe((lista) => {
       this.errores = lista;
       this.erroresCargados = true;
       this.programarAjuste();
     });
-    if (!this.soloErrores) {
+    if (this.tipo === 'general') {
       this.dashboardApi.getDashboard(this.mes, this.anio, this.slep ?? undefined).subscribe((datos) => {
         this.datos = datos;
         this.programarAjuste();
@@ -170,7 +207,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.imprimirAlCargar = false;
     const params = new URLSearchParams();
     if (this.slep) params.set('slep', this.slep);
-    if (this.soloErrores) params.set('tipo', 'errores');
+    if (this.tipo !== 'general') params.set('tipo', this.tipo);
     const query = params.toString();
     this.location.replaceState(`/informe/${encodeURIComponent(this.mes)}/${encodeURIComponent(this.anio)}${query ? '?' + query : ''}`);
     requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
@@ -181,7 +218,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // hace falta esperar a que los datos y las fuentes estén listos.
   private programarAjuste(): void {
     if (!this.listoParaMostrar) return;
-    if (this.soloErrores) {
+    if (this.tipo === 'errores') {
       document.fonts.ready.then(() => {
         if (this.imprimirAlCargar) this.abrirImpresion();
       });
@@ -237,5 +274,13 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   imprimir(): void {
     window.print();
+  }
+
+  colorBarraRanking(pct: number | null): string {
+    if (pct === null) return '#D1D5DB';
+    if (pct >= 75) return '#00E0FF';
+    if (pct >= 50) return '#16A34A';
+    if (pct >= 25) return '#D97706';
+    return '#DC2626';
   }
 }

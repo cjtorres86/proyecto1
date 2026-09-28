@@ -70,9 +70,15 @@ export class DownloadModalComponent {
         },
         {
           tipo: 'html',
-          titulo: 'Ranking Interactivo',
-          descripcion: 'Solo el ranking — pasa el mouse sobre un SLEP para ver sus 37 campos.',
-          accion: () => this.verRankingInteractivo(),
+          titulo: 'Ranking — Interactivo',
+          descripcion: 'Solo el ranking — pasa el mouse sobre un SLEP para ver sus campos.',
+          accion: () => this.verRanking(),
+        },
+        {
+          tipo: 'pdf',
+          titulo: 'Ranking — PDF',
+          descripcion: 'El mismo ranking, sin el detalle al pasar el mouse (un PDF no reacciona al mouse).',
+          accion: () => this.descargarPDFRanking(),
         },
         {
           tipo: 'html',
@@ -144,7 +150,7 @@ export class DownloadModalComponent {
   // por SLEP (mismo mecanismo del Dashboard por SLEP) y el ranking se
   // esconde solo, sin código nuevo para eso.
   verInformeGeneral(): void {
-    this.abrirInforme(false, false);
+    this.abrirInforme(false, 'general');
   }
 
   // PDF (opción B): abre el Informe en otra pestaña y el propio Informe
@@ -154,7 +160,7 @@ export class DownloadModalComponent {
   // desde cero (abrir Chrome, cargar el sistema, pedir los datos…) y
   // tardaba mucho.
   descargarPDFGeneral(): void {
-    this.abrirInforme(true, false);
+    this.abrirInforme(true, 'general');
   }
 
   // Informe de Errores (mejora post-v2.23): la MISMA página del Informe,
@@ -162,27 +168,32 @@ export class DownloadModalComponent {
   // impresión y el mecanismo de PDF del Informe General; solo cambia qué
   // hoja(s) muestra.
   verInformeErrores(): void {
-    this.abrirInforme(false, true);
+    this.abrirInforme(false, 'errores');
   }
 
   descargarPDFErrores(): void {
-    this.abrirInforme(true, true);
+    this.abrirInforme(true, 'errores');
   }
 
-  // Ranking Interactivo (mejora post-v2.23): ruta propia (no el Informe)
-  // porque no es para imprimir — los tooltips no existen en un PDF.
-  verRankingInteractivo(): void {
-    const params = new URLSearchParams();
-    if (this.data.slep) params.set('slep', this.data.slep);
-    const query = params.toString();
-    window.open(`/ranking-interactivo/${encodeURIComponent(this.data.mes)}/${encodeURIComponent(this.data.anio)}${query ? '?' + query : ''}`, '_blank');
+  // Ranking Interactivo (corrección post-v2.23): NO es una página aparte
+  // — es la misma hoja del Informe (?tipo=ranking), con la misma
+  // maquetación y el mismo mecanismo de PDF que las demás. La versión
+  // interactiva agrega, además, el detalle de cada SLEP al pasar el
+  // mouse; el PDF muestra la misma tabla sin esa interacción (un PDF no
+  // reacciona al mouse — no es algo que se pueda evitar).
+  verRanking(): void {
+    this.abrirInforme(false, 'ranking');
   }
 
-  private abrirInforme(imprimir: boolean, soloErrores: boolean): void {
+  descargarPDFRanking(): void {
+    this.abrirInforme(true, 'ranking');
+  }
+
+  private abrirInforme(imprimir: boolean, tipo: 'general' | 'errores' | 'ranking'): void {
     const params = new URLSearchParams();
     if (this.data.slep) params.set('slep', this.data.slep);
     if (imprimir) params.set('imprimir', '1');
-    if (soloErrores) params.set('tipo', 'errores');
+    if (tipo !== 'general') params.set('tipo', tipo);
     const query = params.toString();
     window.open(`/informe/${encodeURIComponent(this.data.mes)}/${encodeURIComponent(this.data.anio)}${query ? '?' + query : ''}`, '_blank');
   }

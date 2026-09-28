@@ -23,9 +23,11 @@
   </div>
 
   @if (!listoParaMostrar) {
-    <p class="text-gray-400 text-center">{{ soloErrores ? 'Cargando informe de errores…' : 'Cargando informe…' }}</p>
+    <p class="text-gray-400 text-center">
+      {{ tipo === 'errores' ? 'Cargando informe de errores…' : tipo === 'ranking' ? 'Cargando ranking…' : 'Cargando informe…' }}
+    </p>
   } @else {
-    @if (!soloErrores && datos) {
+    @if (tipo === 'general' && datos) {
     <!-- HOJA 1: Dashboard -->
     <div class="hoja-informe break-after-page block mx-auto bg-white shadow-md mb-6 w-[816px] min-h-[1056px] p-10 print:shadow-none print:mb-0 print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
       <div #contenidoHoja class="contenido-hoja flex flex-col gap-5 w-[736px] mx-auto">
@@ -99,13 +101,72 @@
     </div>
     }
 
+    <!-- Ranking Interactivo (mejora post-v2.23): hoja propia, ajustada a
+         una sola hoja carta como el Dashboard y el Formulario (el
+         ranking siempre tiene el mismo tamaño: 36 SLEP como máximo). Con
+         position:relative para que el tooltip (fuera de #contenidoHoja,
+         así el ajuste-a-hoja no lo mueve ni lo escala) se pegue a su
+         borde izquierdo — ver .tooltip-ranking. Solo tiene sentido en
+         pantalla: un PDF no reacciona al mouse, así que ahí se ve la
+         tabla sola, sin la interacción. -->
+    @if (tipo === 'ranking') {
+      <div class="hoja-informe relative block mx-auto bg-white shadow-md w-[816px] min-h-[1056px] p-10 print:shadow-none print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
+        <div #contenidoHoja class="contenido-hoja flex flex-col gap-3 w-[736px] mx-auto">
+          <header class="border-b border-gray-200 pb-4">
+            <h2 class="text-lg font-bold text-[#1E3A8A]">Ranking Interactivo — {{ mes }} {{ anio }}</h2>
+            <p class="text-sm text-gray-500 mt-1 print:hidden">{{ slep ? slep : 'Todos los SLEP' }} — pasa el mouse sobre un SLEP para ver el detalle de sus campos.</p>
+            @if (slep) {
+              <p class="text-sm text-gray-500 mt-1 hidden print:block">SLEP: {{ slep }}</p>
+            }
+          </header>
+          <div class="flex flex-col">
+            @for (fila of rankingDetalle; track fila.slep; let i = $index) {
+              <div
+                class="flex items-center gap-3 py-1 border-b border-gray-100 text-[11px]"
+                [class.bg-blue-50]="slepConMouseEncima === fila"
+                (mouseenter)="slepConMouseEncima = fila"
+                (mouseleave)="slepConMouseEncima = null"
+              >
+                <span class="w-6 text-gray-400">{{ i + 1 }}</span>
+                <span class="w-40 truncate" [title]="fila.slep">{{ fila.slep }}</span>
+                <div class="flex-1 bg-gray-100 rounded h-2.5 overflow-hidden">
+                  <div class="h-full" [style.width.%]="fila.pct ?? 0" [style.background]="colorBarraRanking(fila.pct)"></div>
+                </div>
+                <span class="w-10 text-right font-mono text-gray-500">{{ fila.pct === null ? '—' : fila.pct + '%' }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Tooltip: pegado al borde izquierdo de ESTA hoja (.tooltip-ranking
+             es position:absolute respecto a este contenedor relative), no
+             al borde de la pantalla. print:hidden como respaldo: un PDF no
+             tiene mouse, nunca debería llegar a mostrarse ahí. -->
+        @if (slepConMouseEncima; as s) {
+          <div class="tooltip-ranking w-[280px] max-h-[85%] overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg p-4 print:hidden">
+            <h3 class="text-sm font-bold text-gray-800 border-b border-gray-100 pb-2 mb-2">{{ s.slep }}</h3>
+            <dl class="flex flex-col gap-1">
+              @for (c of s.campos; track c.numero) {
+                <div class="flex justify-between gap-2 text-[11px]">
+                  <dt class="text-gray-500 truncate">{{ c.numero }}. {{ c.nombre }}</dt>
+                  <dd class="font-mono text-gray-800 shrink-0">{{ c.valor || '—' }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
+        }
+      </div>
+    }
+
     <!-- Hoja de Errores (mejora post-v2.23): a diferencia de las demás,
          NO tiene #contenidoHoja (no entra en el ajuste-a-una-hoja) ni
          alto fijo — fluye libremente en tantas hojas carta como haga
          falta, con el mismo tamaño de letra y estética del resto (ver
          miga de estilo abajo). Siempre la última: sola cuando
          ?tipo=errores, o después del Formulario en el informe general.
-         Sin break-after-page: es lo último que se imprime. -->
+         Nunca en ?tipo=ranking. Sin break-after-page: es lo último que
+         se imprime. -->
+    @if (tipo === 'errores' || tipo === 'general') {
     <div class="hoja-informe block mx-auto bg-white shadow-md w-[816px] min-h-[1056px] p-10 print:shadow-none print:w-full print:min-h-0 print:p-6">
       <div class="flex flex-col gap-3 w-[736px] mx-auto">
         <header class="border-b border-gray-200 pb-4">
@@ -140,5 +201,6 @@
         }
       </div>
     </div>
+    }
   }
 </div>
