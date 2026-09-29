@@ -27,10 +27,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : 'Error interno del servidor';
+    // Corrección (hallazgo real): antes se ponía exception.getResponse()
+    // completo dentro de "message" — pero eso YA es un objeto propio de
+    // Nest, con su PROPIO "message" adentro ({statusCode, message,
+    // error}), así que el resultado quedaba doblemente envuelto: un
+    // objeto dentro de "message" en vez de un texto. El frontend, en
+    // cualquier pantalla del sistema, terminaba mostrando ese objeto tal
+    // cual — "[object Object]" en vez del mensaje real. Ahora se
+    // desenvuelve ese "message" interno (string, o un arreglo cuando
+    // viene de la validación automática de un DTO) para que el frontend
+    // siempre reciba un texto legible, sin importar qué haya lanzado el
+    // error.
+    const message = this.extraerMensaje(exception);
 
     if (statusCode >= 500) {
       this.logger.error(exception instanceof Error ? exception.stack : exception);
@@ -42,5 +50,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
       path: request.originalUrl,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  private extraerMensaje(exception: unknown): string {
+    if (!(exception instanceof HttpException)) return 'Error interno del servidor.';
+    const cuerpo = exception.getResponse();
+    if (typeof cuerpo === 'string') return cuerpo;
+    const interno = (cuerpo as { message?: unknown }).message;
+    if (typeof interno === 'string') return interno;
+    // class-validator (ValidationPipe) entrega varios errores juntos, en
+    // un arreglo — se juntan en un solo texto legible.
+    if (Array.isArray(interno)) return interno.join(' ');
+    return exception.message || 'Error inesperado.';
   }
 }

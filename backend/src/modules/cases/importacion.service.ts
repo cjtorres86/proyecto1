@@ -74,10 +74,10 @@ export class ImportacionService {
     try {
       await wb.xlsx.load(buffer as any);
     } catch {
-      throw new BadRequestException({ message: 'El archivo no es un Excel válido (.xlsx).', errores: [] });
+      throw new BadRequestException('El archivo no es un Excel válido (.xlsx).');
     }
     const ws = wb.worksheets[0];
-    if (!ws) throw new BadRequestException({ message: 'El archivo Excel no tiene hojas.', errores: [] });
+    if (!ws) throw new BadRequestException('El archivo Excel no tiene hojas.');
 
     // Índice alias -> Pregunta (equivalente a _catalogoIndice() del PMV).
     // Se indexa el catálogo completo, no solo este formulario, para poder
@@ -141,11 +141,14 @@ export class ImportacionService {
       }
     }
 
+    // Mensaje como TEXTO PLANO, no un objeto {message, errores} (hallazgo
+    // real, corrección): NestJS, cuando el mensaje que le pasas a una
+    // excepción es un objeto, lo envuelve DE NUEVO dentro de su propio
+    // "message" — el frontend terminaba recibiendo un objeto donde
+    // esperaba texto, y como nunca usaba el arreglo "errores" (ya venía
+    // todo junto y legible en el mensaje), no hacía falta mandarlo aparte.
     if (errores.length) {
-      throw new BadRequestException({
-        message: `El archivo no tiene el formato del formulario, no se cargó ningún dato. ${errores.join(' ')}`,
-        errores,
-      });
+      throw new BadRequestException(`El archivo no tiene el formato del formulario, no se cargó ningún dato. ${errores.join(' ')}`);
     }
 
     const fila = filasDatos[0];
