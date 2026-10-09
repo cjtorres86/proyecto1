@@ -54,6 +54,15 @@ export class AuthService {
 
   // Equivalente a AuthService.can() del PMV — ayuda de interfaz (oculta
   // botones); la verificación que de verdad importa la hace el backend.
+  // Permiso individual de cargar datos (mejora post-v2.23) — reemplaza a
+  // can('editar_formulario'). Solo decide qué botones se muestran: si se
+  // lo quitan con la sesión abierta, el backend rechaza el guardado igual
+  // y el mensaje aparece en pantalla.
+  puedeCargarDatos(): boolean {
+    const u = this.usuarioActualSignal();
+    return !!u && (u.esSuperadmin || u.puedeCargarDatos === true);
+  }
+
   can(permiso: string): boolean {
     const u = this.usuarioActualSignal();
     if (!u) return false;

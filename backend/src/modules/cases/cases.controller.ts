@@ -167,7 +167,6 @@ export class CasesController {
     return this.casesService.detalleDe(contenedor);
   }
 
-  @Permisos('editar_formulario')
   @Bitacora({
     accion: 'formulario_guardado',
     descripcion: (_req, r) => `Guardó cambios en ${r.contenedor.slep} — ${r.contenedor.mesConsolidado} ${r.contenedor.anioConsolidado}.`,
@@ -186,8 +185,24 @@ export class CasesController {
     // completo (6 consultas) solo para saber de qué SLEP era.
     const contenedor = await this.casesService.obtenerContenedor(id);
     this.verificarAlcance(contenedor.slep, usuario);
+    this.verificarPuedeCargarDatos(usuario);
     this.verificarMesAbierto(contenedor, usuario);
-    return this.casesService.guardarValores(contenedor, dto.valores);
+    return this.casesService.guardarValores(contenedor, dto.valores, {
+      id: usuario.id,
+      nombre: usuario.nombreParaMostrar,
+      perfil: usuario.esSuperadmin ? 'Superadmin' : (usuario.perfil?.nombre ?? '—'),
+    });
+  }
+
+  // Permiso individual de cargar datos (mejora post-v2.23): reemplaza al
+  // permiso de perfil "editar_formulario". "usuario" llega leído fresco de
+  // la base en CADA petición (JwtStrategy), así que si un Admin se lo
+  // quita a alguien con la sesión abierta, su siguiente intento de
+  // guardar se rechaza al instante con este mensaje.
+  private verificarPuedeCargarDatos(usuario: Usuario) {
+    if (!usuario.esSuperadmin && !usuario.puedeCargarDatos) {
+      throw new ForbiddenException('No tienes permiso para cargar datos. Pídele a un administrador que te lo active.');
+    }
   }
 
   // Mes cerrado (mejora post-v2.23): nadie modifica datos, salvo el
@@ -209,7 +224,6 @@ export class CasesController {
   // 7.10) — lee y valida el Excel del SLEP del propio contenedor y devuelve
   // sus valores SIN guardarlos (vista previa, mejora post-v2.23): se
   // registran cuando el Digitador presiona "Guardar".
-  @Permisos('editar_formulario')
   @Bitacora({
     accion: 'excel_cargado',
     descripcion: (_req, r) => `Cargó un Excel para revisión en ${r.slep}.`,
@@ -219,6 +233,7 @@ export class CasesController {
   async importarArchivo(@Param('id') id: string, @UploadedFile() archivo: any, @UsuarioActual() usuario: Usuario) {
     const contenedor = await this.casesService.obtenerContenedor(id);
     this.verificarAlcance(contenedor.slep, usuario);
+    this.verificarPuedeCargarDatos(usuario);
     this.verificarMesAbierto(contenedor, usuario);
     return this.importacionService.leerDesdeExcel(id, archivo.buffer);
   }

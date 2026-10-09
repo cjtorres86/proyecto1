@@ -9,6 +9,7 @@ import { ReportsApiService, ErrorFila, RankingDetalleFila } from '../services/re
 import { BitacoraApiService } from '../../bitacora/services/bitacora-api.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { DashboardDeMes } from '../../../core/models/dashboard.model';
+import { textoAutoria } from '../../../core/utils/autoria';
 import { CampoConValor } from '../../../core/models/case.model';
 import { AdvanceIndicatorComponent } from '../../dashboard/advance-indicator/advance-indicator.component';
 import { InitialTotalsDonutComponent } from '../../dashboard/initial-totals-donut/initial-totals-donut.component';
@@ -375,6 +376,10 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
       el.style.setProperty('--alto-impresion', `${altoConZoom.toFixed(1)}px`);
     });
   }
+
+  // Autoría de cada dato (mejora post-v2.23): en el Informe va como texto
+  // pequeño, no como tooltip — así también queda en el PDF impreso.
+  readonly textoAutoria = textoAutoria;
 
   imprimir(): void {
     window.print();

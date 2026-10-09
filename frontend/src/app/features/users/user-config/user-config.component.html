@@ -53,6 +53,7 @@
             <th class="py-2 px-3 font-medium">Perfil</th>
             <th class="py-2 px-3 font-medium">SLEP / Alcance</th>
             <th class="py-2 px-3 font-medium">Estado</th>
+            <th class="py-2 px-3 font-medium">Carga datos</th>
             <th class="py-2 px-3 font-medium"></th>
           </tr>
         </thead>
@@ -71,6 +72,29 @@
                   @case ('activo') { <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-700">Activo</span> }
                   @case ('inactivo') { <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-50 text-red-700">Inactivo</span> }
                   @case ('pendiente') { <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-500">Pendiente</span> }
+                }
+              </td>
+              <!-- Permiso de cargar datos (mejora post-v2.23): interruptor por persona. -->
+              <td class="py-1.5 px-3 whitespace-nowrap">
+                @if (cargaFija(u)) {
+                  <span class="text-[10px] text-gray-400" title="Este perfil siempre puede cargar datos">Siempre</span>
+                } @else if (puedeCambiarCarga(u)) {
+                  <button
+                    type="button"
+                    role="switch"
+                    [attr.aria-checked]="u.puedeCargarDatos"
+                    [attr.aria-label]="'Puede cargar datos: ' + (u.puedeCargarDatos ? 'sí' : 'no')"
+                    (click)="cambiarCarga(u)"
+                    class="relative inline-flex h-4 w-7 items-center rounded-full transition-colors cursor-pointer"
+                    [class.bg-green-600]="u.puedeCargarDatos"
+                    [class.bg-gray-300]="!u.puedeCargarDatos"
+                    [title]="u.puedeCargarDatos ? 'Puede cargar datos — clic para quitar' : 'No puede cargar datos — clic para permitir'"
+                  >
+                    <span class="inline-block h-3 w-3 rounded-full bg-white shadow transition-transform" [class.translate-x-3.5]="u.puedeCargarDatos" [class.translate-x-0.5]="!u.puedeCargarDatos"></span>
+                  </button>
+                } @else {
+                  <span class="text-[10px]" [class.text-green-700]="u.puedeCargarDatos" [class.text-gray-400]="!u.puedeCargarDatos"
+                        [title]="u.usuario ? 'Solo el Superadmin puede cambiar este permiso' : ''">{{ u.puedeCargarDatos ? 'Sí' : 'No' }}</span>
                 }
               </td>
               <td class="py-1.5 px-3 whitespace-nowrap text-right">

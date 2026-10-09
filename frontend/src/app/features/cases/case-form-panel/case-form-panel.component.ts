@@ -6,6 +6,7 @@ import { CaseStateService } from '../../../core/services/case-state.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { MensajesService } from '../../../core/services/mensajes.service';
+import { textoAutoria } from '../../../core/utils/autoria';
 import { CampoConValor, Contenedor } from '../../../core/models/case.model';
 
 // Equivalente a _renderPanelFormulario() + _guardarFormulario() del PMV
@@ -95,7 +96,12 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
   }
 
   get puedeEditar(): boolean {
-    return this.authService.can('editar_formulario');
+    return this.authService.puedeCargarDatos();
+  }
+
+  // Tooltip discreto de cada campo guardado: quién lo cargó y cuándo.
+  autoria(campo: CampoConValor): string {
+    return campo.cargadoPor ? 'Cargado por ' + textoAutoria(campo.cargadoPor) : '';
   }
 
   get esSuperadmin(): boolean {

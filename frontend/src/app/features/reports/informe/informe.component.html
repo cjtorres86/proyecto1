@@ -147,7 +147,12 @@
           @for (campo of camposFormulario; track campo.id) {
             <div class="flex justify-between items-center gap-4 text-[11px] py-1 border-b border-gray-100" [class.bg-red-50]="campo.invalido">
               <span>{{ campo.numero }}. {{ campo.nombre }}</span>
-              <span class="font-mono whitespace-nowrap">{{ campo.valor || '—' }}</span>
+              <span class="ml-auto flex items-center gap-3 whitespace-nowrap">
+                @if (campo.cargadoPor) {
+                  <span class="text-[8.5px] text-gray-400">{{ textoAutoria(campo.cargadoPor) }}</span>
+                }
+                <span class="font-mono">{{ campo.valor || '—' }}</span>
+              </span>
             </div>
           }
         </div>

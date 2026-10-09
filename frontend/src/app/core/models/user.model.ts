@@ -14,6 +14,8 @@ export interface Usuario {
   nombreParaMostrar: string;
   esSuperadmin: boolean;
   activo: boolean;
+  // Permiso individual de cargar datos (mejora post-v2.23).
+  puedeCargarDatos: boolean;
   alcance: string;
   perfil: Perfil | null;
 }

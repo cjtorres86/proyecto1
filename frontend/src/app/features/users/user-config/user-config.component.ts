@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { UsersApiService } from '../services/users-api.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Perfil, Usuario } from '../../../core/models/user.model';
 import { UserFormDialogComponent } from '../user-form-dialog/user-form-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
@@ -38,7 +39,46 @@ export class UserConfigComponent implements OnInit {
     private readonly usersApi: UsersApiService,
     private readonly dialog: MatDialog,
     private readonly notification: NotificationService,
+    private readonly authService: AuthService,
   ) {}
+
+  // Permiso de cargar datos (mejora post-v2.23). Superadmin y Digitador
+  // siempre pueden (no se cambia); a un Admin solo se lo cambia el
+  // Superadmin; a un Validador, un Admin o el Superadmin. El backend
+  // vuelve a verificar todo esto — acá solo se decide qué se muestra.
+  cargaFija(u: Usuario): boolean {
+    return u.esSuperadmin || u.perfil?.id === 'perfil_digitador';
+  }
+
+  puedeCambiarCarga(u: Usuario): boolean {
+    if (!u.usuario || this.cargaFija(u)) return false;
+    const yo = this.authService.usuarioActual();
+    if (u.perfil?.id === 'perfil_admin') return !!yo?.esSuperadmin;
+    return true;
+  }
+
+  cambiarCarga(u: Usuario): void {
+    const permitir = !u.puedeCargarDatos;
+    const data: ConfirmDialogData = {
+      titulo: permitir ? `Permitir cargar datos a ${u.nombreParaMostrar}` : `Quitar el permiso de cargar datos a ${u.nombreParaMostrar}`,
+      mensaje: permitir
+        ? 'Podrá escribir valores y cargar archivos Excel en los formularios de su alcance.'
+        : 'Ya no podrá guardar datos. Si tiene la sesión abierta, el bloqueo se aplica en su próximo intento de guardar.',
+      textoConfirmar: permitir ? 'Permitir' : 'Quitar permiso',
+      peligroso: !permitir,
+    };
+    this.dialog
+      .open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, { width: '420px', data })
+      .afterClosed()
+      .subscribe((confirmado) => {
+        if (!confirmado) return;
+        const accion = permitir ? this.usersApi.permitirCarga(u.id) : this.usersApi.quitarCarga(u.id);
+        accion.subscribe({
+          next: () => { this.notification.mostrar(permitir ? 'Ahora puede cargar datos.' : 'Permiso de cargar datos quitado.'); this.cargar(); },
+          error: (err) => this.notification.mostrar(err.error?.message ?? 'No se pudo cambiar el permiso.', 6000),
+        });
+      });
+  }
 
   ngOnInit(): void {
     this.usersApi.listarPerfiles().subscribe((lista) => (this.perfiles = lista));

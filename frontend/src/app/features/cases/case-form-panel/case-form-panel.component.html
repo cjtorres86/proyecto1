@@ -81,10 +81,11 @@
               [class.border-amber-500]="tieneCambio(campo)"
               [class.bg-amber-50]="tieneCambio(campo)"
               [value]="campo.valor"
+              [title]="autoria(campo)"
               (input)="onValorChange(campo, $any($event.target).value)"
               (click)="$event.stopPropagation()" />
           } @else {
-            <span class="font-mono" [class.text-amber-700]="tieneCambio(campo)">{{ campo.valor || '—' }}</span>
+            <span class="font-mono" [class.text-amber-700]="tieneCambio(campo)" [title]="autoria(campo)">{{ campo.valor || '—' }}</span>
           }
         </div>
       }

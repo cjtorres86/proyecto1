@@ -54,6 +54,22 @@ export class UsersController {
     return this.usersService.cambiarActivo(id, false);
   }
 
+  // Permiso individual de cargar datos (mejora post-v2.23). Las reglas de
+  // quién se lo puede cambiar a quién viven en UsersService.
+  @Permisos('gestionar_usuarios')
+  @Bitacora({ accion: 'carga_datos_permitida', descripcion: (_req, r) => `Permitió cargar datos a "${r.nombreParaMostrar}".` })
+  @Post('users/:id/permitir-carga')
+  permitirCarga(@Param('id') id: string, @UsuarioActual() quienEdita: Usuario) {
+    return this.usersService.cambiarPuedeCargarDatos(id, true, quienEdita);
+  }
+
+  @Permisos('gestionar_usuarios')
+  @Bitacora({ accion: 'carga_datos_quitada', descripcion: (_req, r) => `Quitó el permiso de cargar datos a "${r.nombreParaMostrar}".` })
+  @Post('users/:id/quitar-carga')
+  quitarCarga(@Param('id') id: string, @UsuarioActual() quienEdita: Usuario) {
+    return this.usersService.cambiarPuedeCargarDatos(id, false, quienEdita);
+  }
+
   // Perfiles: listar es seguro para cualquier autenticado (se necesita
   // para elegir perfil al crear un usuario); crear uno nuevo es
   // exclusivo del superadmin (TDD, sección 11.2.1) — "gestionar_perfiles"

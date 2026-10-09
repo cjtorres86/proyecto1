@@ -27,6 +27,8 @@ export const TIPOS_ACCION = [
   'usuario_editado',
   'usuario_activado',
   'usuario_desactivado',
+  'carga_datos_permitida',
+  'carga_datos_quitada',
   'perfil_creado',
   'perfil_editado',
 ] as const;

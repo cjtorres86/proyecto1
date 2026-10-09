@@ -29,6 +29,29 @@ export interface CampoConValor {
   // correcto (msgFail/msgOk) pero se descartaban antes de salir del
   // backend. Puede tener más de una validación por campo.
   validaciones: { formula: string; mensaje: string; cumple: boolean }[];
+  // Quién cargó este dato y cuándo (mejora post-v2.23). null si el campo
+  // está vacío, o en el total general de varios SLEP (ahí cada número
+  // tiene muchos autores distintos).
+  cargadoPor: AutoriaCampo | null;
+}
+
+export interface AutoriaCampo {
+  nombre: string;
+  perfil: string;
+  en: string; // fecha ISO
+}
+
+// Lo que se guarda como autor de un dato. Se arma en el controller con
+// la persona que hace la petición.
+export interface AutorCarga {
+  id: string;
+  nombre: string;
+  perfil: string;
+}
+
+function autoriaDe(v: ValorCampo | undefined): AutoriaCampo | null {
+  if (!v || !v.valor || !v.cargadoEn || !v.cargadoPorNombre) return null;
+  return { nombre: v.cargadoPorNombre, perfil: v.cargadoPorPerfil ?? '—', en: new Date(v.cargadoEn).toISOString() };
 }
 
 @Injectable()
@@ -109,9 +132,35 @@ export class CasesService {
   // Antes, save() revisaba y actualizaba campo por campo — hasta 37
   // escrituras sueltas. Devuelve el formulario ya actualizado, así el
   // frontend no tiene que pedirlo de nuevo después de guardar.
-  async guardarValores(contenedor: Contenedor, valores: Record<string, string>): Promise<{ contenedor: Contenedor; campos: CampoConValor[] }> {
-    const filas = Object.entries(valores).map(([preguntaId, valor]) => ({ contenedorId: contenedor.id, preguntaId, valor: String(valor) }));
-    if (filas.length) await this.valoresCampo.upsert(filas, ['contenedorId', 'preguntaId']);
+  // Autoría por campo (mejora post-v2.23): solo se escriben los campos
+  // cuyo valor de verdad cambió, con quién lo cargó y cuándo. Si llega un
+  // campo con el mismo valor que ya tenía, se deja intacto — así volver a
+  // guardar no le "roba" la autoría a quien cargó ese dato originalmente.
+  async guardarValores(
+    contenedor: Contenedor,
+    valores: Record<string, string>,
+    autor: AutorCarga,
+  ): Promise<{ contenedor: Contenedor; campos: CampoConValor[] }> {
+    const entradas = Object.entries(valores).map(([preguntaId, valor]) => [preguntaId, String(valor)] as const);
+    if (entradas.length) {
+      const actuales = await this.valoresCampo.find({
+        where: { contenedorId: contenedor.id, preguntaId: In(entradas.map(([id]) => id)) },
+      });
+      const valorActual = new Map(actuales.map((v) => [v.preguntaId, v.valor]));
+      const ahora = new Date();
+      const filas = entradas
+        .filter(([preguntaId, valor]) => valorActual.get(preguntaId) !== valor)
+        .map(([preguntaId, valor]) => ({
+          contenedorId: contenedor.id,
+          preguntaId,
+          valor,
+          cargadoPorId: autor.id,
+          cargadoPorNombre: autor.nombre,
+          cargadoPorPerfil: autor.perfil,
+          cargadoEn: ahora,
+        }));
+      if (filas.length) await this.valoresCampo.upsert(filas, ['contenedorId', 'preguntaId']);
+    }
     return this.detalleDe(contenedor);
   }
 
@@ -166,6 +215,7 @@ export class CasesService {
       this.valoresCampo.find({ where: { contenedorId: contenedor.id } }),
     ]);
     const valorPorPregunta = new Map(valores.map((v) => [v.preguntaId, v.valor]));
+    const filaPorPregunta = new Map(valores.map((v) => [v.preguntaId, v]));
 
     const valoresPorPosicion = new Map<number, string>();
     receta.forEach((r) => {
@@ -199,6 +249,7 @@ export class CasesService {
         opciones: item.pregunta.opciones,
         invalido: invalidFieldIds.includes(id),
         validaciones: validacionesPorCampo.get(id) ?? [],
+        cargadoPor: autoriaDe(filaPorPregunta.get(item.preguntaId)),
       };
     });
     return { contenedor, campos };
@@ -248,6 +299,11 @@ export class CasesService {
       if (v !== undefined && v !== '') valoresPorPosicion.set(r.posicionCanonica, String(v));
     });
 
+    // Autoría (mejora post-v2.23): solo en el informe de UN SLEP — en el
+    // total general cada número suma datos de muchos autores distintos.
+    const filaPorPregunta = new Map<string, ValorCampo>();
+    if (ids.length === 1) (await this.valoresDe(ids)).forEach((v) => filaPorPregunta.set(v.preguntaId, v));
+
     const validacionesPorCampo = this.evaluarTodasLasValidaciones(receta, valoresPorPosicion);
     const invalidFieldIds = [...validacionesPorCampo.entries()]
       .filter(([, resultados]) => resultados.some((r) => !r.cumple))
@@ -281,6 +337,7 @@ export class CasesService {
         opciones: item.pregunta.opciones,
         invalido: invalidFieldIds.includes(id),
         validaciones: validacionesPorCampo.get(id) ?? [],
+        cargadoPor: autoriaDe(filaPorPregunta.get(item.preguntaId)),
       };
     });
 

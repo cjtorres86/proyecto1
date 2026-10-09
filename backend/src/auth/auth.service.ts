@@ -48,6 +48,7 @@ export class AuthService {
       nombreParaMostrar: usuario.nombreParaMostrar,
       esSuperadmin: usuario.esSuperadmin,
       alcance: usuario.alcance,
+      puedeCargarDatos: usuario.esSuperadmin || usuario.puedeCargarDatos,
       perfil: usuario.perfil ? { id: usuario.perfil.id, nombre: usuario.perfil.nombre, permisos: usuario.perfil.permisos } : null,
     };
   }

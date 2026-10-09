@@ -51,6 +51,15 @@ export class Usuario {
   @Column({ default: true })
   activo: boolean;
 
+  // Puede cargar datos (mejora post-v2.23): la ÚNICA llave para guardar
+  // valores y cargar Excel, por persona (no por perfil). Superadmin y
+  // Digitador siempre sí; Admin sí salvo que el Superadmin se lo quite;
+  // Validador no, salvo que un Admin o el Superadmin se lo active. Se lee
+  // fresco de la base en cada petición (JwtStrategy), así que quitarlo
+  // bloquea al instante aunque la sesión siga abierta.
+  @Column({ name: 'puede_cargar_datos', default: false })
+  puedeCargarDatos: boolean;
+
   // 'todos' o el nombre exacto de un SLEP — ver AuthService.puedeVerSlep.
   // El superadmin y Admin/Validador tienen 'todos'; Digitador, su SLEP.
   @Column({ length: 60 })

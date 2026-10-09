@@ -34,6 +34,15 @@ export class UsersApiService {
     return this.http.post<Usuario>(`${environment.apiUrl}/users/${id}/desactivar`, {});
   }
 
+  // Permiso individual de cargar datos (mejora post-v2.23).
+  permitirCarga(id: string): Observable<Usuario> {
+    return this.http.post<Usuario>(`${environment.apiUrl}/users/${id}/permitir-carga`, {});
+  }
+
+  quitarCarga(id: string): Observable<Usuario> {
+    return this.http.post<Usuario>(`${environment.apiUrl}/users/${id}/quitar-carga`, {});
+  }
+
   listarPerfiles(): Observable<Perfil[]> {
     return this.http.get<Perfil[]>(`${environment.apiUrl}/perfiles`);
   }

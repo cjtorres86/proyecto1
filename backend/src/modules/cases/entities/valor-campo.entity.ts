@@ -17,6 +17,20 @@ export class ValorCampo {
   @Column({ type: 'varchar', length: 500 })
   valor: string;
 
+  // Autoría (mejora post-v2.23): quién cargó este dato y cuándo. Nombre y
+  // perfil quedan "congelados" al momento de cargar, como en la Bitácora.
+  @Column({ name: 'cargado_por_id', type: 'varchar', length: 36, nullable: true })
+  cargadoPorId: string | null;
+
+  @Column({ name: 'cargado_por_nombre', type: 'varchar', length: 120, nullable: true })
+  cargadoPorNombre: string | null;
+
+  @Column({ name: 'cargado_por_perfil', type: 'varchar', length: 60, nullable: true })
+  cargadoPorPerfil: string | null;
+
+  @Column({ name: 'cargado_en', type: 'datetime', precision: 6, nullable: true })
+  cargadoEn: Date | null;
+
   @ManyToOne(() => Contenedor)
   @JoinColumn({ name: 'contenedor_id' })
   contenedor: Contenedor;

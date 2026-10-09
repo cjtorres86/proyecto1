@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -30,6 +30,7 @@ export class UsersService {
       alcance: dto.alcance,
       perfilId: dto.esSuperadmin ? null : dto.perfilId ?? null,
       esSuperadmin: !!dto.esSuperadmin,
+      puedeCargarDatos: dto.esSuperadmin || cargaPorDefecto(dto.perfilId ?? null),
     });
     const guardado = await this.usuarios.save(nuevo);
     const { contrasenaHash, ...resto } = guardado;
@@ -63,7 +64,13 @@ export class UsersService {
     if (dto.contrasena) usuario.contrasenaHash = await bcrypt.hash(dto.contrasena, 10);
     if (dto.nombreParaMostrar) usuario.nombreParaMostrar = dto.nombreParaMostrar;
     if (dto.alcance) usuario.alcance = dto.alcance;
-    if (dto.perfilId) usuario.perfilId = dto.perfilId;
+    if (dto.perfilId && dto.perfilId !== usuario.perfilId) {
+      usuario.perfilId = dto.perfilId;
+      // Al cambiar de perfil, el permiso de cargar datos vuelve al valor
+      // por defecto del perfil nuevo (ej.: un Admin que pasa a Validador
+      // queda sin permiso hasta que alguien se lo active).
+      usuario.puedeCargarDatos = cargaPorDefecto(dto.perfilId);
+    }
     const guardado = await this.usuarios.save(usuario);
     const { contrasenaHash, ...resto } = guardado;
     return resto;
@@ -76,6 +83,26 @@ export class UsersService {
     const usuario = await this.usuarios.findOne({ where: { id } });
     if (!usuario) throw new NotFoundException('Usuario no encontrado.');
     usuario.activo = activo;
+    const guardado = await this.usuarios.save(usuario);
+    const { contrasenaHash, ...resto } = guardado;
+    return resto;
+  }
+
+  // Permiso individual de cargar datos (mejora post-v2.23). Reglas:
+  //  - Superadmin y Digitador: siempre pueden; no se les cambia.
+  //  - Admin: solo el Superadmin se lo puede cambiar (un Admin no puede
+  //    tocárselo a otro Admin, ni a sí mismo).
+  //  - Validador (y cualquier otro perfil): Admin o Superadmin.
+  async cambiarPuedeCargarDatos(id: string, puede: boolean, quienEdita: Usuario) {
+    const usuario = await this.usuarios.findOne({ where: { id } });
+    if (!usuario) throw new NotFoundException('Usuario no encontrado.');
+    if (usuario.esSuperadmin || usuario.perfilId === 'perfil_digitador') {
+      throw new BadRequestException('Este perfil siempre puede cargar datos; su permiso no se cambia.');
+    }
+    if (usuario.perfilId === 'perfil_admin' && !quienEdita.esSuperadmin) {
+      throw new ForbiddenException('Solo el Superadmin puede cambiar el permiso de cargar datos de un Admin.');
+    }
+    usuario.puedeCargarDatos = puede;
     const guardado = await this.usuarios.save(usuario);
     const { contrasenaHash, ...resto } = guardado;
     return resto;
@@ -98,4 +125,11 @@ export class UsersService {
     });
     return this.perfiles.save(nuevo);
   }
+}
+
+// Valor por defecto del permiso de cargar datos según el perfil: Admin y
+// Digitador sí; Validador (y cualquier perfil nuevo) no, hasta que alguien
+// se lo active a esa persona en particular.
+function cargaPorDefecto(perfilId: string | null): boolean {
+  return perfilId === 'perfil_admin' || perfilId === 'perfil_digitador';
 }

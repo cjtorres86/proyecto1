@@ -1,3 +1,5 @@
+import { AutoriaCampo } from '../utils/autoria';
+
 export interface MesActivo { mes: string; anio: string }
 
 export interface Contenedor {
@@ -30,6 +32,9 @@ export interface CampoConValor {
   opciones: string[] | null;
   invalido: boolean;
   validaciones: { formula: string; mensaje: string; cumple: boolean }[];
+  // Quién cargó este dato y cuándo (mejora post-v2.23). null si está vacío
+  // o es un total de varios SLEP.
+  cargadoPor: AutoriaCampo | null;
 }
 
 export interface HistoricoSlep {
