@@ -41,12 +41,6 @@ export class ImportacionService {
     return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   }
 
-  // Para comparar nombres de SLEP sin que importen tildes, mayúsculas ni
-  // espacios de más ("Los Álamos" = "los alamos").
-  private normalizarNombre(t: string): string {
-    return String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
-  }
-
   // cell.text (ExcelJS) entrega el texto visible de la celda: resuelve
   // fórmulas (su resultado), texto enriquecido e hipervínculos — a
   // diferencia de cell.value, que en esos casos es un objeto.
@@ -59,7 +53,11 @@ export class ImportacionService {
     return lista.length > maximo ? `${visibles} y ${lista.length - maximo} más` : visibles;
   }
 
-  async leerDesdeExcel(contenedorId: string, buffer: Buffer): Promise<{ valores: Record<string, string>; slep: string }> {
+  async leerDesdeExcel(
+    contenedorId: string,
+    buffer: Buffer,
+    nombreArchivo = '',
+  ): Promise<{ valores: Record<string, string>; slep: string; slepEnArchivo: string; nombreArchivo: string }> {
     const [contenedor] = await this.contenedores.find({ where: { id: contenedorId } }); // 1 consulta (ver CasesService.obtenerContenedor)
     if (!contenedor) throw new NotFoundException('Contenedor no encontrado.');
 
@@ -130,16 +128,10 @@ export class ImportacionService {
     if (filasDatos.length === 0) errores.push('No hay una fila de datos bajo los encabezados.');
     if (filasDatos.length > 1) errores.push(`Debe haber una sola fila de datos y hay ${filasDatos.length}.`);
 
-    // El SLEP solo se revisa si el formato ya está bien (si no, la columna
-    // podría no existir o la fila no ser la correcta).
-    if (!errores.length) {
-      const slepArchivo = this.textoCelda(filasDatos[0].getCell(columnaPorPregunta.get('Q03')!));
-      if (!slepArchivo) {
-        errores.push('La fila de datos no indica el SLEP (columna "Servicio / SLEP").');
-      } else if (this.normalizarNombre(slepArchivo) !== this.normalizarNombre(contenedor.slep)) {
-        errores.push(`Los datos del archivo son de "${slepArchivo}", pero este formulario es de "${contenedor.slep}".`);
-      }
-    }
+    // El SLEP del archivo (campo 3) YA NO se exige que coincida (mejora
+    // post-v2.23): se devuelve tal cual, y el navegador le muestra a quien
+    // carga una ventana con el nombre del archivo y lo que dice su campo 3,
+    // para que lo compruebe y acepte antes de cargar.
 
     // Mensaje como TEXTO PLANO, no un objeto {message, errores} (hallazgo
     // real, corrección): NestJS, cuando el mensaje que le pasas a una
@@ -157,10 +149,11 @@ export class ImportacionService {
       const texto = this.textoCelda(fila.getCell(col));
       if (texto) valores[preguntaId] = texto;
     });
-    // Ya se comprobó que es el mismo SLEP (sin importar tildes ni
-    // mayúsculas); se guarda siempre con su nombre oficial.
+    // Lo que dice el campo 3 del archivo se informa, pero el formulario
+    // guarda SIEMPRE el nombre oficial del SLEP al que se está cargando.
+    const slepEnArchivo = valores['Q03'] ?? '';
     valores['Q03'] = contenedor.slep;
 
-    return { valores, slep: contenedor.slep };
+    return { valores, slep: contenedor.slep, slepEnArchivo, nombreArchivo };
   }
 }

@@ -7,6 +7,8 @@ import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { MensajesService } from '../../../core/services/mensajes.service';
 import { textoAutoria } from '../../../core/utils/autoria';
+import { MatDialog } from '@angular/material/dialog';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { CampoConValor, Contenedor } from '../../../core/models/case.model';
 
 // Equivalente a _renderPanelFormulario() + _guardarFormulario() del PMV
@@ -56,6 +58,7 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
     readonly authService: AuthService,
     private readonly notification: NotificationService,
     private readonly mensajes: MensajesService,
+    private readonly dialog: MatDialog,
   ) {}
 
   ngOnInit(): void {
@@ -100,8 +103,11 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
   }
 
   // Tooltip discreto de cada campo guardado: quién lo cargó y cuándo.
+  // Un dato guardado sin autor registrado lo dice explícitamente, en vez de
+  // no mostrar nada — así nunca pasa desapercibido.
   autoria(campo: CampoConValor): string {
-    return campo.cargadoPor ? 'Cargado por ' + textoAutoria(campo.cargadoPor) : '';
+    if (campo.cargadoPor) return 'Cargado por ' + textoAutoria(campo.cargadoPor);
+    return campo.valor && !this.esTotalGeneral && !this.tieneCambio(campo) ? 'Sin registro de quién lo cargó' : '';
   }
 
   get esSuperadmin(): boolean {
@@ -171,27 +177,64 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
     if (!archivo) return;
     this.cargandoArchivo = true;
     this.caseState.importarArchivo(this.contenedor.id, archivo).subscribe({
-      next: ({ valores }) => {
+      next: ({ valores, slepEnArchivo, nombreArchivo, slep }) => {
         this.cargandoArchivo = false;
-        let aplicados = 0;
-        for (const campo of this.campos) {
-          const nuevo = valores[campo.preguntaId];
-          if (nuevo === undefined || nuevo === campo.valor) continue;
-          campo.valor = nuevo;
-          this.valoresEditados[campo.preguntaId] = nuevo;
-          aplicados++;
-        }
-        this.notification.mostrar(
-          aplicados
-            ? `Datos de "${archivo.name}" cargados en el formulario (${aplicados} campos). Revísalos y presiona Guardar para registrarlos.`
-            : `"${archivo.name}" tiene los mismos datos que ya están guardados: no hay cambios.`,
-          7000,
-        );
+        // Confirmación antes de cargar (mejora post-v2.23): ya no se exige
+        // que el campo 3 del archivo coincida con el SLEP — quien carga ve
+        // el nombre del archivo y lo que dice su campo 3, y decide.
+        const coincide = this.mismoNombre(slepEnArchivo, slep);
+        const data: ConfirmDialogData = {
+          titulo: '¿Quieres cargar los datos de este archivo?',
+          mensaje: coincide
+            ? 'Revisa que sea el archivo correcto antes de cargarlo.'
+            : 'Ojo: el campo 3 del archivo no dice el mismo SLEP del formulario. Revisa que sea el archivo correcto antes de cargarlo.',
+          textoConfirmar: 'Cargar',
+          detalles: [
+            { etiqueta: 'Archivo', valor: nombreArchivo || archivo.name },
+            { etiqueta: 'Campo 3 del archivo', valor: slepEnArchivo || '(vacío)', advertencia: !coincide },
+            { etiqueta: 'Se cargará en', valor: slep },
+          ],
+        };
+        this.dialog
+          .open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, { width: '460px', data })
+          .afterClosed()
+          .subscribe((aceptado) => {
+            if (!aceptado) {
+              this.notification.mostrar('Carga cancelada: el formulario no cambió.');
+              return;
+            }
+            this.aplicarValoresDelArchivo(valores, archivo.name);
+          });
       },
       error: (err) => {
         this.cargandoArchivo = false;
         this.notification.mostrar(err.error?.message ?? 'No se pudo leer el archivo.', 15000);
       },
     });
+  }
+
+  // Compara nombres de SLEP sin que importen tildes, mayúsculas ni espacios.
+  private mismoNombre(a: string, b: string): boolean {
+    const n = (t: string) => (t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+    return n(a) === n(b);
+  }
+
+  // Vuelca los valores del Excel al formulario como cambios pendientes
+  // (en naranjo): se registran recién al presionar "Guardar".
+  private aplicarValoresDelArchivo(valores: Record<string, string>, nombreArchivo: string): void {
+    let aplicados = 0;
+    for (const campo of this.campos) {
+      const nuevo = valores[campo.preguntaId];
+      if (nuevo === undefined || nuevo === campo.valor) continue;
+      campo.valor = nuevo;
+      this.valoresEditados[campo.preguntaId] = nuevo;
+      aplicados++;
+    }
+    this.notification.mostrar(
+      aplicados
+        ? `Datos de "${nombreArchivo}" cargados en el formulario (${aplicados} campos). Revísalos y presiona Guardar para registrarlos.`
+        : `"${nombreArchivo}" tiene los mismos datos que ya están guardados: no hay cambios.`,
+      7000,
+    );
   }
 }

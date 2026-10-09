@@ -39,10 +39,10 @@ export class CasesApiService {
 
   // Vista previa (mejora post-v2.23): valida el Excel y devuelve sus
   // valores SIN guardarlos; se registran con guardarValores().
-  importarArchivo(id: string, archivo: File): Observable<{ valores: Record<string, string> }> {
+  importarArchivo(id: string, archivo: File): Observable<{ valores: Record<string, string>; slep: string; slepEnArchivo: string; nombreArchivo: string }> {
     const formData = new FormData();
     formData.append('archivo', archivo);
-    return this.http.post<{ valores: Record<string, string> }>(`${environment.apiUrl}/cases/${id}/importar`, formData);
+    return this.http.post<{ valores: Record<string, string>; slep: string; slepEnArchivo: string; nombreArchivo: string }>(`${environment.apiUrl}/cases/${id}/importar`, formData);
   }
 
   cerrarMes(mes: string, anio: string): Observable<{ cerrados: number }> {

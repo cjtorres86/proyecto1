@@ -26,7 +26,7 @@ export class CasesController {
   @Bitacora({ accion: 'mes_creado', descripcion: (req) => `Creó ${req.body.mes} ${req.body.anio} para ${req.body.sleps?.length ?? 0} SLEP.` })
   @Post('crear-mes')
   crearMes(@Body() dto: CrearMesDto, @UsuarioActual() usuario: Usuario) {
-    return this.casesService.crearMesVacio(dto.mes, dto.anio, dto.formularioId, dto.sleps, usuario.id);
+    return this.casesService.crearMesVacio(dto.mes, dto.anio, dto.formularioId, dto.sleps, usuario.id, this.autorDe(usuario));
   }
 
   // Cerrar mes (mejora post-v2.23): Admin y Validador (permiso cerrar_mes)
@@ -187,11 +187,16 @@ export class CasesController {
     this.verificarAlcance(contenedor.slep, usuario);
     this.verificarPuedeCargarDatos(usuario);
     this.verificarMesAbierto(contenedor, usuario);
-    return this.casesService.guardarValores(contenedor, dto.valores, {
+    return this.casesService.guardarValores(contenedor, dto.valores, this.autorDe(usuario));
+  }
+
+  // Quién queda como autor de un dato: nombre y perfil al momento de cargar.
+  private autorDe(usuario: Usuario) {
+    return {
       id: usuario.id,
       nombre: usuario.nombreParaMostrar,
       perfil: usuario.esSuperadmin ? 'Superadmin' : (usuario.perfil?.nombre ?? '—'),
-    });
+    };
   }
 
   // Permiso individual de cargar datos (mejora post-v2.23): reemplaza al
@@ -226,7 +231,7 @@ export class CasesController {
   // registran cuando el Digitador presiona "Guardar".
   @Bitacora({
     accion: 'excel_cargado',
-    descripcion: (_req, r) => `Cargó un Excel para revisión en ${r.slep}.`,
+    descripcion: (_req, r) => `Cargó el Excel "${r.nombreArchivo}" (campo 3 del archivo: "${r.slepEnArchivo || 'vacío'}") para revisión en ${r.slep}.`,
   })
   @Post(':id/importar')
   @UseInterceptors(FileInterceptor('archivo'))
@@ -235,6 +240,10 @@ export class CasesController {
     this.verificarAlcance(contenedor.slep, usuario);
     this.verificarPuedeCargarDatos(usuario);
     this.verificarMesAbierto(contenedor, usuario);
-    return this.importacionService.leerDesdeExcel(id, archivo.buffer);
+    // El navegador manda el nombre del archivo en UTF-8, pero la librería
+    // que recibe archivos lo lee como latin1: sin esto, "Educación" llegaría
+    // como "EducaciÃ³n".
+    const nombreArchivo = Buffer.from(archivo.originalname ?? '', 'latin1').toString('utf8');
+    return this.importacionService.leerDesdeExcel(id, archivo.buffer, nombreArchivo);
   }
 }

@@ -165,7 +165,7 @@ export class CaseStateService {
 
   // Vista previa del Excel (mejora post-v2.23): no cambia nada en la base,
   // así que no hay que recargar contenedores.
-  importarArchivo(id: string, archivo: File): Observable<{ valores: Record<string, string> }> {
+  importarArchivo(id: string, archivo: File): Observable<{ valores: Record<string, string>; slep: string; slepEnArchivo: string; nombreArchivo: string }> {
     return this.api.importarArchivo(id, archivo);
   }
 

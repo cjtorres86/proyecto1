@@ -150,6 +150,8 @@
               <span class="ml-auto flex items-center gap-3 whitespace-nowrap">
                 @if (campo.cargadoPor) {
                   <span class="text-[8.5px] text-gray-400">{{ textoAutoria(campo.cargadoPor) }}</span>
+                } @else if (slep && campo.valor) {
+                  <span class="text-[8.5px] text-gray-400 italic">Sin registro de quién lo cargó</span>
                 }
                 <span class="font-mono">{{ campo.valor || '—' }}</span>
               </span>

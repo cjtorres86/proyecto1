@@ -74,7 +74,8 @@ export class CasesService {
   // post-v2.23 — antes siempre eran los 36). Cada nombre se valida contra
   // el catálogo de SLEP: un nombre mal escrito se rechaza entero, en vez
   // de crear un contenedor huérfano. Se crean en el orden del catálogo.
-  async crearMesVacio(mes: string, anio: string, formularioId: string, slepsElegidos: string[], usuarioId: string | null) {
+  async crearMesVacio(mes: string, anio: string, formularioId: string, slepsElegidos: string[], usuarioId: string | null, autor?: AutorCarga) {
+    const ahora = new Date();
     const yaExiste = await this.contenedores.count({ where: { mesConsolidado: mes, anioConsolidado: anio } });
     if (yaExiste) {
       throw new BadRequestException(`Ya existe un mes ${mes} ${anio} cargado en el sistema.`);
@@ -100,7 +101,19 @@ export class CasesService {
       const id = randomUUID();
       const valores = receta.flatMap((item) => {
         const valor = item.pregunta.nombre === 'Servicio / SLEP' ? slepRow.nombre : (item.pregunta.valorFijo ?? '');
-        return valor ? [{ contenedorId: id, preguntaId: item.preguntaId, valor }] : [];
+        // Autoría (mejora post-v2.23): los campos fijos que nacen con el
+        // mes quedan a nombre de quien lo creó.
+        return valor
+          ? [{
+              contenedorId: id,
+              preguntaId: item.preguntaId,
+              valor,
+              cargadoPorId: autor?.id ?? null,
+              cargadoPorNombre: autor?.nombre ?? null,
+              cargadoPorPerfil: autor?.perfil ?? null,
+              cargadoEn: autor ? ahora : null,
+            }]
+          : [];
       });
       const contenedor = {
         id,
