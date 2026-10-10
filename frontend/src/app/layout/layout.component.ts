@@ -29,7 +29,7 @@ import { ThemeToggleComponent } from '../shared/theme-toggle/theme-toggle.compon
        portal usa los seis colores del logo; las aplicaciones, esta). Ningún
        tramo es del mismo navy del encabezado, para que se vean los seis. */
     .barra-aplicacion {
-      height: 5px;
+      height: 6px; /* igual que la línea del portal */
       background: linear-gradient(90deg,
         #1E4FA0 0 16.666%, #006BB9 0 33.333%, #3ABFF0 0 50%,
         #8FB2F5 0 66.666%, #94A3B8 0 83.333%, #CBD5E1 0);
