@@ -1,47 +1,85 @@
 <div class="flex flex-col h-full">
-  <mat-toolbar class="!bg-[#1E3A8A] !text-white flex justify-between">
-    <!-- Marca + navegación, de izquierda a derecha en el orden pedido.
-         "Descargar" se integra acá como palabra, mismo estilo que el
-         resto — antes era un ícono aparte a la derecha. -->
-    <div class="flex items-center gap-3">
-      <span class="font-bold">Avance de Sumarios</span>
-      <!-- "Inicio" (mejora post-v2.23): un Digitador o un Validador
-           siempre están en esta misma vista — no necesitan un camino de
-           vuelta a un lugar en el que ya están. Admin y Superadmin sí,
-           porque navegan a Usuarios/Perfiles y necesitan volver. -->
-      @if (mostrarInicio) { <a routerLink="/" mat-button class="!text-white">Inicio</a> }
-      @if (authService.can('gestionar_usuarios')) { <a routerLink="/usuarios" mat-button class="!text-white">Usuarios</a> }
-      @if (authService.usuarioActual()?.esSuperadmin) { <a routerLink="/perfiles" mat-button class="!text-white">Perfiles</a> }
-      @if (authService.usuarioActual()?.esSuperadmin) { <a routerLink="/bitacora" mat-button class="!text-white">Bitácora</a> }
-      @if (authService.can('exportar_excel_consolidado') || authService.can('exportar_excel_slep') || authService.can('exportar_informe')) {
-        @if (mesActivo$ | async; as mes) {
-          <button mat-button class="!text-white" (click)="abrirDescargas(mes)">Descargar</button>
-        } @else {
-          <button mat-button class="!text-white" disabled title="Selecciona un mes primero">Descargar</button>
+  <!-- Encabezado con el estilo del portal GDP-SLEP Studio, en su versión de
+       APLICACIÓN: línea de azules y grises (el portal la lleva multicolor) y
+       fondo navy institucional. Así se distingue de un vistazo si se está en
+       el portal o dentro de una aplicación. -->
+  <header class="shrink-0 bg-[#25306B] text-white shadow-[0_1px_0_rgba(0,0,0,0.25)] dark:bg-[#141B2E]">
+    <div class="barra-aplicacion" aria-hidden="true"></div>
+    <!-- Si no cabe todo en una fila (celular), los botones pasan a una segunda
+         fila: el nombre de la aplicación nunca se esconde. -->
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 sm:gap-x-4 sm:px-6">
+      <!-- Nombre de la aplicación: el módulo como etiqueta y la aplicación, grande. -->
+      <div class="min-w-[220px] flex-1 leading-tight">
+        <p class="truncate text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#8FB2F5]">Gestor de Formularios</p>
+        <p class="fuente-marca truncate text-[17px] font-extrabold tracking-tight text-white">Reporte Avance de Sumarios</p>
+      </div>
+
+      <div class="ml-auto flex items-center gap-1 sm:gap-3">
+        <nav class="flex items-center gap-0.5 sm:gap-1" aria-label="Navegación de Avance de Sumarios">
+          <!-- Volver al portal: para pasar a otra aplicación sin buscar la dirección. -->
+          <a [href]="urlPortal" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer" title="Volver al portal GDP-SLEP Studio">
+            <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.2" /><rect x="14" y="4" width="6" height="6" rx="1.2" /><rect x="4" y="14" width="6" height="6" rx="1.2" /><rect x="14" y="14" width="6" height="6" rx="1.2" /></svg>
+            <span class="sr-only lg:not-sr-only">Portal</span>
+          </a>
+          <!-- "Inicio": un Digitador o un Validador siempre están en esta misma
+               vista; Admin y Superadmin navegan a Usuarios/Perfiles y necesitan volver. -->
+          @if (mostrarInicio) {
+            <a routerLink="/" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer">
+              <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11 12 4l8 7" /><path d="M6 9.5V20h12V9.5" /></svg>
+              <span class="sr-only lg:not-sr-only">Inicio</span>
+            </a>
+          }
+          @if (authService.can('gestionar_usuarios')) {
+            <a routerLink="/usuarios" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer">
+              <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19c.7-3.2 2.9-5 5.5-5s4.8 1.8 5.5 5" /><path d="M15.5 5.3a3 3 0 0 1 0 5.4M17.5 14.3c1.6.6 2.6 2.2 3 4.7" /></svg>
+              <span class="sr-only lg:not-sr-only">Usuarios</span>
+            </a>
+          }
+          @if (authService.usuarioActual()?.esSuperadmin) {
+            <a routerLink="/perfiles" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer">
+              <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2" /><circle cx="9" cy="11" r="2.2" /><path d="M5.8 16c.5-1.6 1.7-2.5 3.2-2.5s2.7.9 3.2 2.5M14.5 10h3.5M14.5 13.5h3.5" /></svg>
+              <span class="sr-only lg:not-sr-only">Perfiles</span>
+            </a>
+            <a routerLink="/bitacora" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer">
+              <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8M8 4v16M8 20h8M16 4v16" /><path d="M11 8h2M11 12h2M11 16h2" /></svg>
+              <span class="sr-only lg:not-sr-only">Bitácora</span>
+            </a>
+          }
+          @if (authService.can('exportar_excel_consolidado') || authService.can('exportar_excel_slep') || authService.can('exportar_informe')) {
+            @if (mesActivo$ | async; as mes) {
+              <button type="button" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer" (click)="abrirDescargas(mes)">
+                <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+                <span class="sr-only lg:not-sr-only">Descargar</span>
+              </button>
+            } @else {
+              <button type="button" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer disabled:cursor-not-allowed disabled:opacity-45" disabled title="Selecciona un mes primero">
+                <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+                <span class="sr-only lg:not-sr-only">Descargar</span>
+              </button>
+            }
+          }
+        </nav>
+
+        <span class="hidden h-8 w-px bg-white/20 sm:block" aria-hidden="true"></span>
+
+        <app-theme-toggle />
+
+        <!-- Quién está conectado: nombre y perfil. -->
+        @if (authService.usuarioActual(); as u) {
+          <div class="hidden text-right leading-tight md:block">
+            <p class="text-[13px] font-bold text-white">{{ u.nombreParaMostrar }}</p>
+            <p class="text-[11px] text-[#B9C7EE]">{{ u.esSuperadmin ? 'Superadmin' : u.perfil?.nombre }}</p>
+          </div>
         }
-      }
+
+        <button type="button" (click)="cerrarSesion()" aria-label="Salir: cerrar sesión"
+                class="flex items-center gap-2 rounded-lg border border-white/30 px-3 py-2 text-[12.5px] font-bold text-white transition hover:border-[#FF8A9A] hover:bg-[#FF1D3D]/15 hover:text-[#FFC7CF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer">
+          <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9" /></svg>
+          <span class="sr-only sm:not-sr-only">Salir</span>
+        </button>
+      </div>
     </div>
-
-    <div class="flex items-center gap-4">
-      <app-theme-toggle />
-
-      <!-- Nombre arriba (más grande) y perfil abajo (chico) — apilados,
-           como el encabezado de cuenta de un panel de software moderno. -->
-      @if (authService.usuarioActual(); as u) {
-        <div class="flex flex-col items-end leading-tight">
-          <span class="text-[15px] font-semibold">{{ u.nombreParaMostrar }}</span>
-          <span class="text-[11px] text-blue-200">{{ u.esSuperadmin ? 'Superadmin' : u.perfil?.nombre }}</span>
-        </div>
-      }
-
-      <!-- Mismo nivel de cuidado que el interruptor de tema: círculo con
-           tinte rojizo sutil y la puerta "abriéndose" un poco al pasar el
-           mouse, en vez de un simple ícono plano. -->
-      <button type="button" class="boton-salir" (click)="cerrarSesion()" title="Cerrar sesión" aria-label="Cerrar sesión">
-        <i class="pi pi-sign-out"></i>
-      </button>
-    </div>
-  </mat-toolbar>
+  </header>
   <div class="flex-1 overflow-auto bg-gray-50 p-4">
     <router-outlet></router-outlet>
   </div>

@@ -1,8 +1,7 @@
+import { environment } from '../../environments/environment';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink } from '@angular/router';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { AuthService } from '../core/services/auth.service';
 import { CaseStateService } from '../core/services/case-state.service';
@@ -23,37 +22,30 @@ import { ThemeToggleComponent } from '../shared/theme-toggle/theme-toggle.compon
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, MatToolbarModule, MatButtonModule, ThemeToggleComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, ThemeToggleComponent],
   templateUrl: './layout.component.html',
   styles: [`
-    .boton-salir {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      border: none;
-      flex-shrink: 0;
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: background 0.25s ease;
+    /* Línea de la aplicación: seis tramos parejos de azules y grises (el
+       portal usa los seis colores del logo; las aplicaciones, esta). Ningún
+       tramo es del mismo navy del encabezado, para que se vean los seis. */
+    .barra-aplicacion {
+      height: 5px;
+      background: linear-gradient(90deg,
+        #1E4FA0 0 16.666%, #006BB9 0 33.333%, #3ABFF0 0 50%,
+        #8FB2F5 0 66.666%, #94A3B8 0 83.333%, #CBD5E1 0);
     }
-    .boton-salir:hover, .boton-salir:focus-visible {
-      background: rgba(239, 68, 68, 0.4);
-      outline: none;
-    }
-    .boton-salir i {
-      font-size: 14px;
-      transition: transform 0.25s ease;
-    }
-    .boton-salir:hover i {
-      transform: translateX(2px);
+    /* Tipografía de títulos del portal (gobCL / Museo Sans si están
+       instaladas; si no, la del sistema). Sin descargar nada de internet:
+       las redes corporativas lo bloquean. */
+    .fuente-marca {
+      font-family: 'gobCL', 'Museo Sans', 'Segoe UI', system-ui, sans-serif;
     }
   `],
 })
 export class LayoutComponent implements OnInit {
+  // Botón "Volver al portal" (ingreso único: todos entran por el portal).
+  readonly urlPortal = environment.portalUrl;
+
   readonly mesActivo$;
   private slepActivoNombre: string | null = null;
 
