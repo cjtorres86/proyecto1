@@ -1,3 +1,4 @@
+import { EnvioBitacoraService } from './envio-bitacora.service';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../../auth/auth.module';
@@ -9,6 +10,6 @@ import { IntegracionPortalService } from './integracion-portal.service';
 @Module({
   imports: [TypeOrmModule.forFeature([Usuario, Perfil]), AuthModule],
   controllers: [IntegracionPortalController],
-  providers: [IntegracionPortalService],
+  providers: [IntegracionPortalService, EnvioBitacoraService],
 })
 export class IntegracionPortalModule {}

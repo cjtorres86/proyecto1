@@ -37,6 +37,12 @@ export class RegistroBitacora {
   @Column({ type: 'json', nullable: true })
   detalle: Record<string, unknown> | null;
 
+  // Cuándo el portal confirmó que lo recibió (Bitácora central). Vacío =
+  // todavía pendiente de enviar. Es lo único que se marca después de
+  // crearlo: el contenido del registro nunca cambia.
+  @Column({ name: 'enviado_portal_en', type: 'datetime', nullable: true, select: false })
+  enviadoPortalEn: Date | null;
+
   @CreateDateColumn({ name: 'creado_en', type: 'datetime', precision: 3 })
   creadoEn: Date;
 }
