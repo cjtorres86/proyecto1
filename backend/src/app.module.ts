@@ -1,3 +1,4 @@
+import { IntegracionPortalModule } from './modules/integracion-portal/integracion-portal.module';
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
@@ -28,6 +29,7 @@ import { dataSourceOptions } from './database/data-source';
     ReportsModule,
     MensajesModule,
     BitacoraModule,
+    IntegracionPortalModule,
   ],
   controllers: [AppController],
   providers: [

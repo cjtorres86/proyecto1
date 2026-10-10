@@ -1,3 +1,4 @@
+import { SsoComponent } from './features/auth/sso/sso.component';
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
@@ -12,6 +13,8 @@ import { InformeComponent } from './features/reports/informe/informe.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
+  // Ingreso único: el portal abre Sumarios aquí, con un pase de un solo uso.
+  { path: 'sso', component: SsoComponent },
   // Sin el layout (sin menú/header de la app) a propósito — es un
   // documento para ver/imprimir, no una pantalla de trabajo. Igual
   // protegida por authGuard: los datos del informe no son públicos.

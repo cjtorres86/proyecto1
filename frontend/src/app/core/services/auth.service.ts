@@ -32,6 +32,19 @@ export class AuthService {
       );
   }
 
+  // Ingreso único: el portal abrió Sumarios con un pase de un solo uso; el
+  // servidor lo canjea con el portal y devuelve la sesión, sin pedir clave.
+  ingresarConPase(pase: string): Observable<{ accessToken: string; usuario: Usuario }> {
+    return this.http
+      .post<{ accessToken: string; usuario: Usuario }>(`${environment.apiUrl}/auth/sso`, { pase })
+      .pipe(
+        tap((res) => {
+          localStorage.setItem(TOKEN_KEY, res.accessToken);
+          this.usuarioActualSignal.set(res.usuario);
+        }),
+      );
+  }
+
   cargarSesion(): Observable<Usuario> {
     return this.http.post<Usuario>(`${environment.apiUrl}/auth/me`, {}).pipe(tap((u) => this.usuarioActualSignal.set(u)));
   }

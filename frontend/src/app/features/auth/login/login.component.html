@@ -10,44 +10,30 @@
     </header>
 
     <div class="bg-white dark:bg-[#141B2E] rounded-lg border border-[#D9E0EA] dark:border-[#28324A] border-t-4 border-t-[#1E3A8A] dark:border-t-[#5B7FD1] overflow-hidden transition-colors duration-300">
-      <!-- Zona superior: ClaveÚnica (vista previa, sin integración todavía) -->
-      <section class="bg-[#F5F7FB] dark:bg-[#161D30] px-6 pt-5 pb-6 border-b border-[#D9E0EA] dark:border-[#28324A]" aria-label="Ingreso con ClaveÚnica">
-        <div class="flex items-center justify-between gap-3 mb-2">
-          <!-- Espacio para la imagen OFICIAL de ClaveÚnica (kit de la
-               Secretaría de Gobierno Digital): se guarda como
-               frontend/public/claveunica.svg y aparece sola. Mientras no
-               exista el archivo, se muestra el nombre en texto simple. -->
-          @if (logoClaveUnicaDisponible) {
-            <img src="claveunica.svg" alt="ClaveÚnica" class="h-8 w-auto" (error)="logoClaveUnicaDisponible = false" />
-          } @else {
-            <span class="text-base font-medium text-[#1E3A8A] dark:text-[#8FB2F5]">ClaveÚnica</span>
-          }
-          <span class="text-xs font-medium text-[#1E3A8A] dark:text-[#8FB2F5] bg-[#E3EAF6] dark:bg-[#1E2A4A] rounded-full px-2.5 py-0.5">Próximamente</span>
-        </div>
-        <p class="text-sm text-[#475569] dark:text-[#94A3B8] mb-4">Ingresa con tu RUT y ClaveÚnica. Esta opción estará disponible pronto.</p>
-
-        <form [formGroup]="claveUnicaForm" class="flex flex-col gap-1" aria-disabled="true">
-          <mat-form-field appearance="outline">
-            <mat-label>RUT</mat-label>
-            <input matInput formControlName="rut" placeholder="12.345.678-9" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>ClaveÚnica</mat-label>
-            <input matInput type="password" formControlName="clave" />
-          </mat-form-field>
-          <button mat-flat-button type="button" disabled class="!rounded-md">Ingresar con ClaveÚnica</button>
-        </form>
+      <!-- Ingreso único: Avance de Sumarios se abre desde el portal GDP-SLEP Studio. -->
+      <section class="px-6 pt-6 pb-6 text-center" aria-label="Ingreso desde el portal">
+        <p class="text-sm text-[#475569] dark:text-[#94A3B8] leading-relaxed">
+          Avance de Sumarios forma parte de <strong class="font-medium text-[#1E3A8A] dark:text-[#8FB2F5]">GDP-SLEP Studio</strong>.
+          Entra al portal con tu usuario y clave, y desde ahí abre Avance de Sumarios.
+        </p>
+        <a [href]="urlPortal"
+           class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#1E3A8A] dark:bg-[#3E5A9E] px-4 py-3 text-sm font-medium text-white transition hover:bg-[#006BB9]">
+          Ingresar desde el portal
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </a>
       </section>
 
-      <!-- Separador entre los 2 accesos -->
-      <div class="flex items-center gap-3 px-6 pt-5" aria-hidden="true">
-        <span class="h-px flex-1 bg-[#D9E0EA] dark:bg-[#28324A]"></span>
-        <span class="text-xs text-[#64748B] dark:text-[#7C8AA5]">o ingresa con tu usuario del sistema</span>
-        <span class="h-px flex-1 bg-[#D9E0EA] dark:bg-[#28324A]"></span>
+      <!-- Acceso de emergencia: usuario y clave, solo para el Superadmin (por si el portal no responde). -->
+      <div class="border-t border-[#D9E0EA] dark:border-[#28324A] px-6 py-3 text-center">
+        <button type="button" (click)="mostrarEmergencia = !mostrarEmergencia" [attr.aria-expanded]="mostrarEmergencia" aria-controls="acceso-emergencia"
+                class="text-xs text-[#64748B] dark:text-[#7C8AA5] underline-offset-2 hover:underline cursor-pointer">
+          Acceso de emergencia (solo Superadmin)
+        </button>
       </div>
 
       <!-- Zona inferior: acceso actual del sistema (funcionamiento sin cambios) -->
-      <section class="px-6 pt-4 pb-6" aria-label="Ingreso con usuario del sistema">
+      @if (mostrarEmergencia) {
+      <section id="acceso-emergencia" class="px-6 pt-1 pb-6" aria-label="Acceso de emergencia con usuario y clave">
         <form [formGroup]="form" (ngSubmit)="enviar()" class="flex flex-col gap-1">
           <mat-form-field appearance="outline">
             <mat-label>Usuario</mat-label>
@@ -62,6 +48,7 @@
           </button>
         </form>
       </section>
+      }
     </div>
   </div>
 </main>

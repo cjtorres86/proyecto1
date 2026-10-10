@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -50,7 +51,12 @@ export class UserConfigComponent implements OnInit {
     return u.esSuperadmin || u.perfil?.id === 'perfil_digitador';
   }
 
+  // Ingreso único: las personas se administran en el portal; esta pantalla
+  // es solo de consulta.
+  readonly urlUsuariosPortal = `${environment.portalUrl}/configuracion/usuarios`;
+
   puedeCambiarCarga(u: Usuario): boolean {
+    if (environment.portalUrl) return false; // se cambia en el portal
     if (!u.usuario || this.cargaFija(u)) return false;
     const yo = this.authService.usuarioActual();
     if (u.perfil?.id === 'perfil_admin') return !!yo?.esSuperadmin;

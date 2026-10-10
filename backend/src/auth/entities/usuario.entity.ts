@@ -34,6 +34,10 @@ export class Usuario {
   @Column({ type: 'varchar', unique: true, length: 12, nullable: true })
   rut: string | null;
 
+  // Identificador de la persona en el portal GDP-SLEP Studio (ingreso único).
+  @Column({ name: 'portal_id', type: 'varchar', length: 36, nullable: true, unique: true })
+  portalId: string | null;
+
   @Column({ name: 'nombre_para_mostrar', length: 120 })
   nombreParaMostrar: string;
 

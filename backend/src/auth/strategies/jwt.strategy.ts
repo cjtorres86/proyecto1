@@ -23,7 +23,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JwtPayload) {
     const usuario = await this.authService.buscarPorId(payload.sub);
-    if (!usuario) return null;
+    // Cuenta desactivada = sesión rechazada en su siguiente petición, aunque
+    // el token siga vigente (hallazgo de la etapa 2: antes solo se impedía
+    // volver a entrar, pero una sesión abierta seguía funcionando).
+    if (!usuario || !usuario.activo) return null;
     return usuario;
   }
 }

@@ -1,8 +1,14 @@
 <div class="flex flex-col h-full gap-3">
   <div class="flex justify-between items-center">
     <h1 class="text-lg font-bold text-[#1E3A8A]">Usuarios</h1>
-    <button mat-flat-button class="!bg-[#1E3A8A] !text-white" (click)="abrirNuevoUsuario()">+ Nuevo usuario</button>
   </div>
+
+  <!-- Ingreso único: las personas se administran en el portal (contrato de integración). -->
+  <p role="note" class="rounded-md border border-[#BFE8F8] bg-[#EEFAFF] px-4 py-2.5 text-[13px] text-[#0A6D93]">
+    Las personas, sus perfiles, sus SLEP y el permiso de cargar datos se administran en el portal
+    <strong>GDP-SLEP Studio</strong>: Configuración → Usuarios y accesos. Esta lista es solo de consulta.
+    <a [href]="urlUsuariosPortal" target="_blank" rel="noopener" class="ml-1 font-semibold underline">Ir a Usuarios y accesos ↗</a>
+  </p>
 
   <!-- Filtros: mismo estilo que la Bitácora — se aplican al presionar
        "Filtrar" (o al tocar un desplegable), no en cada tecla. -->
@@ -97,16 +103,7 @@
                         [title]="u.usuario ? 'Solo el Superadmin puede cambiar este permiso' : ''">{{ u.puedeCargarDatos ? 'Sí' : 'No' }}</span>
                 }
               </td>
-              <td class="py-1.5 px-3 whitespace-nowrap text-right">
-                <button (click)="editar(u)" class="text-[11px] text-blue-800 hover:underline cursor-pointer mr-2">
-                  {{ estadoDe(u) === 'pendiente' ? 'Completar' : 'Editar' }}
-                </button>
-                @if (u.usuario && !u.esSuperadmin) {
-                  <button (click)="cambiarActivo(u)" class="text-[11px] hover:underline cursor-pointer" [class.text-red-700]="u.activo" [class.text-green-700]="!u.activo">
-                    {{ u.activo ? 'Desactivar' : 'Activar' }}
-                  </button>
-                }
-              </td>
+              <td class="py-1.5 px-3 whitespace-nowrap text-right"></td>
             </tr>
           }
         </tbody>

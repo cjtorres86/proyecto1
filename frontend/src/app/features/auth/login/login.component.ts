@@ -10,6 +10,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { WorkspaceModeService } from '../../../core/services/workspace-mode.service';
 import { MensajesService } from '../../../core/services/mensajes.service';
 import { ThemeToggleComponent } from '../../../shared/theme-toggle/theme-toggle.component';
+import { environment } from '../../../../environments/environment';
 
 // Login en 2 zonas (mejora post-v2.23):
 //
@@ -36,6 +37,10 @@ export class LoginComponent {
   // Pasa a false si frontend/public/claveunica.svg no existe todavía —
   // la plantilla muestra entonces el nombre en texto simple.
   logoClaveUnicaDisponible = true;
+  // Ingreso único: el botón principal lleva al portal; usuario y clave quedan
+  // como acceso de emergencia del Superadmin.
+  readonly urlPortal = environment.portalUrl;
+  mostrarEmergencia = false;
 
   constructor(
     private readonly fb: FormBuilder,

@@ -1,3 +1,4 @@
+import { SeAdministraEnPortalGuard } from '../integracion-portal/se-administra-en-portal.guard';
 import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermisosGuard } from '../../auth/guards/permisos.guard';
@@ -23,6 +24,7 @@ export class UsersController {
 
   @Permisos('gestionar_usuarios')
   @Bitacora({ accion: 'usuario_creado', descripcion: (req) => `Creó el usuario "${req.body.usuario}".` })
+  @UseGuards(SeAdministraEnPortalGuard)
   @Post('users')
   crearUsuario(@Body() dto: CrearUsuarioDto) {
     return this.usersService.crearUsuario(dto);
@@ -33,6 +35,7 @@ export class UsersController {
     accion: 'usuario_editado',
     descripcion: (_req, r) => `Editó la cuenta de "${r.nombreParaMostrar}"${r.usuario ? ` (usuario: ${r.usuario})` : ' (pendiente)'}.`,
   })
+  @UseGuards(SeAdministraEnPortalGuard)
   @Patch('users/:id')
   actualizarUsuario(@Param('id') id: string, @Body() dto: ActualizarUsuarioDto) {
     return this.usersService.actualizarUsuario(id, dto);
@@ -42,6 +45,7 @@ export class UsersController {
   // quien puede gestionar usuarios, puede prenderlos y apagarlos.
   @Permisos('gestionar_usuarios')
   @Bitacora({ accion: 'usuario_activado', descripcion: (_req, r) => `Activó la cuenta de "${r.nombreParaMostrar}".` })
+  @UseGuards(SeAdministraEnPortalGuard)
   @Post('users/:id/activar')
   activarUsuario(@Param('id') id: string) {
     return this.usersService.cambiarActivo(id, true);
@@ -49,6 +53,7 @@ export class UsersController {
 
   @Permisos('gestionar_usuarios')
   @Bitacora({ accion: 'usuario_desactivado', descripcion: (_req, r) => `Desactivó la cuenta de "${r.nombreParaMostrar}".` })
+  @UseGuards(SeAdministraEnPortalGuard)
   @Post('users/:id/desactivar')
   desactivarUsuario(@Param('id') id: string) {
     return this.usersService.cambiarActivo(id, false);
@@ -58,6 +63,7 @@ export class UsersController {
   // quién se lo puede cambiar a quién viven en UsersService.
   @Permisos('gestionar_usuarios')
   @Bitacora({ accion: 'carga_datos_permitida', descripcion: (_req, r) => `Permitió cargar datos a "${r.nombreParaMostrar}".` })
+  @UseGuards(SeAdministraEnPortalGuard)
   @Post('users/:id/permitir-carga')
   permitirCarga(@Param('id') id: string, @UsuarioActual() quienEdita: Usuario) {
     return this.usersService.cambiarPuedeCargarDatos(id, true, quienEdita);
@@ -65,6 +71,7 @@ export class UsersController {
 
   @Permisos('gestionar_usuarios')
   @Bitacora({ accion: 'carga_datos_quitada', descripcion: (_req, r) => `Quitó el permiso de cargar datos a "${r.nombreParaMostrar}".` })
+  @UseGuards(SeAdministraEnPortalGuard)
   @Post('users/:id/quitar-carga')
   quitarCarga(@Param('id') id: string, @UsuarioActual() quienEdita: Usuario) {
     return this.usersService.cambiarPuedeCargarDatos(id, false, quienEdita);
