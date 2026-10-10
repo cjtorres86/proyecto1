@@ -1,14 +1,20 @@
+import { PermisosGuard } from '../../auth/guards/permisos.guard';
+import { Permisos } from '../../auth/decorators/permisos.decorator';
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { UsuarioActual } from '../../auth/decorators/usuario-actual.decorator';
 import { Usuario } from '../../auth/entities/usuario.entity';
 import { DashboardService } from './dashboard.service';
 
-@UseGuards(JwtAuthGuard)
+// Panel de avance: permiso "dashboard" en sus rutas, salvo "ranking", que
+// también usa la lista de SLEP de la pantalla principal (navegación básica:
+// no puede depender de tener el Panel).
+@UseGuards(JwtAuthGuard, PermisosGuard)
 @Controller('dashboard')
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
+  @Permisos('dashboard')
   @Get()
   getDashboard(
     @Query('mes') mes: string,
@@ -25,6 +31,7 @@ export class DashboardController {
     return this.dashboardService.getRankingSeries(mes, anio, alcance);
   }
 
+  @Permisos('dashboard')
   @Get('desglose')
   async getDesglose(
     @Query('mes') mes: string,
@@ -36,6 +43,7 @@ export class DashboardController {
     return this.dashboardService.getDesgloseCampo(mes, anio, alcance, campo);
   }
 
+  @Permisos('dashboard')
   @Get('desglose-diferencia')
   async getDesgloseDiferencia(
     @Query('mes') mes: string,

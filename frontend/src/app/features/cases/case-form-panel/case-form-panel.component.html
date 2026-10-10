@@ -10,6 +10,7 @@
         <!-- Es un <label> para abrir el selector de archivo sin JavaScript;
              tabindex/keydown lo dejan usable con teclado. Solo .xlsx: es el
              formato que lee ExcelJS. -->
+        @if (puedeImportarExcel) {
         <label
           class="text-xs rounded px-2 py-1 border border-blue-800 text-blue-800 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-800"
           [class.opacity-40]="mesCerrado || cargandoArchivo"
@@ -23,6 +24,7 @@
           {{ cargandoArchivo ? 'Cargando…' : 'Cargar datos' }}
           <input #selectorArchivo type="file" accept=".xlsx" class="hidden" [disabled]="mesCerrado" (change)="onArchivoSeleccionado($event)" />
         </label>
+        }
         <button
           class="text-xs rounded px-2 py-1 border border-blue-800 disabled:opacity-40 disabled:cursor-not-allowed"
           [class.bg-blue-800]="puedeGuardar"
@@ -51,7 +53,7 @@
     @if (contenedor?.cerradoEn) {
       <p class="text-xs text-gray-600 bg-gray-100 rounded px-2 py-1 mb-2 flex items-center gap-1.5">
         <i class="pi pi-lock text-[11px]"></i>
-        {{ esSuperadmin ? 'Mes cerrado. Como superadmin, puedes modificarlo igual.' : 'Mes cerrado: sus datos ya no se pueden modificar.' }}
+        {{ esSuperadmin ? 'Mes cerrado. Tu perfil permite modificarlo igual.' : 'Mes cerrado: sus datos ya no se pueden modificar.' }}
       </p>
     }
     @if (hayCambios) {

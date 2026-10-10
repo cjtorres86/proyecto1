@@ -1,3 +1,4 @@
+import { Permisos } from '../../auth/decorators/permisos.decorator';
 import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermisosGuard } from '../../auth/guards/permisos.guard';
@@ -51,12 +52,14 @@ export class MensajesController {
   }
 
   @Bitacora({ accion: 'mensaje_creado', descripcion: (req) => `Escribió un mensaje en el campo ${req.body.preguntaId}${req.body.respuestaAId ? ' (respondiendo a otro mensaje)' : ''}.` })
+  @Permisos('mensajes')
   @Post()
   crear(@Param('contenedorId') contenedorId: string, @Body() dto: CrearMensajeDto, @UsuarioActual() usuario: Usuario) {
     return this.mensajes.crear(contenedorId, dto, usuario);
   }
 
   @Bitacora({ accion: 'mensaje_editado', descripcion: () => 'Editó un mensaje del chat.' })
+  @Permisos('mensajes')
   @Patch(':mensajeId')
   editar(
     @Param('contenedorId') contenedorId: string,
@@ -68,12 +71,14 @@ export class MensajesController {
   }
 
   @Bitacora({ accion: 'mensaje_eliminado', descripcion: () => 'Borró un mensaje del chat.' })
+  @Permisos('mensajes')
   @Delete(':mensajeId')
   borrar(@Param('contenedorId') contenedorId: string, @Param('mensajeId') mensajeId: string, @UsuarioActual() usuario: Usuario) {
     return this.mensajes.borrar(contenedorId, mensajeId, usuario);
   }
 
   @Bitacora({ accion: 'mensaje_reaccion', descripcion: (req) => `Reaccionó a un mensaje del chat (${req.body.tipo}).` })
+  @Permisos('mensajes')
   @Post(':mensajeId/reacciones')
   reaccionar(
     @Param('contenedorId') contenedorId: string,

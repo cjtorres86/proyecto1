@@ -21,7 +21,7 @@
           Cerrar mes
         </button>
       }
-      @if (mesActivoCerrado && authService.usuarioActual()?.esSuperadmin) {
+      @if (mesActivoCerrado && authService.can('reabrir_mes')) {
         <button
           class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer"
           title="Reabrir el mes para todos"
@@ -30,7 +30,7 @@
           Abrir mes
         </button>
       }
-      @if (authService.usuarioActual()?.esSuperadmin) {
+      @if (authService.can('eliminar_mes')) {
         <button
           class="text-xs border border-red-700 text-red-700 rounded px-2 py-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           [disabled]="!mesActivo"

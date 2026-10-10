@@ -1,5 +1,11 @@
 @if (authService.usuarioActual()?.esSuperadmin) {
   <h2 class="font-bold mb-3">Perfiles</h2>
+  <!-- Los perfiles se administran en el portal (contrato de integración). -->
+  <p role="note" class="mb-3 rounded-md border border-[#BFE8F8] bg-[#EEFAFF] px-4 py-2.5 text-[13px] text-[#0A6D93]">
+    Los perfiles y sus permisos se administran en el portal <strong>GDP-SLEP Studio</strong>: Configuración → Perfiles.
+    Los cambios llegan aquí al instante. Esta lista es solo de consulta.
+    <a [href]="urlPerfilesPortal" target="_blank" rel="noopener" class="ml-1 font-semibold underline">Ir a Perfiles ↗</a>
+  </p>
   <p-table [value]="perfiles">
     <ng-template pTemplate="header"><tr><th>Id</th><th>Nombre</th><th>Vistas</th><th>Acciones</th><th>Gestión</th></tr></ng-template>
     <ng-template pTemplate="body" let-p>

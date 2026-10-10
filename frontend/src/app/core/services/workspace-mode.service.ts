@@ -21,6 +21,8 @@ export class WorkspaceModeService {
   // arrancan en Formulario.
   fijarModoPorDefecto(usuario: Usuario): void {
     const esAdmin = usuario.esSuperadmin || usuario.perfil?.id === 'perfil_admin';
-    this.modoSubject.next(esAdmin ? 'dashboard-ampliado' : 'formulario');
+    // Solo se arranca en el Panel si el perfil lo incluye (Configuración → Perfiles).
+    const tienePanel = usuario.esSuperadmin || !!usuario.perfil?.permisos?.vistas?.includes('dashboard');
+    this.modoSubject.next(esAdmin && tienePanel ? 'dashboard-ampliado' : 'formulario');
   }
 }

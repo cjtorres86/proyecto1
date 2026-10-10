@@ -1,3 +1,4 @@
+import { ModeSwitcherComponent } from '../../../shared/mode-switcher/mode-switcher.component';
 import { Component } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest } from 'rxjs';
@@ -31,7 +32,7 @@ import { HistoricoPanelComponent } from '../historico-panel/historico-panel.comp
 @Component({
   selector: 'app-cases',
   standalone: true,
-  imports: [
+  imports: [ModeSwitcherComponent, 
     CommonModule,
     MonthsPanelComponent, SlepPanelComponent, CaseFormPanelComponent, FieldInspectorComponent, DashboardComponent,
     HistoricoPanelComponent,
@@ -39,6 +40,11 @@ import { HistoricoPanelComponent } from '../historico-panel/historico-panel.comp
   templateUrl: './cases.component.html',
 })
 export class CasesComponent {
+  // Inspector de validaciones: permiso "inspector" del perfil.
+  get puedeVerInspector(): boolean {
+    return this.authService.can('inspector');
+  }
+
   readonly modo$;
 
   constructor(

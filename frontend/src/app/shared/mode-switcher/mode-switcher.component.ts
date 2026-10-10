@@ -1,3 +1,4 @@
+import { AuthService } from '../../core/services/auth.service';
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ModoWorkspace, WorkspaceModeService } from '../../core/services/workspace-mode.service';
@@ -32,11 +33,19 @@ import { ModoWorkspace, WorkspaceModeService } from '../../core/services/workspa
 export class ModeSwitcherComponent {
   @Input({ required: true }) modoActivo!: ModoWorkspace;
 
-  readonly opciones: { modo: ModoWorkspace; etiqueta: string }[] = [
+  private readonly todas: { modo: ModoWorkspace; etiqueta: string; permiso?: string }[] = [
     { modo: 'formulario', etiqueta: 'Formulario' },
-    { modo: 'dashboard-ampliado', etiqueta: 'Dashboard' },
-    { modo: 'historico', etiqueta: 'Histórico' },
+    { modo: 'dashboard-ampliado', etiqueta: 'Dashboard', permiso: 'dashboard' },
+    { modo: 'historico', etiqueta: 'Histórico', permiso: 'historico' },
   ];
 
-  constructor(readonly workspaceMode: WorkspaceModeService) {}
+  // Solo los modos que el perfil permite (Panel de avance, Histórico).
+  get opciones() {
+    return this.todas.filter((o) => !o.permiso || this.authService.can(o.permiso));
+  }
+
+  constructor(
+    readonly workspaceMode: WorkspaceModeService,
+    private readonly authService: AuthService,
+  ) {}
 }

@@ -110,8 +110,15 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
     return campo.valor && !this.esTotalGeneral && !this.tieneCambio(campo) ? 'Sin registro de quién lo cargó' : '';
   }
 
+  // Editar un mes cerrado: permiso "editar_mes_cerrado" (antes, solo el
+  // Superadmin). Se administra en el portal, en Configuración → Perfiles.
   get esSuperadmin(): boolean {
-    return !!this.authService.usuarioActual()?.esSuperadmin;
+    return this.authService.can('editar_mes_cerrado');
+  }
+
+  // Cargar un Excel: permiso "importar_excel" del perfil.
+  get puedeImportarExcel(): boolean {
+    return this.authService.can('importar_excel');
   }
 
   // Mes cerrado (mejora post-v2.23): nadie modifica, salvo el superadmin.

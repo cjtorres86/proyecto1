@@ -11,6 +11,15 @@ export interface IdentidadPortal {
   rol: string | null; // 'Admin' | 'Validador' | 'Digitador' | 'Superadmin'
   alcance: string[]; // ['todos'] o [un SLEP]
   opciones: Record<string, boolean>; // ej. { cargar_datos: true }
+  // Definición completa del perfil (desde la etapa 3): se guarda junto con la
+  // persona, así nunca le falta el perfil aunque se haya perdido un aviso.
+  perfil?: PerfilPortal | null;
+}
+
+export interface PerfilPortal {
+  id: string;
+  nombre: string;
+  permisos: { vistas: string[]; acciones: string[]; gestion: string[] };
 }
 
 // Perfil del portal → perfil de Sumarios.

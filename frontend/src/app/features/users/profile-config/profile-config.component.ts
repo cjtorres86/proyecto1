@@ -4,6 +4,7 @@ import { TableModule } from 'primeng/table';
 import { AuthService } from '../../../core/services/auth.service';
 import { UsersApiService } from '../services/users-api.service';
 import { Perfil } from '../../../core/models/user.model';
+import { environment } from '../../../../environments/environment';
 
 // Gestión de perfiles (TDD, sección 11.2.1) — exclusiva del
 // superadmin; ya la controla el backend, esto solo oculta la sección
@@ -15,6 +16,7 @@ import { Perfil } from '../../../core/models/user.model';
   templateUrl: './profile-config.component.html',
 })
 export class ProfileConfigComponent implements OnInit {
+  readonly urlPerfilesPortal = `${environment.portalUrl}/configuracion/perfiles`;
   perfiles: Perfil[] = [];
 
   constructor(

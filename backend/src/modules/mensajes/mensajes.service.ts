@@ -1,3 +1,4 @@
+import { tienePermiso } from '../../auth/tiene-permiso';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -100,7 +101,7 @@ export class MensajesService {
     m.textoOriginal ??= m.texto; // el texto original nunca se pierde
     m.texto = texto;
     m.editadoEn = new Date();
-    if (!usuario.esSuperadmin) m.cambioUsado = true;
+    if (!tienePermiso(usuario, 'moderar_mensajes')) m.cambioUsado = true;
     await this.mensajes.save(m);
     await this.marcarLeido(contenedorId, m.preguntaId, usuario.id);
     return this.listarHilo(contenedorId, m.preguntaId, usuario);
@@ -110,7 +111,7 @@ export class MensajesService {
     const m = await this.mensajeModificable(contenedorId, mensajeId, usuario);
     m.eliminadoEn = new Date();
     m.eliminadoPorId = usuario.id;
-    if (!usuario.esSuperadmin) m.cambioUsado = true;
+    if (!tienePermiso(usuario, 'moderar_mensajes')) m.cambioUsado = true;
     await this.mensajes.save(m);
     await this.marcarLeido(contenedorId, m.preguntaId, usuario.id);
     return this.listarHilo(contenedorId, m.preguntaId, usuario);
@@ -202,7 +203,9 @@ export class MensajesService {
     const m = await this.mensajes.findOne({ where: { id: mensajeId, contenedorId } });
     if (!m) throw new NotFoundException('Mensaje no encontrado.');
     if (m.eliminadoEn) throw new BadRequestException('El mensaje ya fue eliminado.');
-    if (!usuario.esSuperadmin) {
+    // Moderar (modificar mensajes ajenos sin límite): permiso "moderar_mensajes"
+    // (antes, solo el Superadmin).
+    if (!tienePermiso(usuario, 'moderar_mensajes')) {
       if (m.autorId !== usuario.id) throw new ForbiddenException('Solo puedes modificar tus propios mensajes.');
       if (m.cambioUsado) throw new BadRequestException('Ya usaste la única edición o borrado permitido para este mensaje.');
     }
@@ -236,7 +239,7 @@ export class MensajesService {
         ? { id: r.id, autor: r.autor.nombreParaMostrar, texto: r.eliminadoEn ? null : r.texto.slice(0, 140), eliminado: !!r.eliminadoEn }
         : null,
       reacciones,
-      puedeModificar: !eliminado && (usuario.esSuperadmin || (m.autorId === usuario.id && !m.cambioUsado)),
+      puedeModificar: !eliminado && (tienePermiso(usuario, 'moderar_mensajes') || (m.autorId === usuario.id && !m.cambioUsado)),
     };
   }
 }

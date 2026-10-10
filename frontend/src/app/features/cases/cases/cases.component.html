@@ -7,7 +7,12 @@
            Inspector/Dashboard/Histórico se turnan en el bloque doble. -->
       <div class="bg-white rounded-lg shadow p-3 overflow-auto"><app-case-form-panel /></div>
       @if ((modo$ | async) === 'formulario') {
-        <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-field-inspector /></div>
+        <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto">@if (puedeVerInspector) { <app-field-inspector /> } @else {
+          <!-- Sin Inspector: el selector de modos (que vive en el Inspector) se
+               muestra igual, para poder ir al Dashboard o al Histórico si el perfil los tiene. -->
+          <app-mode-switcher modoActivo="formulario" />
+          <p class="text-xs text-gray-500 mt-3">Tu perfil no incluye el inspector de validaciones.</p>
+        }</div>
       } @else if ((modo$ | async) === 'dashboard-ampliado') {
         <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-dashboard /></div>
       } @else {
@@ -17,7 +22,12 @@
       <div class="bg-white rounded-lg shadow p-3 overflow-auto"><app-slep-panel /></div>
       @if ((modo$ | async) === 'formulario') {
         <div class="bg-white rounded-lg shadow p-3 overflow-auto"><app-case-form-panel /></div>
-        <div class="bg-white rounded-lg shadow p-3 overflow-auto"><app-field-inspector /></div>
+        <div class="bg-white rounded-lg shadow p-3 overflow-auto">@if (puedeVerInspector) { <app-field-inspector /> } @else {
+          <!-- Sin Inspector: el selector de modos (que vive en el Inspector) se
+               muestra igual, para poder ir al Dashboard o al Histórico si el perfil los tiene. -->
+          <app-mode-switcher modoActivo="formulario" />
+          <p class="text-xs text-gray-500 mt-3">Tu perfil no incluye el inspector de validaciones.</p>
+        }</div>
       } @else if ((modo$ | async) === 'dashboard-ampliado') {
         <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-dashboard /></div>
       } @else {

@@ -3,7 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, timingSafeEqual } from 'crypto';
 import { Repository } from 'typeorm';
 import { Usuario } from '../../auth/entities/usuario.entity';
-import { IdentidadPortal, PERFIL_DE_ROL } from './identidad';
+import { Perfil } from '../../auth/entities/perfil.entity';
+import { IdentidadPortal, PERFIL_DE_ROL, PerfilPortal } from './identidad';
 
 const APLICACION_ID = 'reporte_avance_sumarios';
 
@@ -11,7 +12,33 @@ const APLICACION_ID = 'reporte_avance_sumarios';
 export class IntegracionPortalService {
   private readonly log = new Logger('IntegracionPortal');
 
-  constructor(@InjectRepository(Usuario) private readonly usuarios: Repository<Usuario>) {}
+  constructor(
+    @InjectRepository(Usuario) private readonly usuarios: Repository<Usuario>,
+    @InjectRepository(Perfil) private readonly perfiles: Repository<Perfil>,
+  ) {}
+
+  // El portal manda la lista COMPLETA de perfiles de Sumarios (al crear,
+  // editar o eliminar uno en Configuración → Perfiles). Se guardan tal cual;
+  // los que ya no están en la lista se borran, salvo que alguien todavía lo
+  // tenga (por seguridad: nunca se deja a una persona sin perfil).
+  async sincronizarPerfiles(lista: PerfilPortal[]): Promise<{ guardados: number; borrados: number }> {
+    for (const p of lista) await this.guardarPerfil(p);
+    const ids = new Set(lista.map((p) => p.id));
+    let borrados = 0;
+    for (const p of await this.perfiles.find()) {
+      if (ids.has(p.id)) continue;
+      const enUso = await this.usuarios.count({ where: { perfilId: p.id } });
+      if (!enUso) {
+        await this.perfiles.delete({ id: p.id });
+        borrados++;
+      }
+    }
+    return { guardados: lista.length, borrados };
+  }
+
+  private async guardarPerfil(p: PerfilPortal): Promise<void> {
+    await this.perfiles.save({ id: p.id, nombre: p.nombre, permisos: p.permisos });
+  }
 
   // Canjea con el portal (de servidor a servidor) el pase que trajo el
   // navegador, y deja al día la copia local de la persona.
@@ -73,7 +100,10 @@ export class IntegracionPortalService {
       u.alcance = 'todos';
       u.puedeCargarDatos = true;
     } else if (i.tieneAcceso) {
-      const perfilId = PERFIL_DE_ROL[i.rol ?? ''];
+      // Desde la etapa 3 el portal manda el perfil completo (su id es el de
+      // Sumarios): se guarda primero, así existe aunque sea nuevo (ej. Visita).
+      if (i.perfil) await this.guardarPerfil(i.perfil);
+      const perfilId = i.perfil?.id ?? PERFIL_DE_ROL[i.rol ?? ''];
       if (!perfilId) {
         this.log.warn(`Perfil "${i.rol}" del portal sin equivalente en Sumarios (${i.usuario}): se desactiva por seguridad.`);
         u.activo = false;

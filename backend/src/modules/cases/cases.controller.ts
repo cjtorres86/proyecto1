@@ -1,3 +1,4 @@
+import { tienePermiso } from '../../auth/tiene-permiso';
 import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -38,21 +39,21 @@ export class CasesController {
     return this.casesService.cerrarMes(dto.mes, dto.anio, usuario.id);
   }
 
-  // Reabrir mes (mejora post-v2.23) — exclusivo del superadmin, igual
-  // que eliminar mes: nadie más puede deshacer un cierre.
+  // Reabrir mes: permiso "reabrir_mes" (antes, solo el Superadmin). Se
+  // administra en el portal, en Configuración → Perfiles.
+  @Permisos('reabrir_mes')
   @Bitacora({ accion: 'mes_abierto', descripcion: (req) => `Reabrió ${req.body.mes} ${req.body.anio}.` })
   @Post('abrir-mes')
-  abrirMes(@Body() dto: MesDto, @UsuarioActual() usuario: Usuario) {
-    if (!usuario.esSuperadmin) throw new ForbiddenException('Solo el superadmin puede reabrir un mes.');
+  abrirMes(@Body() dto: MesDto) {
     return this.casesService.abrirMes(dto.mes, dto.anio);
   }
 
-  // Eliminar mes (mejora post-v2.23): exclusivo del superadmin. Es un
+  // Eliminar mes: permiso "eliminar_mes" (antes, solo el Superadmin). Es un
   // borrado lógico — los datos se conservan en la base de datos.
+  @Permisos('eliminar_mes')
   @Bitacora({ accion: 'mes_eliminado', descripcion: (req) => `Eliminó ${req.body.mes} ${req.body.anio} de la vista (los datos se conservan).` })
   @Post('eliminar-mes')
   eliminarMes(@Body() dto: MesDto, @UsuarioActual() usuario: Usuario) {
-    if (!usuario.esSuperadmin) throw new ForbiddenException('Solo el superadmin puede eliminar un mes.');
     return this.casesService.eliminarMes(dto.mes, dto.anio, usuario.id);
   }
 
@@ -69,6 +70,7 @@ export class CasesController {
     return this.casesService.listarMesesDisponibles();
   }
 
+  @Permisos('inspector')
   @Get('errores')
   async listarErrores(
     @Query('mes') mes: string,
@@ -92,6 +94,7 @@ export class CasesController {
   }
 
   // Antes de ':id' por la misma razón que 'meses-disponibles' y 'errores'.
+  @Permisos('historico')
   @Get('historico')
   async getHistorico(
     @Query('slep') slep: string,
@@ -126,6 +129,7 @@ export class CasesController {
   // Gráfico de líneas del panel Histórico (mejora post-v2.23) — una
   // línea (general o de un SLEP puntual, según slep). Mismo límite de
   // alcance que el resto de las rutas de este controlador.
+  @Permisos('historico')
   @Get('historico-avance')
   async getHistoricoAvance(
     @Query('mes') mes: string,
@@ -140,6 +144,7 @@ export class CasesController {
   // Planilla general del panel Histórico (mejora post-v2.23) — columnas
   // = SLEP, filas = mes. Un usuario con alcance fijo ve una sola
   // columna (la suya), nunca las de otro SLEP.
+  @Permisos('historico')
   @Get('historico-avance-todos')
   async getHistoricoAvanceTodos(@Query('mes') mes: string, @Query('anio') anio: string, @UsuarioActual() usuario: Usuario) {
     const alcance = usuario.alcance !== 'todos' ? usuario.alcance : 'todos';
@@ -159,6 +164,7 @@ export class CasesController {
     accion: 'formulario_visto',
     descripcion: (_req, r) => `Vio el formulario de ${r.contenedor.slep} — ${r.contenedor.mesConsolidado} ${r.contenedor.anioConsolidado}.`,
   })
+  @Permisos('formulario')
   @Get(':id')
   async getUno(@Param('id') id: string, @UsuarioActual() usuario: Usuario) {
     // Primero el acceso (consulta liviana), después el detalle completo.
@@ -213,7 +219,8 @@ export class CasesController {
   // Mes cerrado (mejora post-v2.23): nadie modifica datos, salvo el
   // superadmin. Se verifica en el servidor, no solo desactivando botones.
   private verificarMesAbierto(contenedor: Contenedor, usuario: Usuario) {
-    if (contenedor.cerradoEn && !usuario.esSuperadmin) {
+    // Editar un mes cerrado: permiso "editar_mes_cerrado" (antes, solo el Superadmin).
+    if (contenedor.cerradoEn && !tienePermiso(usuario, 'editar_mes_cerrado')) {
       throw new ForbiddenException(`El mes ${contenedor.mesConsolidado} ${contenedor.anioConsolidado} está cerrado: ya no se pueden modificar sus datos.`);
     }
   }
@@ -239,6 +246,8 @@ export class CasesController {
     const contenedor = await this.casesService.obtenerContenedor(id);
     this.verificarAlcance(contenedor.slep, usuario);
     this.verificarPuedeCargarDatos(usuario);
+    // Cargar un Excel exige además el permiso "importar_excel" del perfil.
+    if (!tienePermiso(usuario, 'importar_excel')) throw new ForbiddenException('Tu perfil no permite cargar archivos Excel.');
     this.verificarMesAbierto(contenedor, usuario);
     // El navegador manda el nombre del archivo en UTF-8, pero la librería
     // que recibe archivos lo lee como latin1: sin esto, "Educación" llegaría

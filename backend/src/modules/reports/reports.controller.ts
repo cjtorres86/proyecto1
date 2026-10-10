@@ -17,7 +17,7 @@ export class ReportsController {
   // ya nadie los usaba y cargaban el servidor gratuito.
   constructor(private readonly excelService: ExcelService) {}
 
-  @Permisos('exportar_excel')
+  @Permisos('exportar_excel_consolidado')
   @Bitacora({ accion: 'excel_descargado', descripcion: () => 'Descargó el Excel "Consolidado por Mes".' })
   @Get('excel/general')
   async excelGeneral(@Res() res: Response, @UsuarioActual() usuario: Usuario) {
@@ -38,7 +38,7 @@ export class ReportsController {
     res.send(buffer);
   }
 
-  @Permisos('exportar_excel')
+  @Permisos('exportar_excel_slep')
   @Bitacora({ accion: 'excel_descargado', descripcion: () => 'Descargó el Excel "Consolidado por SLEP".' })
   @Get('excel/por-slep')
   async excelPorSlep(@Res() res: Response, @UsuarioActual() usuario: Usuario) {

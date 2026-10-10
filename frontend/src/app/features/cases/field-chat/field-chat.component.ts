@@ -68,8 +68,15 @@ export class FieldChatComponent implements OnChanges, OnDestroy {
     private readonly dialog: MatDialog,
   ) {}
 
+  // Moderar (modificar mensajes ajenos y sin límite de cambios): permiso
+  // "moderar_mensajes" (antes, solo el Superadmin).
   get esSuperadmin(): boolean {
-    return !!this.authService.usuarioActual()?.esSuperadmin;
+    return this.authService.can('moderar_mensajes');
+  }
+
+  // Escribir mensajes: permiso "mensajes" del perfil.
+  get puedeEscribir(): boolean {
+    return this.authService.can('mensajes');
   }
 
   // Cambió el campo o el formulario: se carga su conversación (y el

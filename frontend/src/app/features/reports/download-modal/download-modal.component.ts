@@ -38,8 +38,9 @@ export class DownloadModalComponent {
   // alcance de quien abrió la ventana.
   get opciones(): OpcionDescarga[] {
     const lista: OpcionDescarga[] = [];
-    if (this.authService.can('exportar_excel')) {
-      if (this.alcanceEsTodos) {
+    // Excel consolidado (todos los SLEP) y Excel por SLEP: permisos separados.
+    {
+      if (this.alcanceEsTodos && this.authService.can('exportar_excel_consolidado')) {
         lista.push({
           tipo: 'excel',
           titulo: 'Consolidado por Mes',
@@ -47,7 +48,7 @@ export class DownloadModalComponent {
           accion: () => this.descargarExcelGeneral(),
         });
       }
-      lista.push({
+      if (this.authService.can('exportar_excel_slep')) lista.push({
         tipo: 'excel',
         titulo: this.textoConsolidadoPorSlep,
         descripcion: this.alcanceEsTodos ? 'Cada SLEP en su propia hoja, con todos sus meses.' : 'Todos tus meses, en una sola hoja.',

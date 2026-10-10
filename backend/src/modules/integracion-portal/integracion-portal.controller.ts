@@ -2,7 +2,7 @@ import { Body, Controller, Headers, HttpCode, Post, Req } from '@nestjs/common';
 import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { AuthService } from '../../auth/auth.service';
 import { Bitacora } from '../bitacora/decorators/bitacora.decorator';
-import { IdentidadPortal } from './identidad';
+import { IdentidadPortal, PerfilPortal } from './identidad';
 import { IntegracionPortalService } from './integracion-portal.service';
 
 class IngresoSsoDto {
@@ -36,5 +36,13 @@ export class IntegracionPortalController {
     this.servicio.verificarClavePortal(clave);
     const u = await this.servicio.sincronizar(identidad);
     return { ok: true, activo: u?.activo ?? false };
+  }
+
+  // Aviso del portal: cambió la lista de perfiles (Configuración → Perfiles).
+  @Post('integracion/perfiles')
+  @HttpCode(200)
+  async recibirPerfiles(@Headers('x-clave-portal') clave: string | undefined, @Body() cuerpo: { perfiles: PerfilPortal[] }) {
+    this.servicio.verificarClavePortal(clave);
+    return this.servicio.sincronizarPerfiles(cuerpo?.perfiles ?? []);
   }
 }
