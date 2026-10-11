@@ -1,4 +1,5 @@
-import { Controller, Post, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards, Request } from '@nestjs/common';
+import { ingresoSoloPortal } from '../modules/integracion-portal/identidad';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -17,6 +18,14 @@ export class AuthController {
   @Post('login')
   login(@Request() req: { user: Usuario }) {
     return this.authService.login(req.user);
+  }
+
+  // ¿Sumarios está integrado al portal (INGRESO_SOLO_PORTAL=true) o funciona
+  // independiente? La pantalla lo usa para sus avisos y para saber si las
+  // personas se pueden editar aquí. No es un dato sensible: no exige sesión.
+  @Get('modo')
+  modo() {
+    return { integrado: ingresoSoloPortal() };
   }
 
   @UseGuards(JwtAuthGuard)

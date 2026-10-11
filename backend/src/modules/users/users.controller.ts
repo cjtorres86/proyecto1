@@ -16,7 +16,9 @@ import { Bitacora } from '../bitacora/decorators/bitacora.decorator';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Permisos('gestionar_usuarios')
+  // Consultar la lista: permiso "ver_usuarios" (se activa a cualquier perfil
+  // desde el portal). Crear o editar sigue exigiendo "gestionar_usuarios".
+  @Permisos('ver_usuarios')
   @Get('users')
   listarUsuarios() {
     return this.usersService.listarUsuarios();

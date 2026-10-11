@@ -1,3 +1,4 @@
+import { ModoIntegracionService } from '../../../core/services/modo-integracion.service';
 import { environment } from '../../../../environments/environment';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -41,6 +42,7 @@ export class UserConfigComponent implements OnInit {
     private readonly dialog: MatDialog,
     private readonly notification: NotificationService,
     private readonly authService: AuthService,
+    readonly modo: ModoIntegracionService,
   ) {}
 
   // Permiso de cargar datos (mejora post-v2.23). Superadmin y Digitador
@@ -55,8 +57,15 @@ export class UserConfigComponent implements OnInit {
   // es solo de consulta.
   readonly urlUsuariosPortal = `${environment.portalUrl}/configuracion/usuarios`;
 
+  // Crear y editar personas aquí: solo en modo independiente (integración
+  // desactivada) y solo el Superadmin ("gestionar_usuarios"). Integrado, todo
+  // se hace en el portal y esta lista es de consulta.
+  get puedeEditar(): boolean {
+    return !this.modo.integrado() && this.authService.can('gestionar_usuarios');
+  }
+
   puedeCambiarCarga(u: Usuario): boolean {
-    if (environment.portalUrl) return false; // se cambia en el portal
+    if (!this.puedeEditar) return false; // integrado: se cambia en el portal
     if (!u.usuario || this.cargaFija(u)) return false;
     const yo = this.authService.usuarioActual();
     if (u.perfil?.id === 'perfil_admin') return !!yo?.esSuperadmin;

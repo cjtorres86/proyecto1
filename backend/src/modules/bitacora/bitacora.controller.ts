@@ -1,3 +1,4 @@
+import { Permisos } from '../../auth/decorators/permisos.decorator';
 import { Body, Controller, ForbiddenException, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -12,12 +13,12 @@ import { ListarBitacoraDto, RegistrarEventoDto } from './dto/bitacora.dto';
 export class BitacoraController {
   constructor(private readonly bitacoraService: BitacoraService) {}
 
-  // Exclusiva del Superadmin (decisión explícita, no un @Permisos más):
-  // son datos sensibles de TODAS las personas del sistema, ni siquiera
-  // Admin la ve.
+  // Permiso "ver_bitacora": el Superadmin la ve siempre; a cualquier otro
+  // perfil se le puede activar desde el portal (Configuración → Perfiles).
+  // Son datos sensibles: por eso el permiso viene marcado como "Sensible".
+  @Permisos('ver_bitacora')
   @Get()
   async listar(@Query() dto: ListarBitacoraDto, @UsuarioActual() usuario: Usuario) {
-    if (!usuario.esSuperadmin) throw new ForbiddenException('Solo el Superadmin puede ver la bitácora.');
     return this.bitacoraService.listar({
       usuarioId: dto.usuarioId,
       accion: dto.accion,

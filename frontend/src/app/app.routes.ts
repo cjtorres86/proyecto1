@@ -2,7 +2,6 @@ import { SsoComponent } from './features/auth/sso/sso.component';
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
-import { superadminGuard } from './core/guards/superadmin.guard';
 import { BitacoraComponent } from './features/bitacora/bitacora/bitacora.component';
 import { LayoutComponent } from './layout/layout.component';
 import { LoginComponent } from './features/auth/login/login.component';
@@ -25,9 +24,9 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: '', component: CasesComponent },
-      { path: 'usuarios', component: UserConfigComponent, canActivate: [permissionGuard('gestionar_usuarios')] },
-      { path: 'perfiles', component: ProfileConfigComponent },
-      { path: 'bitacora', component: BitacoraComponent, canActivate: [superadminGuard] },
+      { path: 'usuarios', component: UserConfigComponent, canActivate: [permissionGuard('ver_usuarios')] },
+      { path: 'perfiles', component: ProfileConfigComponent, canActivate: [permissionGuard('ver_perfiles')] },
+      { path: 'bitacora', component: BitacoraComponent, canActivate: [permissionGuard('ver_bitacora')] },
     ],
   },
 ];

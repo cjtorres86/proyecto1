@@ -21,26 +21,28 @@
             <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.2" /><rect x="14" y="4" width="6" height="6" rx="1.2" /><rect x="4" y="14" width="6" height="6" rx="1.2" /><rect x="14" y="14" width="6" height="6" rx="1.2" /></svg>
             <span class="sr-only lg:not-sr-only">Portal</span>
           </a>
-          <!-- "Inicio": un Digitador o un Validador siempre están en esta misma
-               vista; Admin y Superadmin navegan a Usuarios/Perfiles y necesitan volver. -->
+          <!-- "Inicio": para volver de Usuarios, Perfiles o Bitácora; lo ve quien
+               puede entrar a alguna de esas pantallas. -->
           @if (mostrarInicio) {
             <a routerLink="/" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer">
               <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11 12 4l8 7" /><path d="M6 9.5V20h12V9.5" /></svg>
               <span class="sr-only lg:not-sr-only">Inicio</span>
             </a>
           }
-          @if (authService.can('gestionar_usuarios')) {
-            <a routerLink="/usuarios" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer">
+          @if (authService.can('ver_usuarios')) {
+            <a href="/usuarios" (click)="avisarAntesDeEntrar($event, 'usuarios')" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer">
               <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19c.7-3.2 2.9-5 5.5-5s4.8 1.8 5.5 5" /><path d="M15.5 5.3a3 3 0 0 1 0 5.4M17.5 14.3c1.6.6 2.6 2.2 3 4.7" /></svg>
               <span class="sr-only lg:not-sr-only">Usuarios</span>
             </a>
           }
-          @if (authService.usuarioActual()?.esSuperadmin) {
-            <a routerLink="/perfiles" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer">
+          @if (authService.can('ver_perfiles')) {
+            <a href="/perfiles" (click)="avisarAntesDeEntrar($event, 'perfiles')" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer">
               <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2" /><circle cx="9" cy="11" r="2.2" /><path d="M5.8 16c.5-1.6 1.7-2.5 3.2-2.5s2.7.9 3.2 2.5M14.5 10h3.5M14.5 13.5h3.5" /></svg>
               <span class="sr-only lg:not-sr-only">Perfiles</span>
             </a>
-            <a routerLink="/bitacora" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer">
+          }
+          @if (authService.can('ver_bitacora')) {
+            <a href="/bitacora" (click)="avisarAntesDeEntrar($event, 'bitacora')" class="flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] font-bold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer">
               <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8M8 4v16M8 20h8M16 4v16" /><path d="M11 8h2M11 12h2M11 16h2" /></svg>
               <span class="sr-only lg:not-sr-only">Bitácora</span>
             </a>

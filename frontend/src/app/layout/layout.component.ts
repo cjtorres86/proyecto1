@@ -1,7 +1,9 @@
+import { ModoIntegracionService } from '../core/services/modo-integracion.service';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../shared/confirm-dialog/confirm-dialog.component';
 import { environment } from '../../environments/environment';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink } from '@angular/router';
+import { Router, RouterOutlet, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { AuthService } from '../core/services/auth.service';
 import { CaseStateService } from '../core/services/case-state.service';
@@ -52,19 +54,53 @@ export class LayoutComponent implements OnInit {
   // Perfiles a los que se les esconde "Inicio" (mejora post-v2.23) —
   // siempre están ya en esa vista, así que sobra. Todo lo demás
   // (incluido Superadmin, que no tiene fila de perfil) sí lo ve.
-  private static readonly PERFILES_SIN_INICIO = ['perfil_digitador', 'perfil_validador'];
 
+  // "Inicio" sirve para volver de Usuarios, Perfiles o Bitácora: lo ve quien
+  // puede entrar a alguna de ellas (el Superadmin, siempre).
   get mostrarInicio(): boolean {
-    const perfilId = this.authService.usuarioActual()?.perfil?.id;
-    return !perfilId || !LayoutComponent.PERFILES_SIN_INICIO.includes(perfilId);
+    return ['ver_usuarios', 'ver_perfiles', 'ver_bitacora'].some((p) => this.authService.can(p));
+  }
+
+  // Aviso antes de entrar a Usuarios, Perfiles o Bitácora: según si Sumarios
+  // está integrado al portal o funciona independiente.
+  avisarAntesDeEntrar(e: Event, destino: 'usuarios' | 'perfiles' | 'bitacora'): void {
+    e.preventDefault();
+    const integrado = this.modo.integrado();
+    const textos = {
+      usuarios: integrado
+        ? 'Estás en una copia de consulta. Las personas se administran en el portal GDP-SLEP Studio (Configuración → Usuarios y accesos), y los cambios que se hagan allá llegan aquí al instante. Aquí no se puede modificar nada.'
+        : 'Avance de Sumarios está funcionando independiente del portal. Los cambios que hagas aquí no se reflejan en el portal. Cuando se vuelva a activar la integración, el portal vuelve a mandar, y los cambios que se hagan allá reemplazarán a los de aquí.',
+      perfiles: integrado
+        ? 'Estás en una copia de consulta. Los perfiles y sus permisos se administran en el portal GDP-SLEP Studio (Configuración → Perfiles), y los cambios que se hagan allá llegan aquí al instante. Aquí no se puede modificar nada.'
+        : 'Avance de Sumarios está funcionando independiente del portal. Esta es la lista de perfiles de Sumarios, solo para consultar. Cuando se vuelva a activar la integración, el portal vuelve a mandar.',
+      bitacora: integrado
+        ? 'Esta es la bitácora propia de Avance de Sumarios. Todo lo que aparece aquí también llega a la Bitácora central del portal GDP-SLEP Studio (Configuración → Bitácora), que reúne además lo que pasa en el portal.'
+        : 'Avance de Sumarios está funcionando independiente del portal. Esta es su bitácora propia. Lo que ocurra aquí se enviará a la Bitácora central del portal cada vez que el portal esté disponible.',
+    };
+    const titulos = { usuarios: 'Usuarios de Avance de Sumarios', perfiles: 'Perfiles de Avance de Sumarios', bitacora: 'Bitácora de Avance de Sumarios' };
+    const data: ConfirmDialogData = {
+      titulo: titulos[destino],
+      mensaje: textos[destino],
+      textoConfirmar: 'Entendido, continuar',
+      detalles: [{ etiqueta: 'Modo', valor: integrado ? 'Integrado al portal' : 'Independiente del portal', advertencia: !integrado }],
+    };
+    this.dialog
+      .open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, { width: '480px', data })
+      .afterClosed()
+      .subscribe((seguir) => {
+        if (seguir) this.router.navigateByUrl(`/${destino}`);
+      });
   }
 
   constructor(
     readonly authService: AuthService,
     private readonly caseState: CaseStateService,
     private readonly dialog: MatDialog,
+    private readonly router: Router,
+    readonly modo: ModoIntegracionService,
   ) {
     this.mesActivo$ = this.caseState.mesActivo$;
+    this.modo.cargar();
   }
 
   ngOnInit(): void {
