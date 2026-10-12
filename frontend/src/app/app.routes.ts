@@ -18,6 +18,9 @@ export const routes: Routes = [
   // documento para ver/imprimir, no una pantalla de trabajo. Igual
   // protegida por authGuard: los datos del informe no son públicos.
   { path: 'informe/:mes/:anio', component: InformeComponent, canActivate: [authGuard] },
+  // Informe Interactivo de avance (Descargar → Informe Interactivo): pestaña aparte.
+  // Se carga solo al abrirlo (no pesa en la carga inicial de Sumarios).
+  { path: 'informe-avance', loadComponent: () => import('./features/reports/informe-avance/informe-avance.component').then((m) => m.InformeAvanceComponent), canActivate: [authGuard] },
   {
     path: '',
     component: LayoutComponent,

@@ -59,9 +59,9 @@ export class DownloadModalComponent {
       lista.push(
         {
           tipo: 'html',
-          titulo: 'Informe General — Interactivo',
-          descripcion: 'Dashboard, ranking, formulario y errores, para revisar en pantalla.',
-          accion: () => this.verInformeGeneral(),
+          titulo: 'Informe Interactivo',
+          descripcion: 'Avance de los sumarios: indicadores, gráficos, ranking y tabla por SLEP. Genera informes en Word, Excel y PDF.',
+          accion: () => this.verInformeInteractivo(),
         },
         {
           tipo: 'pdf',
@@ -150,6 +150,14 @@ export class DownloadModalComponent {
   // abrir el modal, se agrega a la URL — el Informe ya sabe filtrarse
   // por SLEP (mismo mecanismo del Dashboard por SLEP) y el ranking se
   // esconde solo, sin código nuevo para eso.
+  // Informe Interactivo de avance: abre la página nueva en otra pestaña, en
+  // el mes (y el SLEP, si hay uno activo) que se está mirando.
+  verInformeInteractivo(): void {
+    const p = new URLSearchParams({ mes: this.data.mes, anio: this.data.anio });
+    if (this.data.slep) p.set('slep', this.data.slep);
+    window.open(`/informe-avance?${p.toString()}`, '_blank');
+  }
+
   verInformeGeneral(): void {
     this.abrirInforme(false, 'general');
   }

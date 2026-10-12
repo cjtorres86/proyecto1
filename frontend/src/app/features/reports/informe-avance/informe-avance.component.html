@@ -1,0 +1,151 @@
+<!-- Informe Interactivo de avance de sumarios (Descargar → Informe Interactivo).
+     Estructura de la propuesta aprobada; la lógica vive en motor-informe.ts. -->
+@if (estado !== 'listo') {
+  <div class="ia-estado" role="status">
+    @switch (estado) {
+      @case ('cargando') { <p>Preparando el informe de avance…</p> }
+      @case ('sin-permiso') { <p>Tu perfil no incluye el Informe Interactivo.</p> }
+      @default { <p>{{ mensaje }}</p> }
+    }
+  </div>
+}
+<div class="ia" [hidden]="estado !== 'listo'">
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" aria-labelledby="rk-title" hidden>
+  <div class="drawer-h">
+    <div class="top"><div><span class="eyebrow">Ranking</span><h2 id="rk-title">Avance de los sumarios por SLEP</h2><span class="muted small" id="rk-sub"></span></div>
+      <button type="button" class="x" id="rk-close" aria-label="Cerrar ranking">✕</button></div>
+    <div class="seg mini" id="rk-dir" role="group" aria-label="Orden del ranking">
+      <button type="button" data-d="desc" aria-pressed="true">Mayor avance primero</button>
+      <button type="button" data-d="asc" aria-pressed="false">Menor avance primero</button>
+    </div>
+  </div>
+  <div class="drawer-b" id="rk-body"></div>
+</aside>
+
+<div class="flag" aria-hidden="true"></div>
+<header class="band"><div class="band-in">
+  <div class="brand"><img id="logo" alt="Dirección de Educación Pública, Ministerio de Educación" width="88" height="80">
+    <div class="t">
+      <span class="eyebrow">Seguimiento de sumarios administrativos</span>
+      <h1>Avance de Sumarios de los Servicios Locales</h1>
+      <span class="subt">Procesos cerrados / Sumarios instruidos</span>
+    </div>
+  </div>
+  <!-- Persona conectada y Salir (en Avance de Sumarios: la sesión real). -->
+  <div class="usuario">
+    <div class="u-txt"><b id="u-nombre">César</b><small id="u-perfil">Superadmin</small></div>
+    <span class="u-sep" aria-hidden="true"></span>
+    <button type="button" class="btn-salir" id="salir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/></svg>Salir</button>
+  </div>
+</div></header>
+
+<div class="toolbar" id="toolbar"><div class="tb-in">
+  <div class="field"><span class="lbl" id="lbl-anio">Año</span><div class="seg" id="years" role="group" aria-labelledby="lbl-anio"></div></div>
+  <div class="field"><label for="slep">Servicio Local</label><select id="slep"></select></div>
+  <div class="field"><label for="mes">Mes de referencia</label><select id="mes"></select></div>
+  <button type="button" class="btn" id="rk-open" aria-controls="drawer" aria-expanded="false" title="SLEP con avance bajo en el mes de referencia">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 13.5V9M6.5 13.5V4.5M10.5 13.5V7M14 13.5H2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Ranking de avance<span class="badge" id="rk-badge"></span></button>
+  <div class="tb-acc">
+    <button type="button" class="btn primary" id="r-open" aria-expanded="false" aria-controls="rpanel">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.5h5.5L13 5v9.5H4zM9.5 1.5V5H13M6.5 8.5h4M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Generar informe</button>
+    <button type="button" class="btn info" id="h-open" aria-expanded="false" aria-controls="hpanel">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 7.2v4M8 4.8v.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>¿Cómo se calcula?</button>
+  </div>
+
+</div></div>
+
+<div class="wrap">
+  <!-- Ventana: generar informe (acción) -->
+  <section class="panel bloque accion" id="rpanel" aria-labelledby="h-rep" hidden>
+    <div class="bloque-h"><div class="tit"><span class="ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 1.5h5.5L13 5v9.5H4zM9.5 1.5V5H13M6.5 8.5h4M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span><div><span class="eyebrow">Informes</span><h2 id="h-rep">Generar informe de avance</h2>
+      <span class="muted small">El informe toma el año, el mes de referencia (o el trimestre elegido) y el servicio seleccionados arriba. Hojas verticales, con tablas, gráficos (Word y PDF), nota metodológica y observaciones a los datos.</span></div></div><button type="button" class="x" data-cerrar aria-label="Cerrar">✕</button></div>
+    <div class="rgrid">
+      <fieldset><legend>Período</legend>
+        <label class="opt"><input type="radio" name="r-tipo" value="mensual" checked><span id="r-tipo-m-t">Mensual</span></label>
+        <label class="opt trim"><input type="radio" name="r-tipo" value="trimestral"><span>Trimestral</span><select id="r-trim" aria-label="Trimestre"></select></label>
+        <label class="opt"><input type="radio" name="r-tipo" value="anual"><span id="r-tipo-a-t">Anual</span></label>
+      </fieldset>
+      <fieldset><legend>Alcance</legend>
+        <label class="opt"><input type="radio" name="r-alc" value="todos" id="r-alc-todos" checked><span>Todos los SLEP<small>Consolidado y ranking de los servicios</small></span></label>
+        <label class="opt"><input type="radio" name="r-alc" value="slep" id="r-alc-slep"><span id="r-alc-slep-t">Solo un SLEP</span></label>
+      </fieldset>
+      <fieldset><legend>Formato</legend>
+        <label class="opt"><input type="radio" name="r-fmt" value="docx" checked><span>Word (.docx)<small>Editable, con gráficos · hoja vertical</small></span></label>
+        <label class="opt"><input type="radio" name="r-fmt" value="xlsx"><span>Excel (.xlsx)<small>Una hoja por tabla, con filtros</small></span></label>
+        <label class="opt"><input type="radio" name="r-fmt" value="pdf"><span>PDF<small>Listo para enviar o imprimir · hoja vertical</small></span></label>
+      </fieldset>
+    </div>
+    <div class="rowbtns"><button type="button" class="btn primary" id="r-go">Descargar informe</button><button type="button" class="btn" id="r-close">Cerrar</button><span class="status" id="r-status" role="status"></span></div>
+  </section>
+  <!-- Ventana: ¿cómo se calcula el avance? (ayuda) -->
+  <section class="panel bloque ayuda" id="hpanel" aria-labelledby="h-calc" hidden>
+    <div class="bloque-h"><div class="tit"><span class="ico" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 7.2v4M8 4.8v.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><div><span class="eyebrow">Ayuda</span><h2 id="h-calc">¿Cómo se calcula el avance?</h2></div></div><button type="button" class="x" data-cerrar aria-label="Cerrar">✕</button></div>
+    <ul class="calc">
+      <li><b>% de avance = procesos cerrados / sumarios instruidos.</b> Es la misma regla que usa Avance de Sumarios en su panel.</li>
+      <li>La <b>meta es el 100 %</b>: todos los sumarios instruidos, cerrados.</li>
+      <li>Nivel de avance: <b>bajo</b> bajo 25 %, <b>medio</b> de 25 % a menos de 75 %, <b>alto</b> 75 % o más.</li>
+      <li>Un SLEP sin sumarios instruidos no tiene avance que medir: aparece como <b>«Sin sumarios instruidos»</b>.</li>
+      <li>La variación mensual se informa en <b>puntos porcentuales (pp)</b>: de 35 % a 40 % es +5,0 pp.</li>
+      <li><b>Sanciones aplicadas</b> = censura, multa, suspensión y destitución (no incluye los cerrados sin sanción).</li>
+    </ul>
+  </section>
+  <section class="panel" id="ficha" aria-labelledby="h-ficha">
+    <div class="panel-head">
+      <div><span class="eyebrow" id="ficha-eyebrow"></span><h2 id="h-ficha"></h2></div>
+      <span id="ficha-pill"></span>
+    </div>
+    <p class="lede" id="lede"></p>
+    <div class="tiles" id="tiles" role="list" aria-label="Indicadores del proceso"></div>
+
+    <div class="panel-head">
+      <div><h3 id="h-chart"></h3><span class="muted small" id="sub-chart"></span></div>
+      <div class="rowbtns">
+        <div class="legend">
+          <span><i class="sw line" style="background:var(--accent)"></i>% de avance</span>
+          <span><i class="sw dash"></i>Meta 100 %</span>
+          <span><i class="sw" style="background:var(--bajo)"></i>Bajo</span>
+          <span><i class="sw" style="background:var(--medio)"></i>Medio</span>
+          <span><i class="sw" style="background:var(--alto)"></i>Alto</span>
+          <span id="lg-prev" hidden><i class="sw line" style="background:var(--prev)"></i><span id="lg-prev-t">Año anterior</span></span>
+        </div>
+        <label class="check mini" id="cmp-wrap"><input type="checkbox" id="cmp"><span id="cmp-txt">Comparar con año anterior</span></label>
+        <div class="seg mini" id="escala" role="group" aria-label="Escala del gráfico">
+          <button type="button" data-e="100" aria-pressed="true" title="Muestra la distancia real a la meta">0–100 %</button>
+          <button type="button" data-e="aj" aria-pressed="false" title="Acerca la escala para ver mejor los cambios">Ajustada</button>
+        </div>
+      </div>
+    </div>
+    <div class="chartbox" id="cb-line"><svg id="line" role="img"></svg><div class="tip" id="tip" hidden></div></div>
+    <div class="panel-head"><div><h3>Variación mensual del avance</h3><span class="muted small">Cuánto avanzó (+) o retrocedió (−) el % de avance respecto del mes anterior, en puntos porcentuales.</span></div></div>
+    <div class="chartbox" id="cb-diff"><svg id="diff" role="img"></svg><div class="tip" id="tip2" hidden></div></div>
+
+    <details class="tbl">
+      <summary>Ver tabla mensual del servicio</summary>
+      <div class="rowbtns" style="margin-top:10px"><button type="button" class="btn" data-copy="tbl">Copiar tabla</button><span class="status" data-copymsg="tbl"></span></div>
+      <div class="tscroll"><table class="dt" id="tbl"></table></div>
+    </details>
+  </section>
+
+  <section class="panel" aria-labelledby="h-pan">
+    <div class="panel-head">
+      <div><span class="eyebrow">Panorama de los servicios</span><h2 id="h-pan">Avance por SLEP y mes, según ranking</h2>
+        <span class="muted small">% de avance de cada servicio en cada mes. Ordenado por su posición en el ranking del mes de referencia (1° = mayor avance). Seleccionar una fila abre la ficha del servicio; seleccionar una celda cambia además el mes.</span></div>
+      <div class="field"><label for="orden">Ordenar por</label>
+        <select id="orden"><option value="rank">Ranking (mayor avance)</option><option value="rank-asc">Ranking (menor avance)</option><option value="var">Mayor avance en el mes (pp)</option><option value="nom">Nombre</option></select></div>
+    </div>
+    <p class="lede" id="pan-lede"></p>
+    <div class="scale"><span>0 % · bajo</span><span class="bar"></span><span>100 % · alto</span>
+      <span style="margin-left:10px"><i class="sw" style="background:repeating-linear-gradient(135deg,var(--fg-3) 0 2px,transparent 2px 4px)"></i> Sin información / sin sumarios instruidos</span></div>
+    <div class="rowbtns"><button type="button" class="btn" data-copy="hm">Copiar panorama</button><span class="muted small">Copia la tabla en formato compatible con Excel y Word.</span><span class="status" data-copymsg="hm"></span></div>
+    <div class="hm-wrap" id="hm-wrap"><table class="hm" id="hm"></table></div>
+    <div class="tip" id="tip3" hidden style="position:fixed"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-obs">
+    <div><span class="eyebrow">Control de calidad de los datos</span><h2 id="h-obs">Observaciones detectadas</h2></div>
+    <ul class="obs" id="obs"></ul>
+  </section>
+  <footer id="foot"></footer>
+</div>
+</div>

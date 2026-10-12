@@ -2,6 +2,16 @@
 // For más información: https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 
+// Fuente Roboto incluida en el sistema (antes se pedía a Google Fonts, que
+// las redes corporativas bloquean y el servidor institucional no necesita).
+@import '@fontsource/roboto/300.css';
+@import '@fontsource/roboto/400.css';
+@import '@fontsource/roboto/500.css';
+// Grosores extra y Roboto Condensed: los usa el Informe Interactivo.
+@import '@fontsource/roboto/700.css';
+@import '@fontsource/roboto-condensed/600.css';
+@import '@fontsource/roboto-condensed/700.css';
+
 // Paleta cercana a --color-primary (#1E3A8A) del PMV (TDD, sección 5.1) —
 // ajustar con mat.define-palette si se necesita un calce exacto de color
 // en una pasada de diseño posterior; esto ya es un tema real, no un stub.

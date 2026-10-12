@@ -1,0 +1,51 @@
+<div class="flex flex-wrap items-end justify-between gap-2 mb-1">
+  <div>
+    <h4 class="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Avance por SLEP y mes, según ranking</h4>
+    @if (resumen) { <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ resumen }}</p> }
+  </div>
+  @if (detalle?.alcanceCompleto) {
+    <label class="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+      Ordenar por
+      <select [(ngModel)]="orden" (ngModelChange)="armar()" class="border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 text-[11px] bg-white dark:bg-[#141B2E] text-gray-700 dark:text-gray-200">
+        <option value="rank">Ranking (mayor avance)</option>
+        <option value="rank-asc">Ranking (menor avance)</option>
+        <option value="nom">Nombre</option>
+      </select>
+    </label>
+  }
+</div>
+<div class="flex flex-wrap items-center gap-2 text-[10.5px] text-gray-500 dark:text-gray-400 mb-1.5">
+  <span>0 % · bajo</span><span class="escala"></span><span>100 % · alto</span>
+  <span class="ml-2">Rayado: sin información o sin sumarios instruidos · Clic en una fila: destacarla en el gráfico</span>
+</div>
+<div #desplazable class="overflow-x-auto border border-gray-100 dark:border-[#28324A] rounded" (mouseleave)="ocultarTip()">
+  <table class="hm">
+    <caption class="sr-only">% de avance por SLEP y mes, ordenado por ranking del mes activo</caption>
+    <thead>
+      <tr>
+        <th class="fijo1" title="Posición en el ranking del mes activo">N°</th>
+        <th class="rh fijo2">SLEP</th>
+        @for (et of etiquetas; track $index) {
+          <th>{{ et }}<span class="cnt" title="SLEP con avance bajo">▼ {{ bajosPorMes[$index] }}</span></th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (f of filas; track f.slep) {
+        <tr [class.dest]="f.slep === destacado" [class.marc]="marcados.has(f.slep)" (click)="elegir.emit(f.slep)">
+          <td class="pos fijo1" [class.top]="f.pos && f.pos <= 3">{{ f.pos ? f.pos + '°' : '—' }}</td>
+          <td class="nom fijo2 text-gray-800 dark:text-gray-200" tabindex="0" (keydown.enter)="elegir.emit(f.slep)">{{ f.slep }}</td>
+          @for (c of f.celdas; track $index) {
+            @if (c.av === null) {
+              <td class="nd" [class.ref]="$index === mesActivo" (mousemove)="mostrarTip($event, f.slep, $index)"
+                  [attr.aria-label]="f.slep + ': ' + (c.sinInfo ? 'sin información' : 'sin sumarios instruidos')"></td>
+            } @else {
+              <td [class.ref]="$index === mesActivo" [style]="c.estilo" (mousemove)="mostrarTip($event, f.slep, $index)">{{ texto(c.av) }}</td>
+            }
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+<div #tip class="tip fixed" hidden></div>

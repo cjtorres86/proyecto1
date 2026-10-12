@@ -144,6 +144,25 @@ export class CasesController {
   // Planilla general del panel Histórico (mejora post-v2.23) — columnas
   // = SLEP, filas = mes. Un usuario con alcance fijo ve una sola
   // columna (la suya), nunca las de otro SLEP.
+  // Informe interactivo de avance (se abre desde Descargar → Informe
+  // Interactivo): su propio permiso, "exportar_informe". Mismos datos y
+  // mismo cálculo que el Histórico.
+  @Permisos('exportar_informe')
+  @Get('informe-avance')
+  async getInformeAvance(@UsuarioActual() usuario: Usuario) {
+    const alcance = usuario.esSuperadmin || usuario.alcance === 'todos' ? 'todos' : usuario.alcance;
+    return this.casesService.getInformeAvance(alcance);
+  }
+
+  // Histórico con el modelo del informe de avance (gráfico, tabla de avance
+  // por SLEP y ranking): todos los indicadores, mes a mes.
+  @Permisos('historico')
+  @Get('historico-detalle')
+  async getHistoricoDetalle(@Query('mes') mes: string, @Query('anio') anio: string, @UsuarioActual() usuario: Usuario) {
+    const alcance = usuario.esSuperadmin || usuario.alcance === 'todos' ? 'todos' : usuario.alcance;
+    return this.casesService.getHistoricoDetalle(mes, anio, alcance);
+  }
+
   @Permisos('historico')
   @Get('historico-avance-todos')
   async getHistoricoAvanceTodos(@Query('mes') mes: string, @Query('anio') anio: string, @UsuarioActual() usuario: Usuario) {

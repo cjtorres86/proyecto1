@@ -139,6 +139,16 @@ export class CaseStateService {
     this.historicoSubject.next({ sleps, destacado });
   }
 
+  // Destaca un SLEP en el Histórico (al hacer clic en su fila de la tabla de
+  // avance o del ranking): lo marca si no estaba y lo deja como destacado,
+  // sin desmarcarlo si ya estaba marcado (a diferencia de toggleSlepHistorico).
+  destacarSlepHistorico(slep: string): void {
+    const actual = this.historicoSubject.value;
+    const sleps = new Set(actual.sleps);
+    sleps.add(slep);
+    this.historicoSubject.next({ sleps, destacado: slep });
+  }
+
   recargarContenedores(mes: MesActivo): void {
     this.api.listarPorMes(mes.mes, mes.anio).subscribe((lista) => this.contenedoresSubject.next(lista));
   }

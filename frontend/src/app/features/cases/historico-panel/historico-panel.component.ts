@@ -1,127 +1,61 @@
-import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subscription, combineLatest, switchMap, of, forkJoin, map } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
+import { Subscription, combineLatest, forkJoin, of, switchMap, tap } from 'rxjs';
 import { CaseStateService } from '../../../core/services/case-state.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { CasesApiService } from '../services/cases-api.service';
 import { HistoricoSlep } from '../../../core/models/case.model';
 import { ModeSwitcherComponent } from '../../../shared/mode-switcher/mode-switcher.component';
-import { HistoricoChartComponent, SerieHistoricoAvance } from '../historico-chart/historico-chart.component';
+import { HistoricoChartComponent, SerieComparacion, SeriePrincipal } from '../historico-chart/historico-chart.component';
+import { HistoricoTablaAvanceComponent } from '../historico-tabla-avance/historico-tabla-avance.component';
+import { RankingAvanceDialogComponent } from '../ranking-avance-dialog/ranking-avance-dialog.component';
+import { HistoricoDetalle, MESES_CORTOS, MetricasAvance, escaparHtml, metricas, pct, ranking, sumar, tooltipMes } from '../../../core/utils/avance';
 
-type PuntoAvance = { mes: string; anio: string; pct: number | null };
-
-// Misma escala de umbrales que RankingComponent.colorBarra(). Recibe
-// SIEMPRE un número: "sin datos" ya llega convertido a 0 (ver
-// aNumero). Antes aceptaba null y lo pintaba gris #D1D5DB, el mismo
-// gris de las líneas no destacadas: por eso el SLEP marcado se veía
-// igual que el resto (hallazgo real).
-function colorPorAvance(pct: number): string {
-  if (pct >= 75) return '#00E0FF';
-  if (pct >= 50) return '#16A34A';
-  if (pct >= 25) return '#D97706';
-  return '#DC2626';
-}
-
-// "Sin datos" (sin sumarios instruidos ese mes, pctAvance = null en
-// DashboardService.calculateMetrics) cuenta como 0% en el gráfico —
-// misma regla que la planilla general ("sin datos o cero = cero").
-// Así un SLEP sin datos igual dibuja su línea (roja, en 0%) en vez de
-// desaparecer del gráfico.
-const aNumero = (pct: number | null) => pct ?? 0;
-const clave = (p: { mes: string; anio: string }) => `${p.mes} ${p.anio}`;
-
-// Gris de las líneas no destacadas: distinto de los 4 colores de la
-// escala de avance, así nunca se confunde con un destacado.
-const GRIS_FONDO = '#D1D5DB';
-
-// Panel "Ver Histórico" — 2 niveles:
+// Histórico con el modelo del informe de avance (gráfico, tabla de avance por
+// SLEP y ranking). Mantiene lo propio del Histórico: la línea General, los
+// SLEP marcados en el panel SLEP (en gris), el destacado (el último marcado,
+// en color y con su planilla detallada de 37 campos) y, para quien ve un solo
+// SLEP, solo su información.
 //
-// GENERAL (sin ningún SLEP marcado): una línea (% de avance mes a mes,
-// el mismo indicador del Dashboard) más la planilla tipo Excel
-// (columnas = SLEP, filas = mes). Reutiliza CasesService.
-// getHistoricoAvance()/getHistoricoAvanceTodosLosSlep() — mismo motor
-// de suma que el Dashboard, nunca un cálculo aparte.
-//
-// POR SLEP: clickear un SLEP en el panel (estando en este modo) agrega
-// su propia línea al MISMO gráfico general, en gris — clickearlo de
-// nuevo la quita. El último que se marcó ("destacado") queda en SU
-// PROPIO color (según su avance en el MES ACTIVO) y encima de todas
-// las demás líneas, incluida la general; la planilla general se
-// reemplaza por la planilla detallada de ESE SLEP mientras haya uno
-// destacado.
-//
-// Eje de tiempo: el backend entrega los meses del más reciente al más
-// antiguo (orden de planilla). El gráfico los invierte para leerse de
-// izquierda (pasado) a derecha (presente). El color se busca por
-// NOMBRE del mes activo, nunca por posición en la lista (hallazgo
-// real: tomar el último elemento daba el mes MÁS ANTIGUO, no el actual).
+// Los datos de TODOS los SLEP llegan en una sola consulta por mes
+// (/cases/historico-detalle): marcar o destacar SLEP no vuelve a consultar.
 @Component({
   selector: 'app-historico-panel',
   standalone: true,
-  imports: [CommonModule, ModeSwitcherComponent, HistoricoChartComponent],
+  imports: [CommonModule, ModeSwitcherComponent, HistoricoChartComponent, HistoricoTablaAvanceComponent],
   templateUrl: './historico-panel.component.html',
-  // El host ocupa todo el alto de su celda: así el contenedor interno
-  // (#contenedor, el que hace scroll) tiene un alto real que medir.
   host: { class: 'block h-full' },
 })
-export class HistoricoPanelComponent implements OnInit, AfterViewInit, OnDestroy {
-  // Alto del gráfico adaptado a la pantalla (mejora post-v2.23). En
-  // pantallas grandes (2K) queda en el máximo, igual que antes. En
-  // pantallas más chicas (o con escala de Windows al 125%/150%, que para
-  // el navegador equivale a una pantalla más chica) baja lo justo para
-  // verse COMPLETO dentro de lo visible del panel; las tablas quedan
-  // debajo, alcanzables con el scroll. Nunca baja del mínimo legible.
-  static readonly ALTO_MAXIMO = 780;
-  static readonly ALTO_MINIMO = 280;
-  // Aire entre el borde inferior del gráfico y el borde visible del panel.
-  static readonly MARGEN_INFERIOR = 12;
-  altoGrafico = HistoricoPanelComponent.ALTO_MAXIMO;
-
-  @ViewChild('contenedor', { static: true }) private contenedor!: ElementRef<HTMLElement>;
-  private zonaGraficoEl?: HTMLElement;
-  // La zona del gráfico solo existe cuando hay un mes elegido (@if): el
-  // setter se entera cuando aparece y recalcula en el siguiente cuadro
-  // (requestAnimationFrame), ya con el layout listo y fuera del ciclo de
-  // detección de cambios en curso.
-  @ViewChild('zonaGrafico') private set zonaGrafico(ref: ElementRef<HTMLElement> | undefined) {
-    this.zonaGraficoEl = ref?.nativeElement;
-    if (this.zonaGraficoEl) requestAnimationFrame(() => this.recalcularAltoGrafico());
-  }
-  private observadorTamano?: ResizeObserver;
-
+export class HistoricoPanelComponent implements OnInit, OnDestroy {
   mes: string | null = null;
   anio: string | null = null;
-
-  etiquetasMeses: string[] = [];
-  series: SerieHistoricoAvance[] = [];
-
-  tablaGeneral: { sleps: string[]; filas: { mes: string; anio: string; valores: number[] }[] } | null = null;
-
+  detalle: HistoricoDetalle | null = null;
+  mesActivoIdx = 0;
+  etiquetas: string[] = [];
+  principal: SeriePrincipal | null = null;
+  general: SerieComparacion | null = null;
+  otros: SerieComparacion[] = [];
   slepDestacado: string | null = null;
-  // % del mes activo de la línea protagonista — dibuja la línea de
-  // referencia punteada en el gráfico (ver HistoricoChartComponent).
-  valorReferencia: number | null = null;
+  marcados = new Set<string>();
   datosSlepDestacado: HistoricoSlep | null = null;
-  // Título del gráfico: "Avance general" o, para un Digitador, "Avance de <su SLEP>".
-  tituloGrafico = 'Avance general';
-
-  cargando = false;
+  tituloGrafico = 'General';
+  escala: '100' | 'aj' = '100';
+  private generalM: (MetricasAvance | null)[] = [];
+  private cache: { clave: string; detalle: HistoricoDetalle } | null = null;
   private sub?: Subscription;
 
   constructor(
     private readonly caseState: CaseStateService,
     private readonly api: CasesApiService,
-    private readonly zone: NgZone,
     private readonly authService: AuthService,
+    private readonly dialog: MatDialog,
   ) {}
 
-  // Digitador (alcance = un SLEP fijo): su Histórico es SOLO su SLEP —
-  // su línea y su tabla detallada (mes x 37 campos), nunca el general.
-  // El backend ya le acota los datos a su SLEP (resolverAlcance); esto
-  // ajusta lo que se muestra y cómo se rotula.
+  // Quien ve un solo SLEP (ej. Digitador): siempre es SU SLEP.
   private get slepPropio(): string | null {
     const u = this.authService.usuarioActual();
-    return u && u.alcance !== 'todos' ? u.alcance : null;
+    return u && !u.esSuperadmin && u.alcance !== 'todos' ? u.alcance : null;
   }
 
   ngOnInit(): void {
@@ -129,136 +63,102 @@ export class HistoricoPanelComponent implements OnInit, AfterViewInit, OnDestroy
       .pipe(
         switchMap(([mes, sleps, destacado]) => {
           if (!mes) return of(null);
-          this.cargando = true;
-
-          const slepPropio = this.slepPropio;
-          if (slepPropio) {
-            return forkJoin({
-              mesActivo: of(mes),
-              destacado: of(slepPropio as string | null),
-              slepPropio: of(slepPropio as string | null),
-              general: this.api.getHistoricoAvance(mes.mes, mes.anio),
-              tabla: of(null),
-              porSlep: of([] as { slep: string; datos: PuntoAvance[] }[]),
-              destacadoHistorico: this.api.getHistorico(slepPropio, mes.mes, mes.anio),
-            });
-          }
-
-          const listaSleps = [...sleps];
+          const propio = this.slepPropio;
+          const dest = propio ?? destacado;
+          const clave = `${mes.mes}|${mes.anio}`;
           return forkJoin({
-            slepPropio: of(null as string | null),
-            // El mes activo y el destacado viajan DENTRO del resultado:
-            // el subscribe nunca lee propiedades de la clase que pueden
-            // haber cambiado mientras llegaban las respuestas.
             mesActivo: of(mes),
-            destacado: of(destacado),
-            general: this.api.getHistoricoAvance(mes.mes, mes.anio),
-            // La planilla general solo hace falta si NO hay un SLEP
-            // destacado (se reemplaza por su planilla detallada).
-            tabla: destacado ? of(null) : this.api.getHistoricoAvanceTodos(mes.mes, mes.anio),
-            porSlep: listaSleps.length
-              ? forkJoin(listaSleps.map((s) => this.api.getHistoricoAvance(mes.mes, mes.anio, s).pipe(map((datos) => ({ slep: s, datos })))))
-              : of([] as { slep: string; datos: PuntoAvance[] }[]),
-            destacadoHistorico: destacado ? this.api.getHistorico(destacado, mes.mes, mes.anio) : of(null),
+            marcados: of(propio ? new Set<string>() : new Set(sleps)),
+            destacado: of(dest),
+            // Una consulta por mes: si solo cambian los SLEP marcados, se reutiliza.
+            detalle: this.cache?.clave === clave ? of(this.cache.detalle) : this.api.getHistoricoDetalle(mes.mes, mes.anio).pipe(tap((d) => (this.cache = { clave, detalle: d }))),
+            planilla: dest ? this.api.getHistorico(dest, mes.mes, mes.anio) : of(null),
           });
         }),
       )
-      .subscribe((resultado) => {
-        this.cargando = false;
-        if (!resultado) {
-          this.mes = null;
-          this.anio = null;
-          this.etiquetasMeses = [];
-          this.series = [];
-          this.tablaGeneral = null;
+      .subscribe((r) => {
+        if (!r) {
+          this.mes = this.anio = null;
+          this.detalle = null;
+          this.principal = this.general = null;
+          this.otros = [];
           this.slepDestacado = null;
           this.datosSlepDestacado = null;
-          this.valorReferencia = null;
           return;
         }
-
-        const { mesActivo, destacado, slepPropio } = resultado;
-        this.tituloGrafico = slepPropio ? `Avance de ${slepPropio}` : 'Avance general';
-        this.mes = mesActivo.mes;
-        this.anio = mesActivo.anio;
-        this.slepDestacado = destacado;
-
-        // Eje X de izquierda (mes activo, el más reciente) a derecha (el
-        // más antiguo) — el backend ya entrega los meses en ese orden
-        // (listarMesesDisponibles), así que no hace falta darlo vuelta.
-        this.etiquetasMeses = resultado.general.map(clave);
-
-        // Alinea cualquier serie a las etiquetas del eje por NOMBRE de
-        // mes (no por posición), con "sin datos" convertido a 0.
-        const alinear = (datos: PuntoAvance[]) => {
-          const porClave = new Map(datos.map((p) => [clave(p), aNumero(p.pct)]));
-          return this.etiquetasMeses.map((k) => porClave.get(k) ?? 0);
-        };
-        // % del MES ACTIVO, buscado por nombre — de acá sale el color.
-        const pctMesActivo = (datos: PuntoAvance[]) =>
-          aNumero(datos.find((p) => p.mes === mesActivo.mes && p.anio === mesActivo.anio)?.pct ?? null);
-
-        // La General va en color solo cuando es la única protagonista
-        // (ningún SLEP marcado). Apenas hay un SLEP destacado, pasa a
-        // gris como el resto: la única línea de color es la del último
-        // SLEP marcado. Conserva su grosor (prioridad 1), así sigue
-        // siendo reconocible entre las grises.
-        // Para un Digitador, "general" ya viene acotado a su SLEP: es SU
-        // línea, así que va rotulada con su nombre y siempre en color.
-        // Línea de referencia (mejora post-v2.23): el % del mes activo de
-        // quien sea la línea "protagonista" ahora mismo — el SLEP
-        // destacado si hay uno marcado, o la General si no. Se calcula
-        // acá porque acá ya se sabe exactamente cuál es esa línea; el
-        // gráfico solo la dibuja.
-        this.valorReferencia = destacado ? pctMesActivo(resultado.porSlep.find((p) => p.slep === destacado)?.datos ?? []) : pctMesActivo(resultado.general);
-
-        const serieGeneral: SerieHistoricoAvance = {
-          etiqueta: slepPropio ?? 'General (36 SLEP)',
-          datos: alinear(resultado.general),
-          color: destacado && !slepPropio ? GRIS_FONDO : colorPorAvance(pctMesActivo(resultado.general)),
-          prioridad: 1,
-        };
-        const seriesSlep: SerieHistoricoAvance[] = resultado.porSlep.map(({ slep, datos }) => {
-          const esDestacado = slep === destacado;
-          return {
-            etiqueta: slep,
-            datos: alinear(datos),
-            color: esDestacado ? colorPorAvance(pctMesActivo(datos)) : GRIS_FONDO,
-            prioridad: esDestacado ? 2 : 0,
-          };
-        });
-        this.series = [serieGeneral, ...seriesSlep];
-
-        this.tablaGeneral = resultado.tabla;
-        this.datosSlepDestacado = resultado.destacadoHistorico;
+        this.mes = r.mesActivo.mes;
+        this.anio = r.mesActivo.anio;
+        this.detalle = r.detalle;
+        this.marcados = r.marcados;
+        this.datosSlepDestacado = r.planilla;
+        this.armar(r.destacado);
       });
   }
 
-  ngAfterViewInit(): void {
-    // ResizeObserver (API estándar del navegador): avisa cada vez que el
-    // panel cambia de tamaño — ventana redimensionada, zoom del
-    // navegador, o la ventana arrastrada del notebook al monitor 2K.
-    this.observadorTamano = new ResizeObserver(() => this.recalcularAltoGrafico());
-    this.observadorTamano.observe(this.contenedor.nativeElement);
+  private armar(destacado: string | null): void {
+    const d = this.detalle!;
+    this.mesActivoIdx = Math.max(0, d.meses.findIndex((m) => m.mes === this.mes && m.anio === this.anio));
+    this.etiquetas = d.meses.map((m) => `${MESES_CORTOS[m.mes] ?? m.mes} ${m.anio.slice(2)}`);
+    const avDe = (slep: string) => (d.sleps.find((s) => s.slep === slep)?.valores ?? []).map((v) => metricas(v)?.av ?? null);
+    const fila = destacado ? d.sleps.find((s) => s.slep === destacado) : undefined;
+    this.slepDestacado = fila ? destacado : null;
+    this.generalM = d.meses.map((_, i) => sumar(d.sleps.map((s) => s.valores[i])));
+    if (!d.alcanceCompleto) {
+      // Un solo SLEP: su línea, sin General ni comparaciones.
+      const s = d.sleps[0];
+      this.tituloGrafico = s?.slep ?? 'Mi SLEP';
+      this.principal = { etiqueta: this.tituloGrafico, metricas: (s?.valores ?? []).map((v) => metricas(v)) };
+      this.general = null;
+      this.otros = [];
+      return;
+    }
+    const otros = [...this.marcados].filter((s) => s !== this.slepDestacado && d.sleps.some((x) => x.slep === s));
+    this.otros = otros.map((s) => ({ etiqueta: s, av: avDe(s) }));
+    if (fila) {
+      this.tituloGrafico = fila.slep;
+      this.principal = { etiqueta: fila.slep, metricas: fila.valores.map((v) => metricas(v)) };
+      this.general = { etiqueta: `General (${d.sleps.length} SLEP)`, av: this.generalM.map((m) => (m ? m.av : null)) };
+    } else {
+      this.tituloGrafico = `General (${d.sleps.length} SLEP)`;
+      this.principal = { etiqueta: this.tituloGrafico, metricas: this.generalM };
+      this.general = null;
+    }
   }
 
-  // Espacio visible para el gráfico = alto visible del panel, menos lo que
-  // hay encima del gráfico (encabezado y título), menos un margen. Se mide
-  // con offsetTop (posición de diseño, no cambia al hacer scroll), así el
-  // resultado es el mismo aunque el usuario esté a mitad de la página.
-  private recalcularAltoGrafico(): void {
-    const contenedor = this.contenedor?.nativeElement;
-    const zona = this.zonaGraficoEl;
-    if (!contenedor || !zona) return;
-    const disponible = contenedor.clientHeight - zona.offsetTop - HistoricoPanelComponent.MARGEN_INFERIOR;
-    const alto = Math.round(Math.min(HistoricoPanelComponent.ALTO_MAXIMO, Math.max(HistoricoPanelComponent.ALTO_MINIMO, disponible)));
-    // ResizeObserver avisa fuera de la zona de Angular: zone.run hace que
-    // la vista se actualice. Solo se actualiza si el valor cambió.
-    if (alto !== this.altoGrafico) this.zone.run(() => (this.altoGrafico = alto));
+  // Tooltip completo de un mes del gráfico (mismo contenido que el informe),
+  // más el % de la General y de los demás SLEP marcados en ese mes.
+  readonly tooltipFn = (i: number): string => {
+    const d = this.detalle;
+    if (!d || !this.principal) return '';
+    const m = d.meses[i], titulo = `${m.mes} ${m.anio}`;
+    const ms = this.principal.metricas;
+    const esGeneral = d.alcanceCompleto && !this.slepDestacado;
+    let posicion: { pos: number | null; de: number } | null = null;
+    if (!esGeneral) {
+      if (d.alcanceCompleto) { const rk = ranking(d.sleps, i); posicion = { pos: rk.pos.get(this.slepDestacado!) ?? null, de: rk.total }; }
+      else posicion = d.posicion?.[i] ?? null;
+    }
+    let extra = '';
+    const comp = [...(this.general ? [this.general] : []), ...this.otros].map((s) => [s.etiqueta, s.av[i]] as [string, number | null]);
+    if (comp.length) extra = `<span class="sep"></span><span class="sec">Comparación del mes</span>` + comp.map(([e, v]) => `<span class="r"><span>${escaparHtml(e)}</span><span>${pct(v)}</span></span>`).join('');
+    const sub = esGeneral ? `General · informan ${ms[i]?.n ?? 0} de ${d.sleps.length} SLEP` : this.principal.etiqueta;
+    return tooltipMes(titulo, sub, ms[i], ms[i - 1] ?? null, posicion, extra);
+  };
+
+  // Clic en una fila de la tabla o en el ranking: destaca ese SLEP.
+  elegirSlep(slep: string): void {
+    if (this.detalle?.alcanceCompleto) this.caseState.destacarSlepHistorico(slep);
+  }
+
+  abrirRanking(): void {
+    if (!this.detalle) return;
+    this.dialog
+      .open(RankingAvanceDialogComponent, { data: { detalle: this.detalle, mesActivo: this.mesActivoIdx }, width: '1120px', maxWidth: '96vw' })
+      .afterClosed()
+      .subscribe((slep?: string) => { if (slep) this.elegirSlep(slep); });
   }
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
-    this.observadorTamano?.disconnect();
   }
 }

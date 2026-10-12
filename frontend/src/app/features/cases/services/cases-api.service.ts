@@ -1,3 +1,4 @@
+import { HistoricoDetalle } from '../../../core/utils/avance';
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -76,6 +77,12 @@ export class CasesApiService {
     const params: Record<string, string> = { mes, anio };
     if (slep) params['slep'] = slep;
     return this.http.get<{ mes: string; anio: string; pct: number | null }[]>(`${environment.apiUrl}/cases/historico-avance`, { params });
+  }
+
+  // Histórico con el modelo del informe de avance: todos los indicadores de
+  // cada SLEP, mes a mes, hasta el mes activo (respeta el alcance).
+  getHistoricoDetalle(mes: string, anio: string): Observable<HistoricoDetalle> {
+    return this.http.get<HistoricoDetalle>(`${environment.apiUrl}/cases/historico-detalle`, { params: { mes, anio } });
   }
 
   getHistoricoAvanceTodos(mes: string, anio: string): Observable<{ sleps: string[]; filas: { mes: string; anio: string; valores: number[] }[] }> {

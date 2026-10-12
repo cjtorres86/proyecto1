@@ -490,6 +490,59 @@ export class CasesService {
       .sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
   }
 
+  // Histórico con el modelo del informe de avance: TODOS los indicadores de
+  // cada SLEP, mes a mes, hasta el mes activo (inclusive). Cada registro:
+  // [casos informados, involucrados, instruidos, en curso, resueltos,
+  //  impugnados, enviados CGR, cerrados, censura, multa, suspensión,
+  //  destitución, cerrados sin sanción]. Un mes sin ningún dato = null.
+  //
+  // Alcance: quien ve todos los SLEP recibe los 36 (y calcula el ranking).
+  // Quien ve UN solo SLEP recibe solo su fila, más su posición en el
+  // ranking de cada mes (calculada aquí con todos): nunca los datos ajenos.
+  static readonly CAMPOS_HISTORICO = ['Q04', 'Q06', 'Q37', 'Q38', 'Q42', 'Q43', 'Q44', 'Q45', 'CENSURA', 'Q48', 'Q49', 'Q50', 'Q51'];
+
+  async getHistoricoDetalle(mes: string, anio: string, alcance: string) {
+    const meses = (await this.mesesHastaCorte(mes, anio)).reverse(); // del más antiguo al más reciente
+    const contenedores = await this.contenedoresHastaCorte(mes, anio, 'todos');
+    const valores = await this.valoresDe(contenedores.map((c) => c.id), CasesService.CAMPOS_HISTORICO);
+    const porContenedor = this.agrupar(valores, (v) => v.contenedorId);
+    const columna = new Map(meses.map((m, i) => [this.claveMes(m.mes, m.anio), i]));
+    const filas = new Map<string, (number[] | null)[]>();
+    for (const c of contenedores) {
+      const i = columna.get(this.claveMes(c.mesConsolidado, c.anioConsolidado));
+      if (i === undefined) continue;
+      const vals = new Map((porContenedor.get(c.id) ?? []).map((v) => [v.preguntaId, Number(v.valor) || 0]));
+      const reg = CasesService.CAMPOS_HISTORICO.map((p) => vals.get(p) ?? 0);
+      if (!filas.has(c.slep)) filas.set(c.slep, Array(meses.length).fill(null));
+      filas.get(c.slep)![i] = reg.some((v) => v) ? reg : null;
+    }
+    const sleps = [...filas.entries()].map(([slep, valores]) => ({ slep, valores })).sort((a, b) => a.slep.localeCompare(b.slep, 'es'));
+    if (alcance === 'todos') return { meses, sleps, alcanceCompleto: true };
+
+    // Alcance de un solo SLEP: su fila y su posición en el ranking de cada mes.
+    const avance = (r: number[] | null) => (r && r[2] > 0 ? r[7] / r[2] : null);
+    const posicion = meses.map((_, i) => {
+      const ranking = sleps
+        .map((s) => ({ slep: s.slep, av: avance(s.valores[i]), cerr: s.valores[i]?.[7] ?? 0 }))
+        .filter((x) => x.av !== null)
+        .sort((a, b) => b.av! - a.av! || b.cerr - a.cerr || a.slep.localeCompare(b.slep, 'es'));
+      const p = ranking.findIndex((x) => x.slep === alcance);
+      return { pos: p >= 0 ? p + 1 : null, de: ranking.length };
+    });
+    return { meses, sleps: sleps.filter((s) => s.slep === alcance), posicion, alcanceCompleto: false };
+  }
+
+  // Informe interactivo de avance: los mismos datos del Histórico, de TODOS
+  // los meses disponibles (hasta el más reciente). Mismo cálculo y mismo
+  // respeto del alcance: el informe y el Histórico nunca muestran cifras
+  // distintas.
+  async getInformeAvance(alcance: string) {
+    const meses = await this.listarMesesDisponibles();
+    if (!meses.length) return { meses: [], sleps: [], alcanceCompleto: alcance === 'todos' };
+    const ultimo = meses.reduce((a, m) => (this.claveOrden(m.mes, m.anio) > this.claveOrden(a.mes, a.anio) ? m : a));
+    return this.getHistoricoDetalle(ultimo.mes, ultimo.anio, alcance);
+  }
+
   // --- Ayudantes para traer varios meses de una sola vez ---
 
   // Formularios vigentes de todos los meses hasta el corte (inclusive), en
