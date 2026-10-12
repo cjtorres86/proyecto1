@@ -1,6 +1,8 @@
-// Dashboard por bloques: mismo lenguaje visual del Histórico y del Informe
-// Interactivo, con la paleta azul y gris de la aplicación (sin rojos).
-:host{display:block}
+// Dashboard por bloques, con la paleta azul y gris de la aplicación. El rojo
+// solo aparece en el % de avance y su barra, para que resalte.
+// Encabezado fijo y contenido con su propio scroll (igual que la columna SLEP).
+:host{display:flex;flex-direction:column;height:100%;min-height:0}
+.cuerpo{position:relative;flex:1 1 auto;min-height:0;overflow-y:auto;padding-right:2px}
 .blq{background:#fff;border:1px solid #d6dce5;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
 :host-context(.dark) .blq{background:#141B2E;border-color:#28324A}
 .eyebrow{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:#76839a;font-weight:700}
@@ -16,31 +18,46 @@
 :host-context(.dark) .cifra .vl{color:#e8edf5} :host-context(.dark) .cifra .lb{color:#b3bfd2}
 .cifra .nt{font-size:11px;color:#76839a}
 .cifra.clave{border-color:#1E4FA0;box-shadow:inset 0 0 0 1px #1E4FA0;background:#EEF4FB}
+.cifra.clave .vl{font-size:26px}
 :host-context(.dark) .cifra.clave{background:#1c3352}
-.pill{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;color:#fff;width:max-content}
-.apil{display:flex;height:16px;border-radius:4px;overflow:hidden;background:#eceff4}
-.apil i{display:block;height:100%;cursor:pointer;min-width:2px}
-.apil i+i{border-left:2px solid #fff}
-:host-context(.dark) .apil i+i{border-left-color:#141B2E}
-.ley{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:#46536a}
-:host-context(.dark) .ley{color:#b3bfd2}
-.ley span{display:inline-flex;align-items:center;gap:5px;cursor:default}
-.sw{display:inline-block;width:10px;height:10px;border-radius:2px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;flex:none}
+// Cápsulas: comentarios que orientan al usuario.
 .aviso{font-size:11px;color:#25306B;background:#EEF4FB;border:1px solid #c9d8ee;border-radius:6px;padding:5px 8px;display:flex;gap:6px;align-items:flex-start}
 :host-context(.dark) .aviso{color:#A9C8EE;background:#1c3352;border-color:#2c4a73}
-.fila-h{display:grid;grid-template-columns:minmax(140px,52%) 1fr auto;gap:8px;align-items:center;font-size:11.5px}
-.fila-h .bar{height:12px;background:#eceff4;border-radius:3px;overflow:hidden}
-.fila-h .bar i{display:block;height:100%;border-radius:3px}
-:host-context(.dark) .fila-h .bar,:host-context(.dark) .apil{background:#1F2B3E}
+// 0 · Consolidado
+.ident{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px 14px;margin:0}
+.ident dt{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#76839a}
+.ident dd{margin:0;font-size:12.5px;font-weight:600;color:#1f2937}
+:host-context(.dark) .ident dd{color:#e8edf5}
+.avance{display:flex;flex-direction:column;gap:6px;border-top:1px solid #eef1f6;padding-top:10px}
+:host-context(.dark) .avance{border-top-color:#243147}
+.avance .lb{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#46536a}
+:host-context(.dark) .avance .lb{color:#b3bfd2}
+.av-num{font-size:30px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.av-barra{position:relative;height:18px;border-radius:5px;background:#eceff4;overflow:hidden;cursor:default}
+.av-barra i{display:block;height:100%;border-radius:5px}
+.av-barra::after{content:'';position:absolute;right:0;top:0;bottom:0;width:3px;background:#25306B}
+:host-context(.dark) .av-barra{background:#1F2B3E}
+.av-escala{display:flex;justify-content:space-between;font-size:10px;color:#76839a}
+// 3 · Licencias
+.lic{grid-column:1/-1}
+.dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px 20px}
+.fila-rk{display:grid;grid-template-columns:24px minmax(90px,38%) 1fr auto;gap:8px;align-items:center;font-size:11.5px;color:#374151;padding:1px 2px;border-radius:4px}
+:host-context(.dark) .fila-rk{color:#d6dde9}
+.fila-rk .pos{color:#76839a;font-weight:700;text-align:right}
+.fila-rk.propio{background:#EEF4FB;font-weight:700}
+:host-context(.dark) .fila-rk.propio{background:#1c3352}
+.sep-rk{border-top:1px dashed #c9d8ee;margin-top:2px;padding-top:3px}
+.fila-rk .bar,.fila-h .bar{height:12px;background:#eceff4;border-radius:3px;overflow:hidden}
+.fila-rk .bar i,.fila-h .bar i{display:block;height:100%;border-radius:3px}
+// 4, 5 y 6: desglose en barras
+.fila-h{display:flex;flex-direction:column;gap:3px;font-size:11.5px;cursor:default}
+.fila-h .arriba{display:grid;grid-template-columns:1fr auto 46px;gap:8px;align-items:baseline}
+.fila-h .pc{font-size:10.5px;color:#76839a;text-align:right;font-variant-numeric:tabular-nums}
+.fila-h .bar{height:10px}
+:host-context(.dark) .fila-h .bar,:host-context(.dark) .fila-rk .bar{background:#1F2B3E}
 .num{font-variant-numeric:tabular-nums;font-weight:700;text-align:right}
-.embudo{display:flex;flex-direction:column;align-items:center;gap:4px}
-.embudo .paso{height:30px;border-radius:5px;color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;cursor:default;white-space:nowrap;overflow:hidden;padding:0 6px}
-.embudo .conv{font-size:10.5px;color:#76839a}
-.rango{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,#CBD5E1,#8FB2F5,#1E4FA0);margin:18px 6px 22px}
-.rango .mk{position:absolute;top:-5px;width:3px;height:24px;background:#25306B;border-radius:2px;transform:translateX(-50%)}
-.rango .et{position:absolute;top:22px;transform:translateX(-50%);font-size:10.5px;color:#46536a;white-space:nowrap}
-.rango .et.arr{top:-18px;font-weight:700;color:#25306B}
-:host-context(.dark) .rango .et{color:#b3bfd2} :host-context(.dark) .rango .et.arr{color:#A9C8EE}
+// Ranking
 table.rk{width:100%;border-collapse:collapse;font-size:11.5px}
 table.rk th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#76839a;text-align:right;padding:5px 6px;position:sticky;top:0;background:#fff}
 :host-context(.dark) table.rk th{background:#141B2E}

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { ConsolidadoService, Snapshot } from './consolidado.service';
 import { Contenedor } from '../cases/entities/contenedor.entity';
 import { ValorCampo } from '../cases/entities/valor-campo.entity';
+import { FormularioPregunta } from '../forms/entities/formulario-pregunta.entity';
 
 const CIC_LABELS: Record<string, string> = {
   CIC_9: 'CIC N°9 – Salidas país (C20)', CIC_10: 'CIC N°10 – Partos (C21)', CIC_13: 'CIC N°13 – Médicos investigación penal (C22)',
@@ -45,6 +46,7 @@ export class DashboardService {
     private readonly consolidadoService: ConsolidadoService,
     @InjectRepository(Contenedor) private readonly contenedores: Repository<Contenedor>,
     @InjectRepository(ValorCampo) private readonly valoresCampo: Repository<ValorCampo>,
+    @InjectRepository(FormularioPregunta) private readonly recetas: Repository<FormularioPregunta>,
   ) {}
 
   calculateMetrics(snapshot: Snapshot): Metricas {
@@ -152,13 +154,33 @@ export class DashboardService {
       .sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
   }
 
+  // Número de cada campo tal como se ve en el Formulario (preguntaId →
+  // posición), según la plantilla que usa el mes: las de 37 y 44 campos
+  // numeran distinto. Si el mes mezcla plantillas, manda la más usada.
+  private async numerosDeCampo(formularioIds: string[]): Promise<Record<string, number>> {
+    const cuenta = new Map<string, number>();
+    formularioIds.forEach((f) => cuenta.set(f, (cuenta.get(f) ?? 0) + 1));
+    const formularioId = [...cuenta.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (!formularioId) return {};
+    const receta = await this.recetas.find({ where: { formularioId } });
+    return Object.fromEntries(receta.map((r) => [r.preguntaId, r.posicionCanonica]));
+  }
+
   async getDashboardDeMes(mes: string, anio: string, alcance: string) {
-    const ids = await this.consolidadoService.idsDelMes(mes, anio, alcance);
-    const { snapshot, totalContenedores } = await this.consolidadoService.calcularConsolidado(ids);
+    const contenedores = await this.consolidadoService.contenedoresDelMes(mes, anio, alcance);
+    const ids = contenedores.map((c) => c.id);
+    const [{ snapshot, totalContenedores }, numeros] = await Promise.all([
+      this.consolidadoService.calcularConsolidado(ids),
+      this.numerosDeCampo(contenedores.map((c) => c.formularioId)),
+    ]);
     const metricas = this.calculateMetrics(snapshot);
+    const texto = (id: string) => (snapshot[id] == null ? '' : String(snapshot[id]));
     return {
       totalContenedores,
       metricas,
+      numeros,
+      // Campos 1 a 3 (Ministerio, Subsecretaría, Servicio): texto, no número.
+      textos: { Q01: texto('Q01'), Q02: texto('Q02'), Q03: texto('Q03') },
       // Todos los campos de la foto consolidada (mismas reglas de siempre:
       // mínimo, máximo, promedio ponderado o suma), para el Dashboard por
       // bloques. Vacío = null (no se confunde con 0).

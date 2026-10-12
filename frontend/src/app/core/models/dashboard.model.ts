@@ -27,4 +27,8 @@ export interface DashboardDeMes {
   ranking: RankingFila[];
   // Todos los campos de la foto consolidada (Dashboard por bloques). null = vacío.
   campos?: Record<string, number | null>;
+  // Número de cada campo en el Formulario del mes (preguntaId → número).
+  numeros?: Record<string, number>;
+  // Campos 1 a 3 (Ministerio, Subsecretaría, Servicio).
+  textos?: { Q01: string; Q02: string; Q03: string };
 }

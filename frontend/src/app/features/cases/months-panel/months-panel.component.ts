@@ -6,7 +6,6 @@ import { HttpClient } from '@angular/common/http';
 import { CaseStateService } from '../../../core/services/case-state.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { WorkspaceModeService } from '../../../core/services/workspace-mode.service';
 import { AgregarMesDialogComponent, NuevoMes } from '../agregar-mes-dialog/agregar-mes-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { environment } from '../../../../environments/environment';
@@ -36,7 +35,6 @@ export class MonthsPanelComponent implements OnInit, OnDestroy {
     private readonly dialog: MatDialog,
     private readonly notification: NotificationService,
     private readonly http: HttpClient,
-    private readonly workspaceMode: WorkspaceModeService,
   ) {}
 
   ngOnInit(): void {
@@ -71,16 +69,16 @@ export class MonthsPanelComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Elegir un mes NUEVO pasa a modo Formulario (mejora post-v2.23) —
-  // re-clickear el mes ya activo sigue respetando el modo en que ya
-  // estaba el usuario (comportamiento anterior, sin cambios).
+  // Elegir otro mes NO cambia el modo: quien está en el Dashboard o en el
+  // Histórico va pasando de mes en mes para comparar. Tampoco suelta el SLEP
+  // abierto: se vuelve a abrir en el mes nuevo. Re-clickear el mes ya activo
+  // vuelve al consolidado.
   seleccionar(mes: MesConDatos): void {
     const yaActivo = this.mesActivo?.mes === mes.mes && this.mesActivo?.anio === mes.anio;
     if (yaActivo) {
       this.caseState.setSlepActivo(null);
     } else {
-      this.caseState.setMesActivo(mes);
-      this.workspaceMode.irA('formulario');
+      this.caseState.setMesActivo(mes, true);
     }
   }
 

@@ -1,163 +1,138 @@
-<!-- Dashboard por bloques (azules y grises, la paleta de la aplicación). -->
-<div class="flex justify-between items-center mb-2">
+<!-- Dashboard por bloques. El encabezado (título y modos) queda fijo arriba,
+     igual que en la columna SLEP; solo el contenido se desplaza. -->
+<div class="flex justify-between items-center pb-2 shrink-0">
   <h3 class="font-bold text-sm uppercase text-gray-500">Dashboard</h3>
   <app-mode-switcher modoActivo="dashboard-ampliado" />
 </div>
+<!-- relative: el texto para lectores de pantalla (sr-only, position:absolute)
+     queda dentro de esta zona con scroll; sin esto se salía de ella y estiraba
+     la página entera, que mostraba una segunda barra de desplazamiento. -->
+<div class="cuerpo" (mouseleave)="ocultarTip()">
 @if (!datos) {
   <p class="text-sm text-gray-400">Selecciona un mes en el panel Meses para ver el Dashboard.</p>
 } @else {
-  <div class="flex flex-col gap-3.5" (mouseleave)="ocultarTip()">
+  <div class="flex flex-col gap-3.5">
 
-    <!-- Síntesis -->
-    <section class="blq" aria-labelledby="d-sint">
-      <div class="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p class="eyebrow">{{ slepActivo ? 'Servicio Local' : 'Consolidado' }} · {{ mes }} {{ anio }}</p>
-          <h4 class="tit" id="d-sint">{{ slepActivo ?? 'Todos los SLEP' }}</h4>
-        </div>
-        <span class="pill" [style.background]="NIVEL_DASH[nivel]">{{ av === null ? NIVEL_TXT[nivel] : NIVEL_TXT[nivel] + ' · ' + pct(av) }}</span>
+    <!-- 0 · Consolidado: campos 1 a 3 y el % de avance (rojo a azul) -->
+    <section class="blq" aria-labelledby="d-b0">
+      <div>
+        <p class="eyebrow">{{ slepActivo ? 'Servicio Local' : 'Consolidado' }} · {{ mes }} {{ anio }}</p>
+        <h4 class="tit" id="d-b0">{{ slepActivo ?? 'Todos los SLEP' }}</h4>
       </div>
-      <p class="text-[13px] m-0 text-gray-700 dark:text-gray-200">{{ frase }}</p>
-      <div class="cifras">
-        @for (c of sintesis; track c.id) {
-          <div class="cifra" [class.clave]="c.id === 'Q45'" (mouseenter)="verTip($event, c.id, c.label, c.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
-            <div class="lb">{{ c.label }}</div><div class="vl">{{ fmt(c.valor) }}</div><div class="nt">{{ c.nota }}</div>
-          </div>
+      <dl class="ident">
+        @for (i of identificacion; track i.n) {
+          <div><dt>{{ i.n }}. {{ i.label }}</dt><dd>{{ i.valor }}</dd></div>
         }
+      </dl>
+      <div class="avance">
+        <div class="flex items-baseline justify-between gap-3 flex-wrap">
+          <span class="lb">Avance de los sumarios</span>
+          <span class="av-num" [style.color]="colorTextoAvance(av)">{{ av === null ? '—' : pct(av) }}</span>
+        </div>
+        <div class="av-barra" role="img" [attr.aria-label]="'Avance ' + (av === null ? 'sin datos' : pct(av)) + ', meta 100 %'"
+             (mouseenter)="verTip($event, 'Q45', et('Q45', 'Procesos cerrados'), cerrados, et('Q37', 'Sumarios instruidos'), instruidos)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
+          @if (av !== null) { <i [style.width.%]="(av > 1 ? 1 : av < 0.01 ? 0.01 : av) * 100" [style.background]="colorAvance(av)"></i> }
+        </div>
+        <div class="av-escala"><span>0 %</span><span>50 %</span><span>Meta 100 %</span></div>
+        <p class="text-[12.5px] m-0 text-gray-700 dark:text-gray-200">{{ frase }}</p>
       </div>
+      @for (cp of capsulasAvance; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
     </section>
 
     <div class="grilla">
-      <!-- 1. Lo que informó Contraloría -->
+      <!-- 1 · Origen: campos 4, 5 y 6 -->
       <section class="blq" aria-labelledby="d-b1">
         <div><p class="eyebrow">1 · Origen</p><h4 class="tit" id="d-b1">Lo que informó Contraloría</h4></div>
         <div class="cifras">
-          @for (c of contraloria; track c.id) {
-            <div class="cifra" (mouseenter)="verTip($event, c.id, c.label, c.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
-              <div class="lb">{{ c.label }}</div><div class="vl">{{ fmt(c.valor) }}</div><div class="nt">{{ c.nota }}</div>
+          @for (c of origen; track c.id) {
+            <div class="cifra" (mouseenter)="verTip($event, c.id, et(c.id, c.label), c.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
+              <div class="lb">{{ et(c.id, c.label) }}</div><div class="vl">{{ fmt(c.valor) }}</div><div class="nt">{{ c.nota }}</div>
             </div>
           }
         </div>
+        @for (cp of capsulasOrigen; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
       </section>
 
-      <!-- 3. Las licencias -->
-      <section class="blq" aria-labelledby="d-b3">
-        <div><p class="eyebrow">3 · Licencias</p><h4 class="tit" id="d-b3">Duración de las licencias informadas</h4>
-          <p class="sub">Días corridos: de la más corta a la más larga, con la marca del promedio.</p></div>
-        @if (licencias.min === null && licencias.max === null) {
-          <p class="sub">Sin datos de duración para este mes.</p>
-        } @else {
-          <div class="rango" role="img" [attr.aria-label]="'Mínima ' + fmt(licencias.min) + ' días, promedio ' + fmt(licencias.prom) + ', máxima ' + fmt(licencias.max)">
-            <span class="et" style="left:0%;transform:translateX(0)">Mín. {{ fmt(licencias.min) }} d</span>
-            <span class="et" style="left:100%;transform:translateX(-100%)">Máx. {{ fmt(licencias.max) }} d</span>
-            @if (licencias.prom !== null) {
-              <span class="mk" [style.left.%]="posLic(licencias.prom)" (mouseenter)="verTip($event, 'Q19', 'Duración promedio de las licencias', licencias.prom)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()"></span>
-              <span class="et arr" [style.left.%]="posLic(licencias.prom)" [style.transform]="alineaLic(posLic(licencias.prom))">Promedio {{ fmt(licencias.prom) }} d</span>
-            }
-          </div>
-        }
-        <div class="cifra" (mouseenter)="verTip($event, 'Q22', 'Remuneración promedio', licencias.remu)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
-          <div class="lb">Remuneración promedio de los funcionarios informados</div><div class="vl">{{ rem(licencias.remu) }}</div>
-        </div>
-      </section>
-
-      <!-- 2. Quiénes son los involucrados -->
+      <!-- 2 · Involucrados: campos 7 y 8 (dona) -->
       <section class="blq" aria-labelledby="d-b2">
-        <div><p class="eyebrow">2 · Involucrados</p><h4 class="tit" id="d-b2">Quiénes son los funcionarios involucrados</h4>
-          <p class="sub">Cada barra divide un mismo total en sus partes.</p></div>
-        @for (b of barrasInvolucrados; track b.titulo) {
-          <div class="flex flex-col gap-1">
-            <div class="flex justify-between text-[11.5px]"><b class="text-gray-700 dark:text-gray-200">{{ b.titulo }}</b><span class="text-gray-500">{{ fmt(b.total) }}</span></div>
-            <div class="apil" role="img" [attr.aria-label]="b.titulo">
-              @for (p of b.partes; track p.label) {
-                <i [style.width.%]="p.pct * 100" [style.background]="p.color" (mouseenter)="verTip($event, p.id, p.label, p.valor, b.base, b.total)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()"></i>
-              }
-            </div>
-            <div class="ley">
-              @for (p of b.partes; track p.label) { <span><i class="sw" [style.background]="p.color"></i>{{ p.label }} · {{ fmt(p.valor) }} ({{ pct(p.pct) }})</span> }
-            </div>
-            @if (b.aviso) { <p class="aviso m-0"><span aria-hidden="true">⚠</span>{{ b.aviso }}</p> }
-          </div>
-        }
-      </section>
-
-      <!-- 4. Casos a investigar, por origen -->
-      <section class="blq" aria-labelledby="d-b4">
-        <div><p class="eyebrow">4 · Origen de los casos</p><h4 class="tit" id="d-b4">Casos a investigar, por consolidado (CIC)</h4>
-          <p class="sub">{{ fmt(aInvestigar) }} funcionarios a investigar por sumario administrativo. Ordenados de mayor a menor.</p></div>
-        @for (x of cic; track x.id) {
-          <div class="fila-h" (mouseenter)="verTip($event, x.id, x.label, x.valor, 'Casos a investigar', aInvestigar)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
-            <span class="truncate text-gray-700 dark:text-gray-200" [title]="x.label">{{ x.label }}</span>
-            <span class="bar"><i [style.width.%]="x.pct * 100" [style.background]="x.color"></i></span>
-            <span class="num">{{ fmt(x.valor) }}</span>
-          </div>
-        }
-        @for (a of avisosInvestigar; track a) { <p class="aviso m-0"><span aria-hidden="true">⚠</span>{{ a }}</p> }
-      </section>
-
-      <!-- 5. El avance de los procedimientos -->
-      <section class="blq" aria-labelledby="d-b5">
-        <div><p class="eyebrow">5 · Procedimientos</p><h4 class="tit" id="d-b5">El avance de los procedimientos</h4></div>
-        <div class="flex flex-wrap items-center gap-4">
-          <svg viewBox="0 0 200 110" class="w-[190px] flex-none" role="img" [attr.aria-label]="'Avance ' + pct(av) + ', meta 100 %'">
-            <path d="M20,92 A80,80 0 0 1 180,92" fill="none" stroke="#e6e9ef" stroke-width="16" />
-            <path [attr.d]="medidor(av)" fill="none" [attr.stroke]="NIVEL_DASH[nivel]" stroke-width="16" stroke-linecap="butt" />
-            <line x1="180" y1="84" x2="180" y2="100" stroke="#25306B" stroke-width="2" />
-            <text x="100" y="80" text-anchor="middle" font-size="24" font-weight="700" fill="currentColor">{{ av === null ? '—' : pct(av) }}</text>
-            <text x="100" y="104" text-anchor="middle" font-size="10" fill="#76839a">avance · meta 100 %</text>
-          </svg>
-          <div class="embudo flex-1 min-w-[180px]">
-            @for (p of embudo; track p.id; let i = $index) {
-              <!-- Si el paso es angosto, su texto va al lado (nunca cortado). -->
-              <div class="flex items-center justify-center gap-2 w-full" (mouseenter)="verTip($event, p.id, p.label, p.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
-                <div class="paso" [style.width.%]="p.ancho * 72" [style.background]="['#25306B','#006BB9','#1E4FA0'][i]">@if (p.ancho >= 0.4) { {{ p.label }} · {{ fmt(p.valor) }} }</div>
-                @if (p.ancho < 0.4) { <span class="text-[11.5px] font-bold text-[#1E4FA0] dark:text-[#8FB2F5] whitespace-nowrap">{{ p.label }} · {{ fmt(p.valor) }}</span> }
-              </div>
-              @if (p.conv) { <span class="conv">↓ {{ p.conv }}</span> }
-            }
-          </div>
-        </div>
-        @if (estados) {
-          <div class="flex flex-col gap-1">
-            <b class="text-[11.5px] text-gray-700 dark:text-gray-200">{{ estados.titulo }}</b>
-            <div class="apil" role="img" [attr.aria-label]="estados.titulo">
-              @for (p of estados.partes; track p.label) {
-                <i [style.width.%]="p.pct * 100" [style.background]="p.color" (mouseenter)="verTip($event, p.id, p.label, p.valor, estados.base, estados.total)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()"></i>
-              }
-            </div>
-            <div class="ley">
-              @for (p of estados.partes; track p.label) { <span><i class="sw" [style.background]="p.color"></i>{{ p.label }} · {{ fmt(p.valor) }}</span> }
-            </div>
-            @if (estados.aviso) { <p class="aviso m-0"><span aria-hidden="true">⚠</span>{{ estados.aviso }}</p> }
-          </div>
-        }
-      </section>
-
-      <!-- 6. Cómo terminaron los cerrados -->
-      <section class="blq" aria-labelledby="d-b6">
-        <div><p class="eyebrow">6 · Resultado</p><h4 class="tit" id="d-b6">Cómo terminaron los procesos cerrados</h4></div>
+        <div><p class="eyebrow">2 · Involucrados</p><h4 class="tit" id="d-b2">Situación de los funcionarios involucrados</h4></div>
         @if (!dona.total) {
-          <p class="sub">Sin procesos cerrados en el mes.</p>
+          <p class="sub">Sin datos de los campos {{ n('Q07') }} y {{ n('YA_NO_ESTAN') }} para este mes.</p>
         } @else {
           <div class="flex flex-wrap items-center gap-4">
-            <svg viewBox="0 0 120 120" class="w-[150px] flex-none" role="img" aria-label="Procesos cerrados según su resultado">
+            <svg viewBox="0 0 120 120" class="w-[140px] flex-none" role="img" aria-label="Funcionarios involucrados según si continúan en el servicio">
               @for (p of dona.partes; track p.id) {
-                @if (p.d) { <path [attr.d]="p.d" [attr.fill]="p.color" (mouseenter)="verTip($event, p.id, p.label, p.valor, 'Procesos cerrados', dona.total)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()" style="cursor:pointer" /> }
+                @if (p.d) { <path [attr.d]="p.d" [attr.fill]="p.color" (mouseenter)="verTip($event, p.id, p.label, p.valor, 'los involucrados', dona.total)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()" style="cursor:pointer" /> }
               }
               <text x="60" y="58" text-anchor="middle" font-size="18" font-weight="700" fill="currentColor">{{ fmt(dona.total) }}</text>
-              <text x="60" y="73" text-anchor="middle" font-size="8.5" fill="#76839a">cerrados</text>
+              <text x="60" y="73" text-anchor="middle" font-size="8.5" fill="#76839a">involucrados</text>
             </svg>
-            <div class="flex flex-col gap-1 text-[11.5px] min-w-[150px]">
+            <div class="flex flex-col gap-1.5 text-[11.5px] min-w-[180px] flex-1">
               @for (p of dona.partes; track p.id) {
                 <span class="flex items-center gap-2 text-gray-700 dark:text-gray-200"><i class="sw" [style.background]="p.color"></i>{{ p.label }}<b class="ml-auto tabular-nums">{{ fmt(p.valor) }}</b><span class="text-gray-500 w-[46px] text-right">{{ pct(p.pct) }}</span></span>
               }
             </div>
           </div>
         }
-        @if (dona.aviso) { <p class="aviso m-0"><span aria-hidden="true">⚠</span>{{ dona.aviso }}</p> }
+        @for (cp of capsulasInvolucrados; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
       </section>
 
-      <!-- 7. Anexo (solo con el formulario de 44 campos) -->
+      <!-- 3 · Licencias: rankings de los campos 17 y 18 -->
+      <section class="blq lic" aria-labelledby="d-b3">
+        <div><p class="eyebrow">3 · Licencias</p><h4 class="tit" id="d-b3">Los SLEP con las licencias más largas y las remuneraciones más altas</h4></div>
+        <div class="dos">
+          @for (r of rankingsLic; track r.id) {
+            <div class="flex flex-col gap-1.5 min-w-0">
+              <b class="text-[11.5px] text-gray-700 dark:text-gray-200">{{ r.titulo }}</b>
+              @if (!r.filas.length) {
+                <p class="sub">Ningún SLEP informa este dato.</p>
+              }
+              @for (f of r.filas; track f.slep) {
+                <div class="fila-rk" [class.propio]="f.propio">
+                  <span class="pos">{{ f.pos }}°</span>
+                  <span class="truncate" [title]="f.slep">{{ f.slep }}</span>
+                  <span class="bar"><i [style.width.%]="f.ancho * 100" [style.background]="f.propio ? '#25306B' : f.pos === 1 ? '#1E4FA0' : '#8FB2F5'"></i></span>
+                  <span class="num">{{ valorLic(r, f.valor) }}</span>
+                </div>
+              }
+              @if (r.propia; as f) {
+                <div class="fila-rk propio sep-rk">
+                  <span class="pos">{{ f.pos }}°</span>
+                  <span class="truncate" [title]="f.slep">{{ f.slep }}</span>
+                  <span class="bar"><i [style.width.%]="f.ancho * 100" style="background:#25306B"></i></span>
+                  <span class="num">{{ valorLic(r, f.valor) }}</span>
+                </div>
+              }
+              @if (r.capsula) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ r.capsula }}</p> }
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- 4, 5 y 6: un dato principal y su desglose (mismo lenguaje visual) -->
+      @for (b of desgloses; track b.clave) {
+        <section class="blq" [attr.aria-labelledby]="'d-' + b.clave">
+          <div><p class="eyebrow">{{ b.eyebrow }}</p><h4 class="tit" [id]="'d-' + b.clave">{{ b.titulo }}</h4></div>
+          <div class="cifra clave" (mouseenter)="verTip($event, b.principal.id, et(b.principal.id, b.principal.label), b.principal.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
+            <div class="lb">{{ et(b.principal.id, b.principal.label) }}</div>
+            <div class="flex items-baseline justify-between gap-2 flex-wrap"><span class="vl">{{ fmt(b.principal.valor) }}</span><span class="nt">{{ b.principal.nota }}</span></div>
+          </div>
+          <p class="sub">{{ b.orden }}</p>
+          @for (x of b.filas; track x.id) {
+            <div class="fila-h" (mouseenter)="verTip($event, x.id, x.label, x.valor, et(b.principal.id, b.principal.label), b.principal.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
+              <div class="arriba">
+                <span class="text-gray-700 dark:text-gray-200">{{ x.label }}</span>
+                <span class="num">{{ fmt(x.valor) }}</span>
+                <span class="pc">{{ b.principal.valor ? pct(x.pct) : '' }}</span>
+              </div>
+              <span class="bar"><i [style.width.%]="(x.pct > 1 ? 1 : x.pct) * 100" [style.background]="x.color"></i></span>
+            </div>
+          }
+          @for (cp of b.capsulas; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
+        </section>
+      }
+
+      <!-- 7 · Anexo (solo con el formulario de 44 campos) -->
       @if (anexo.length) {
         <section class="blq" aria-labelledby="d-b7">
           <div><p class="eyebrow">7 · Anexo</p><h4 class="tit" id="d-b7">Seguimiento adicional (anexo)</h4></div>
@@ -180,7 +155,7 @@
         <div class="overflow-x-auto">
           <table class="rk">
             <caption class="sr-only">Ranking de avance por SLEP</caption>
-            <thead><tr><th>N°</th><th>SLEP</th><th>Casos</th><th>Instruidos</th><th>Cerrados</th><th>% avance</th><th style="text-align:left">Avance</th></tr></thead>
+            <thead><tr><th>N°</th><th>SLEP</th><th>{{ n('Q04') }}. Casos</th><th>{{ n('Q37') }}. Instruidos</th><th>{{ n('Q45') }}. Cerrados</th><th>% avance</th><th style="text-align:left">Avance</th></tr></thead>
             <tbody>
               @for (f of ranking; track f.slep) {
                 <tr>
@@ -198,4 +173,5 @@
     }
   </div>
 }
+</div>
 <div #tip class="tip" hidden></div>

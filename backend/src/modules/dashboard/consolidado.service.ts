@@ -83,10 +83,13 @@ export class ConsolidadoService {
   }
 
   async idsDelMes(mes: string, anio: string, alcance: string): Promise<string[]> {
+    return (await this.contenedoresDelMes(mes, anio, alcance)).map((c) => c.id);
+  }
+
+  async contenedoresDelMes(mes: string, anio: string, alcance: string): Promise<Contenedor[]> {
     const where: Record<string, string> = { mesConsolidado: mes, anioConsolidado: anio };
     if (alcance !== 'todos') where.slep = alcance;
-    const contenedores = await this.contenedores.find({ where });
-    return contenedores.map((c) => c.id);
+    return this.contenedores.find({ where });
   }
 
   // Desglose por SLEP de UN campo — genérico, sirve para cualquier

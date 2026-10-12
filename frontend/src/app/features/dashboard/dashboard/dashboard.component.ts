@@ -1,6 +1,6 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subscription, combineLatest, switchMap, of } from 'rxjs';
+import { Subscription, combineLatest, forkJoin, switchMap, of, catchError } from 'rxjs';
 import { CaseStateService } from '../../../core/services/case-state.service';
 import { DashboardApiService } from '../services/dashboard-api.service';
 import { DashboardDeMes } from '../../../core/models/dashboard.model';
@@ -8,26 +8,38 @@ import { ModeSwitcherComponent } from '../../../shared/mode-switcher/mode-switch
 import { escaparHtml, fmt, pct } from '../../../core/utils/avance';
 
 // Paleta PROPIA de la aplicación (la de la línea superior del encabezado):
-// azules y grises, sin rojos. El Histórico y el Informe Interactivo usan la
-// paleta del informe (con rojos); el Dashboard se distingue con esta.
+// azules y grises. La única excepción es el % de avance y su barra, que usan
+// la gama de rojo a azul del informe, justo para que resalten sobre todo lo demás.
 export const PALETA = ['#1E4FA0', '#006BB9', '#3ABFF0', '#8FB2F5', '#94A3B8', '#CBD5E1', '#25306B'];
-// Niveles de avance en el Dashboard: bajo = gris acero, medio = celeste, alto = azul intenso.
+// Niveles de avance del Ranking: bajo = gris acero, medio = celeste, alto = azul intenso.
 export const NIVEL_DASH = { bajo: '#94A3B8', medio: '#3ABFF0', alto: '#1E4FA0', na: '#CBD5E1' } as const;
 type Nivel = keyof typeof NIVEL_DASH;
 const nivelDe = (av: number | null): Nivel => (av == null ? 'na' : av < 0.25 ? 'bajo' : av < 0.75 ? 'medio' : 'alto');
-const NIVEL_TXT: Record<Nivel, string> = { bajo: 'Avance bajo', medio: 'Avance medio', alto: 'Avance alto', na: 'Sin sumarios instruidos' };
+// Degradado por orden: la barra mayor, en el azul más intenso.
+const DEGRADADO = ['#25306B', '#1E4FA0', '#006BB9', '#3ABFF0', '#8FB2F5', '#94A3B8', '#CBD5E1'];
 
-interface Parte { id: string | null; label: string; valor: number; color: string; pct: number }
-interface Barra { titulo: string; base: string; total: number; partes: Parte[]; aviso?: string }
-interface Item { id: string; label: string; valor: number | null; color: string; pct: number }
+// Número de cada campo en el formulario de 37 campos. Solo se usa si el
+// servidor no mandó la numeración del formulario del mes.
+const NUMERO_POR_DEFECTO: Record<string, number> = {
+  Q01: 1, Q02: 2, Q03: 3, Q04: 4, Q05: 5, Q06: 6, Q07: 7, YA_NO_ESTAN: 8, Q21: 17, Q22: 18, Q23: 19,
+  CIC_9: 20, CIC_10: 21, CIC_13: 22, CIC_14: 23, CIC_15: 24, CIC_16: 25, CIC_21: 26,
+  Q37: 27, Q38: 28, Q42: 29, Q43: 30, Q44: 31, Q45: 32, CENSURA: 33, Q48: 34, Q49: 35, Q50: 36, Q51: 37,
+};
+
 interface Cifra { id: string; label: string; valor: number | null; nota: string }
+interface FilaBarra { id: string; label: string; valor: number | null; pct: number; color: string; nota: string }
+// Bloques 4, 5 y 6: un dato principal y su desglose en barras.
+interface Desglose { clave: string; eyebrow: string; titulo: string; principal: Cifra; filas: FilaBarra[]; capsulas: string[]; orden: string }
+interface FilaRanking { slep: string; valor: number; ancho: number; pos: number; propio: boolean }
+interface RankingLic { id: string; titulo: string; unidad: 'd' | '$'; filas: FilaRanking[]; propia: FilaRanking | null; capsula: string }
 
-// Dashboard por bloques: el formulario contado como una historia, en el orden
-// del proceso (lo que informó Contraloría → quiénes son los involucrados →
-// las licencias → casos a investigar por origen → avance de los
-// procedimientos → cómo terminaron los cerrados), con la síntesis arriba y el
-// ranking completo al final. Mismo lenguaje visual del Histórico y del
-// Informe Interactivo, con la paleta azul y gris de la aplicación.
+// Dashboard por bloques, cada dato con su número de campo del Formulario:
+// 0 · Consolidado (campos 1 a 3 y el % de avance) → 1 · Origen (4 a 6) →
+// 2 · Involucrados (7 y 8) → 3 · Licencias (rankings de 17 y 18) → 4 · Origen
+// de los casos (19 y sus CIC) → 5 · Procedimientos (27 y 28 a 31) → 6 ·
+// Resultado (32 y 33 a 37) → Ranking. Las "cápsulas" son comentarios que
+// guían al usuario: explican una diferencia, advierten un dato raro o
+// resumen lo importante del bloque.
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -43,28 +55,33 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly fmt = fmt;
   readonly pct = pct;
   readonly NIVEL_DASH = NIVEL_DASH;
-  readonly NIVEL_TXT = NIVEL_TXT;
 
+  // 0 · Consolidado
+  identificacion: { n: number; label: string; valor: string }[] = [];
   av: number | null = null;
-  nivel: Nivel = 'na';
+  instruidos = 0;
+  cerrados = 0;
   frase = '';
-  sintesis: Cifra[] = [];
-  contraloria: Cifra[] = [];
-  barrasInvolucrados: Barra[] = [];
-  licencias: { min: number | null; prom: number | null; max: number | null; remu: number | null } = { min: null, prom: null, max: null, remu: null };
-  cic: Item[] = [];
-  aInvestigar = 0;
-  avisosInvestigar: string[] = [];
-  embudo: { id: string; label: string; valor: number; ancho: number; conv: string }[] = [];
-  estados: Barra | null = null;
-  dona: { partes: (Parte & { d: string })[]; total: number; aviso?: string } = { partes: [], total: 0 };
+  capsulasAvance: string[] = [];
+  // 1 · Origen
+  origen: Cifra[] = [];
+  capsulasOrigen: string[] = [];
+  // 2 · Involucrados (dona)
+  dona: { partes: { id: string; label: string; valor: number; color: string; pct: number; d: string }[]; total: number } = { partes: [], total: 0 };
+  capsulasInvolucrados: string[] = [];
+  // 3 · Licencias
+  rankingsLic: RankingLic[] = [];
+  // 4, 5 y 6
+  desgloses: Desglose[] = [];
+  // 7 · Anexo (solo con el formulario de 44 campos)
   anexo: { id: string; label: string; valor: number | null }[] = [];
   ranking: { pos: number | null; slep: string; casos: number; instruidos: number; cerrados: number; av: number | null; nivel: Nivel }[] = [];
 
   @ViewChild('tip', { static: true }) private tip!: ElementRef<HTMLDivElement>;
   private sub?: Subscription;
-  private desgloses = new Map<string, { slep: string; valor: number }[]>();
+  private porSlep = new Map<string, { slep: string; valor: number }[]>();
   private tipActual = '';
+  private numeros: Record<string, number> = {};
 
   constructor(
     private readonly caseState: CaseStateService,
@@ -78,13 +95,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.slepActivo = contenedor?.slep ?? null;
           this.mes = mes?.mes ?? '';
           this.anio = mes?.anio ?? '';
-          this.desgloses.clear();
-          return mes ? this.dashboardApi.getDashboard(mes.mes, mes.anio, this.slepActivo ?? undefined) : of(null);
+          this.porSlep.clear();
+          if (!mes) return of(null);
+          // Los rankings de licencias (campos 17 y 18) comparan a todos los
+          // SLEP: se piden junto con el Dashboard.
+          const desglose = (campo: string) => this.dashboardApi.getDesglose(mes.mes, mes.anio, campo).pipe(catchError(() => of([])));
+          return forkJoin({
+            dash: this.dashboardApi.getDashboard(mes.mes, mes.anio, this.slepActivo ?? undefined),
+            q21: desglose('Q21'),
+            q22: desglose('Q22'),
+          });
         }),
       )
-      .subscribe((datos) => {
-        this.datos = datos;
-        if (datos) this.armar(datos);
+      .subscribe((r) => {
+        this.datos = r?.dash ?? null;
+        if (!r) return;
+        this.porSlep.set('Q21', r.q21);
+        this.porSlep.set('Q22', r.q22);
+        this.armar(r.dash);
       });
   }
 
@@ -92,109 +120,172 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.sub?.unsubscribe();
   }
 
+  // "27. Sumarios instruidos": el número tal como aparece en el Formulario.
+  n(id: string): number | string {
+    return this.numeros[id] ?? NUMERO_POR_DEFECTO[id] ?? '';
+  }
+  et(id: string, label: string): string {
+    const n = this.n(id);
+    return n === '' ? label : `${n}. ${label}`;
+  }
+
   private armar(d: DashboardDeMes): void {
+    this.numeros = d.numeros ?? {};
     const c = d.campos ?? {};
     const v = (id: string) => c[id] ?? null;
     const n = (id: string) => c[id] ?? 0;
-    const razon = (a: number | null, b: number | null) => (a != null && b ? a / b : null);
-    const dec = (x: number | null) => (x == null ? '' : x.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
-    const ins = n('Q37'), cerr = n('Q45');
-    this.av = ins > 0 ? cerr / ins : null;
-    this.nivel = nivelDe(this.av);
-    const ambito = this.slepActivo ?? `los ${d.totalContenedores} SLEP`, verbo = this.slepActivo ? 'tiene' : 'tienen';
+    const dec = (x: number) => x.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const N = (id: string) => this.n(id);
+
+    // 0 · Consolidado: campos 1 a 3 y el % de avance (32 ÷ 27).
+    const t = d.textos;
+    this.identificacion = [
+      { n: +N('Q01') || 1, label: 'Ministerio', valor: t?.Q01 || 'Ministerio de Educación' },
+      { n: +N('Q02') || 2, label: 'Subsecretaría', valor: t?.Q02 || 'Subsecretaría de Educación' },
+      { n: +N('Q03') || 3, label: 'Servicio', valor: this.slepActivo ? t?.Q03 || this.slepActivo : `Todos los SLEP (${d.totalContenedores})` },
+    ];
+    this.instruidos = n('Q37');
+    this.cerrados = n('Q45');
+    this.av = this.instruidos > 0 ? this.cerrados / this.instruidos : null;
+    const ambito = this.slepActivo ?? `los ${d.totalContenedores} SLEP`;
     this.frase = this.av == null
-      ? `En ${this.mes.toLowerCase()} de ${this.anio}, ${ambito} no registra sumarios instruidos.`
-      : `En ${this.mes.toLowerCase()} de ${this.anio}, ${ambito} ${verbo} ${fmt(cerr)} de ${fmt(ins)} sumarios instruidos con proceso cerrado: un avance de ${pct(this.av)}. Quedan ${fmt(Math.max(ins - cerr, 0))} procesos por cerrar.`;
-
-    this.sintesis = [
-      { id: 'Q04', label: 'Casos informados CGR', valor: v('Q04'), nota: 'Origen del proceso' },
-      { id: 'Q06', label: 'Funcionarios involucrados', valor: v('Q06'), nota: razon(v('Q06'), v('Q04')) != null ? `${dec(razon(v('Q06'), v('Q04')))} por caso` : '' },
-      { id: 'Q37', label: 'Sumarios instruidos', valor: v('Q37'), nota: razon(v('Q37'), v('Q06')) != null ? `${pct(razon(v('Q37'), v('Q06')))} de los involucrados` : '' },
-      { id: 'Q45', label: 'Procesos cerrados', valor: v('Q45'), nota: this.av != null ? `${pct(this.av)} de los instruidos` : '' },
-    ];
-
-    // 1. Lo que informó Contraloría
-    this.contraloria = [
-      { id: 'Q04', label: 'Casos informados', valor: v('Q04'), nota: 'Reportados por la CGR' },
-      { id: 'Q05', label: 'Licencias incumplidas', valor: v('Q05'), nota: razon(v('Q05'), v('Q04')) != null ? `${dec(razon(v('Q05'), v('Q04')))} licencias por caso` : '' },
-      { id: 'Q06', label: 'Funcionarios involucrados', valor: v('Q06'), nota: razon(v('Q06'), v('Q04')) != null ? `${dec(razon(v('Q06'), v('Q04')))} por caso` : '' },
-    ];
-
-    // 2. Quiénes son los involucrados (barras 100 % apiladas)
-    const barra = (titulo: string, base: string, partes: { id: string | null; label: string; valor: number }[], esperado?: number): Barra => {
-      const total = partes.reduce((a, p) => a + p.valor, 0);
-      const b: Barra = { titulo, base, total, partes: partes.map((p, i) => ({ ...p, color: [PALETA[0], PALETA[4], PALETA[2], PALETA[5]][i] ?? PALETA[5], pct: total ? p.valor / total : 0 })) };
-      if (esperado != null && total !== esperado) b.aviso = `Las partes suman ${fmt(total)}; los involucrados son ${fmt(esperado)} (diferencia ${fmt(total - esperado)}).`;
-      return b;
-    };
-    const inv = n('Q06'), yaNo = n('YA_NO_ESTAN');
-    this.barrasInvolucrados = [
-      barra('Situación actual', 'Funcionarios involucrados', [{ id: 'Q07', label: 'Continúan en el servicio', valor: n('Q07') }, { id: 'YA_NO_ESTAN', label: 'Ya no están', valor: yaNo }], inv),
-      barra('De los que ya no están', 'Funcionarios que ya no están', [{ id: 'CESARON', label: 'Cesaron después del 20-05-2025', valor: n('CESARON') }, { id: null, label: 'Cesaron antes', valor: Math.max(yaNo - n('CESARON'), 0) }]),
-      barra('Sumariados antes del 20-05-2025', 'Funcionarios involucrados', [{ id: 'YA_SUMARIADOS', label: 'Ya sumariados', valor: n('YA_SUMARIADOS') }, { id: null, label: 'No sumariados antes', valor: Math.max(inv - n('YA_SUMARIADOS'), 0) }]),
-      barra('Ingreso al servicio (corte 11-03-2022)', 'Funcionarios involucrados', [{ id: 'Q15', label: 'Desde el 11-03-2022', valor: n('Q15') }, { id: 'Q16', label: 'Antes del 11-03-2022', valor: n('Q16') }], inv),
-    ];
-    if (v('Q17') != null || v('Q18') != null) {
-      this.barrasInvolucrados.push(barra('Ingreso al servicio (corte 11-03-2026)', 'Funcionarios involucrados', [{ id: 'Q17', label: 'Desde el 11-03-2026', valor: n('Q17') }, { id: 'Q18', label: 'Antes del 11-03-2026', valor: n('Q18') }], inv));
+      ? `En ${this.mes.toLowerCase()} de ${this.anio}, ${ambito} no registra sumarios instruidos (campo ${N('Q37')}).`
+      : `${fmt(this.cerrados)} procesos cerrados (campo ${N('Q45')}) de ${fmt(this.instruidos)} sumarios instruidos (campo ${N('Q37')}).`;
+    this.capsulasAvance = [];
+    if (this.av != null) {
+      const faltan = Math.max(this.instruidos - this.cerrados, 0);
+      this.capsulasAvance.push(faltan
+        ? `Para llegar a la meta del 100 % faltan ${fmt(faltan)} procesos por cerrar.`
+        : 'Todos los sumarios instruidos tienen su proceso cerrado: meta cumplida.');
     }
 
-    // 3. Las licencias (rango mínima–máxima con el promedio)
-    this.licencias = { min: v('Q20'), prom: v('Q19'), max: v('Q21'), remu: v('Q22') };
+    // 1 · Origen (campos 4, 5 y 6)
+    const casos = v('Q04'), lic = v('Q05'), inv = v('Q06');
+    this.origen = [
+      { id: 'Q04', label: 'Casos informados por la CGR', valor: casos, nota: 'Lo que reportó Contraloría' },
+      { id: 'Q05', label: 'Licencias médicas incumplidas', valor: lic, nota: casos ? `${dec(lic! / casos)} licencias por caso` : '' },
+      { id: 'Q06', label: 'Funcionarios involucrados', valor: inv, nota: casos ? `${dec(inv! / casos)} funcionarios por caso` : '' },
+    ];
+    this.capsulasOrigen = [];
+    if (casos && inv != null && inv < casos) this.capsulasOrigen.push(`Hay menos funcionarios involucrados (campo ${N('Q06')}) que casos informados (campo ${N('Q04')}): revisa si algún SLEP los cargó al revés.`);
+    else if (casos) this.capsulasOrigen.push(`Cada caso informado involucra, en promedio, a ${dec(inv! / casos)} funcionarios y ${dec(lic! / casos)} licencias.`);
 
-    // 4. Casos a investigar, por origen (CIC)
-    const CIC: [string, string][] = [['CIC_9', 'CIC N° 9 · salidas del país'], ['CIC_10', 'CIC N° 10 · partos'], ['CIC_13', 'CIC N° 13 · médicos en investigación penal'], ['CIC_14', 'CIC N° 14 · FFAA salidas del país'], ['CIC_15', 'CIC N° 15 · casinos de juego'], ['CIC_16', 'CIC N° 16 · salidas del país (regional)'], ['CIC_21', 'CIC N° 21 · trabajo con otros empleadores']];
-    this.aInvestigar = n('Q23');
-    const maxCic = Math.max(...CIC.map(([id]) => n(id)), 1);
-    // Degradado por orden: el origen con más casos, en el azul más intenso.
-    const DEGRADADO = ['#25306B', '#1E4FA0', '#006BB9', '#3ABFF0', '#8FB2F5', '#94A3B8', '#CBD5E1'];
-    this.cic = CIC.map(([id, label]) => ({ id, label, valor: v(id), color: '', pct: n(id) / maxCic }))
-      .sort((a, b) => (b.valor ?? -1) - (a.valor ?? -1))
-      .map((x, i) => ({ ...x, color: DEGRADADO[i] }));
-    const m = d.metricas;
-    this.avisosInvestigar = [];
-    if (m.diferenciaInvestigar) this.avisosInvestigar.push(`Involucrados − a investigar = ${fmt(m.diferenciaInvestigar)}: algunos SLEP excluyen a quienes ya no están.`);
-    if (m.diferenciaCIC) this.avisosInvestigar.push(`Suma de los CIC − sumarios instruidos = ${fmt(m.diferenciaCIC)}.`);
-
-    // 5. El avance de los procedimientos (embudo + estados + medidor)
-    const pasos = [{ id: 'Q23', label: 'A investigar', valor: this.aInvestigar }, { id: 'Q37', label: 'Sumarios instruidos', valor: ins }, { id: 'Q45', label: 'Procesos cerrados', valor: cerr }];
-    const maxE = Math.max(...pasos.map((p) => p.valor), 1);
-    this.embudo = pasos.map((p, i) => ({ ...p, ancho: Math.max(p.valor / maxE, 0.04), conv: i === 0 ? '' : pasos[i - 1].valor ? `${pct(p.valor / pasos[i - 1].valor)} del paso anterior` : '' }));
-    const est = [{ id: 'Q38', label: 'En curso', valor: n('Q38') }, { id: 'Q42', label: 'Resueltos', valor: n('Q42') }, { id: 'Q43', label: 'Impugnados', valor: n('Q43') }, { id: 'Q44', label: 'Enviados a CGR', valor: n('Q44') }, { id: 'Q45', label: 'Cerrados', valor: cerr }];
-    const sumaEst = est.reduce((a, p) => a + p.valor, 0);
-    const resto = Math.max(ins - sumaEst, 0);
-    const partesEst = [...est, ...(resto ? [{ id: null, label: 'Sin clasificar', valor: resto }] : [])];
-    const totalEst = partesEst.reduce((a, p) => a + p.valor, 0);
-    this.estados = {
-      titulo: 'Estado de los sumarios instruidos', base: 'Sumarios instruidos', total: totalEst,
-      partes: partesEst.map((p, i) => ({ ...p, color: [PALETA[2], PALETA[3], PALETA[4], PALETA[6], PALETA[0], PALETA[5]][i], pct: totalEst ? p.valor / totalEst : 0 })),
-      aviso: sumaEst > ins ? `Los estados suman ${fmt(sumaEst)}, más que los ${fmt(ins)} sumarios instruidos (una persona puede figurar en más de un estado).` : undefined,
-    };
-
-    // 6. Cómo terminaron los cerrados (dona)
-    const SAN = [{ id: 'CENSURA', label: 'Censura / amonestación' }, { id: 'Q48', label: 'Multa' }, { id: 'Q49', label: 'Suspensión' }, { id: 'Q50', label: 'Destitución' }, { id: 'Q51', label: 'Sin sanción' }];
-    const vals = SAN.map((s) => ({ ...s, valor: n(s.id) }));
-    const totSan = vals.reduce((a, p) => a + p.valor, 0);
+    // 2 · Involucrados (campos 7 y 8, dona)
+    const cont = n('Q07'), yaNo = n('YA_NO_ESTAN'), totInv = cont + yaNo;
     let ang = -Math.PI / 2;
-    const colSan = [PALETA[6], PALETA[0], PALETA[1], PALETA[2], PALETA[5]];
     this.dona = {
-      total: totSan,
-      partes: vals.map((p, i) => {
-        const frac = totSan ? p.valor / totSan : 0, a0 = ang, a1 = ang + frac * Math.PI * 2;
+      total: totInv,
+      partes: [
+        { id: 'Q07', label: this.et('Q07', 'Continúan en el servicio'), valor: cont, color: PALETA[0] },
+        { id: 'YA_NO_ESTAN', label: this.et('YA_NO_ESTAN', 'Ya no están en el servicio'), valor: yaNo, color: PALETA[4] },
+      ].map((p) => {
+        const frac = totInv ? p.valor / totInv : 0, a0 = ang, a1 = ang + frac * Math.PI * 2;
         ang = a1;
-        return { ...p, color: colSan[i], pct: frac, d: frac > 0 ? this.arco(a0, a1 - (frac < 1 ? 0.012 : 0)) : '' };
+        return { ...p, pct: frac, d: frac > 0 ? this.arco(a0, a1 - (frac < 1 ? 0.012 : 0)) : '' };
       }),
-      aviso: d.metricas.diferenciaSanciones ? `Sanciones + sin sanción suman ${fmt(totSan)}; los procesos cerrados son ${fmt(cerr)} (diferencia ${fmt(totSan - cerr)}).` : undefined,
     };
+    this.capsulasInvolucrados = [];
+    if (inv != null && totInv !== inv) this.capsulasInvolucrados.push(`Los campos ${N('Q07')} y ${N('YA_NO_ESTAN')} suman ${fmt(totInv)}, pero el campo ${N('Q06')} dice ${fmt(inv)} (diferencia ${fmt(totInv - inv)}). Deberían coincidir.`);
+    else if (totInv) this.capsulasInvolucrados.push(`${pct(cont / totInv)} de los involucrados sigue en el servicio; con ellos todavía se puede aplicar una medida disciplinaria.`);
 
-    // 7. Anexo (solo si se cargó con el formulario de 44 campos)
+    // 3 · Licencias: rankings de los campos 17 y 18
+    this.rankingsLic = [
+      this.rankingLic('Q21', 'Licencias más largas', 'd', v('Q21')),
+      this.rankingLic('Q22', 'Remuneraciones promedio más altas', '$', v('Q22')),
+    ];
+
+    // 4 · Origen de los casos: 19 y sus CIC (20 a 26), de mayor a menor
+    const CIC: [string, string][] = [['CIC_9', 'CIC N° 9 · salidas del país'], ['CIC_10', 'CIC N° 10 · partos'], ['CIC_13', 'CIC N° 13 · médicos en investigación penal'], ['CIC_14', 'CIC N° 14 · FFAA salidas del país'], ['CIC_15', 'CIC N° 15 · casinos de juego'], ['CIC_16', 'CIC N° 16 · salidas del país (regional)'], ['CIC_21', 'CIC N° 21 · trabajo con otros empleadores']];
+    const aInv = n('Q23');
+    const sumaCic = CIC.reduce((a, [id]) => a + n(id), 0);
+    const capsCic: string[] = [];
+    const m = d.metricas;
+    if (m.diferenciaInvestigar > 0) capsCic.push(`El campo ${N('Q23')} tiene ${fmt(m.diferenciaInvestigar)} funcionarios menos que el campo ${N('Q06')}: algunos SLEP no cuentan a quienes ya no están en el servicio (campo ${N('YA_NO_ESTAN')}).`);
+    if (m.diferenciaInvestigar < 0) capsCic.push(`El campo ${N('Q23')} supera al campo ${N('Q06')} en ${fmt(-m.diferenciaInvestigar)}: no debería haber más casos a investigar que funcionarios involucrados.`);
+    if (sumaCic > aInv) capsCic.push(`Los CIC suman ${fmt(sumaCic)}, más que el campo ${N('Q23')}: una persona puede figurar en más de un CIC.`);
+    const cic = this.filas(CIC, aInv, c, true);
+    if (cic[0]?.valor) capsCic.push(`El origen principal es el ${cic[0].label.replace(/^\d+\. /, '')}: ${pct(cic[0].pct)} de los casos a investigar.`);
+
+    // 5 · Procedimientos: 27 y 28 a 31
+    const ins = this.instruidos;
+    const PROC: [string, string][] = [['Q38', 'En curso'], ['Q42', 'Resueltos'], ['Q43', 'Impugnados'], ['Q44', 'Enviados a la CGR para toma de razón']];
+    const sumaProc = PROC.reduce((a, [id]) => a + n(id), 0) + this.cerrados;
+    const capsProc: string[] = [];
+    if (sumaProc === ins) capsProc.push(`Los campos ${N('Q38')} a ${N('Q44')} más los procesos cerrados (campo ${N('Q45')}, en Resultado) suman el campo ${N('Q37')}.`);
+    else capsProc.push(`Los campos ${N('Q38')} a ${N('Q45')} suman ${fmt(sumaProc)}, pero el campo ${N('Q37')} dice ${fmt(ins)} (diferencia ${fmt(sumaProc - ins)}). Deberían coincidir.`);
+    if (aInv) capsProc.push(`Se ha instruido sumario a ${pct(ins / aInv)} de los casos a investigar (campo ${N('Q23')}).`);
+
+    // 6 · Resultado: 32 y 33 a 37
+    const SAN: [string, string][] = [['CENSURA', 'Censura o amonestación'], ['Q48', 'Multa'], ['Q49', 'Suspensión del empleo'], ['Q50', 'Destitución'], ['Q51', 'Cerrados sin sanción']];
+    const sumaSan = SAN.reduce((a, [id]) => a + n(id), 0);
+    const conSancion = sumaSan - n('Q51');
+    const capsSan: string[] = [];
+    if (m.diferenciaSanciones) capsSan.push(`Los campos ${N('CENSURA')} a ${N('Q51')} suman ${fmt(sumaSan)}, pero el campo ${N('Q45')} dice ${fmt(this.cerrados)} (diferencia ${fmt(m.diferenciaSanciones)}). Deberían coincidir.`);
+    if (sumaSan) capsSan.push(`De los procesos cerrados, ${fmt(conSancion)} terminaron con sanción (${pct(conSancion / sumaSan)}) y ${fmt(n('Q51'))} sin sanción.`);
+
+    this.desgloses = [
+      { clave: 'cic', eyebrow: '4 · Origen de los casos', titulo: 'Casos a investigar, por consolidado (CIC)', orden: 'De mayor a menor.',
+        principal: { id: 'Q23', label: 'Casos a investigar por sumario administrativo', valor: v('Q23'), nota: inv ? `${pct(aInv / inv)} de los funcionarios involucrados` : '' },
+        filas: cic, capsulas: capsCic },
+      { clave: 'proc', eyebrow: '5 · Procedimientos', titulo: 'Estado de los sumarios instruidos', orden: 'Cada barra, como parte de los sumarios instruidos.',
+        principal: { id: 'Q37', label: 'Sumarios instruidos', valor: v('Q37'), nota: aInv ? `${pct(ins / aInv)} de los casos a investigar` : '' },
+        filas: this.filas(PROC, ins, c, false), capsulas: capsProc },
+      { clave: 'san', eyebrow: '6 · Resultado', titulo: 'Cómo terminaron los procesos cerrados', orden: 'Cada barra, como parte de los procesos cerrados.',
+        principal: { id: 'Q45', label: 'Procesos cerrados', valor: v('Q45'), nota: ins ? `${pct(this.cerrados / ins)} de los sumarios instruidos` : '' },
+        filas: this.filas(SAN, this.cerrados, c, false), capsulas: capsSan },
+    ];
+
+    // 7 · Anexo (solo si se cargó con el formulario de 44 campos)
     const ANEXO: [string, string][] = [['Q56', 'Renuncias antes del procedimiento'], ['Q57', 'Procedimientos instruidos'], ['Q58', 'Procedimientos en investigación'], ['Q59', 'Procedimientos con vista fiscal'], ['Q60', 'Resoluciones ejecutoriadas'], ['Q61', 'Funcionarios con descuento'], ['Q62', 'Monto total de descuentos ($)']];
-    this.anexo = ANEXO.some(([id]) => v(id) != null) ? ANEXO.map(([id, label]) => ({ id, label, valor: v(id) })) : [];
+    this.anexo = ANEXO.some(([id]) => v(id) != null) ? ANEXO.map(([id, label]) => ({ id, label: this.et(id, label), valor: v(id) })) : [];
 
     // Ranking completo
     const filas = (d.ranking ?? []).map((r) => ({ slep: r.slep, casos: r.casosInformados, instruidos: r.sumariosInstruidos, cerrados: r.procesosCerrados, av: r.pct == null ? null : r.pct / 100 }));
     const con = filas.filter((f) => f.av != null).sort((a, b) => b.av! - a.av! || b.cerrados - a.cerrados || a.slep.localeCompare(b.slep, 'es'));
     const sin = filas.filter((f) => f.av == null).sort((a, b) => a.slep.localeCompare(b.slep, 'es'));
     this.ranking = [...con.map((f, i) => ({ ...f, pos: i + 1 as number | null, nivel: nivelDe(f.av) })), ...sin.map((f) => ({ ...f, pos: null, nivel: 'na' as Nivel }))];
+    if (!this.slepActivo && sin.length) this.capsulasAvance.push(`${sin.length} SLEP no registran sumarios instruidos: no entran en el % de avance.`);
+  }
+
+  // Barras de un desglose: el ancho es la parte que representa cada campo
+  // del dato principal; el color, por orden (la mayor, la más intensa).
+  private filas(campos: [string, string][], base: number, valores: Record<string, number | null>, ordenar: boolean): FilaBarra[] {
+    const filas = campos.map(([id, label]) => ({ id, label: this.et(id, label), valor: valores[id] ?? null, pct: base ? (valores[id] ?? 0) / base : 0, color: '', nota: '' }));
+    const porValor = [...filas].sort((a, b) => (b.valor ?? -1) - (a.valor ?? -1));
+    porValor.forEach((f, i) => (f.color = DEGRADADO[Math.min(i, DEGRADADO.length - 1)]));
+    return ordenar ? porValor : filas;
+  }
+
+  // Ranking de 6 SLEP para un campo de licencias. Viendo un SLEP, se destaca
+  // y, si no está entre los 6, se agrega debajo con su posición.
+  private rankingLic(id: string, titulo: string, unidad: 'd' | '$', consolidado: number | null): RankingLic {
+    const lista = [...(this.porSlep.get(id) ?? [])].filter((x) => x.valor > 0).sort((a, b) => b.valor - a.valor);
+    const max = lista[0]?.valor || 1;
+    const todas = lista.map((x, i) => ({ slep: x.slep, valor: x.valor, ancho: x.valor / max, pos: i + 1, propio: x.slep === this.slepActivo }));
+    const filas = todas.slice(0, 6);
+    const propia = this.slepActivo ? todas.find((f) => f.propio && f.pos > 6) ?? null : null;
+    const val = (x: number | null) => (unidad === '$' ? this.rem(x) : `${fmt(x)} días`);
+    let capsula = '';
+    if (this.slepActivo) {
+      const p = todas.find((f) => f.propio);
+      capsula = p && todas.length > 1 ? `${this.slepActivo} ocupa el ${p.pos}° lugar de ${todas.length} SLEP (${val(p.valor)}).` : consolidado != null ? `Valor del SLEP: ${val(consolidado)}.` : '';
+    } else if (id === 'Q21') {
+      capsula = `Campo ${this.n(id)}: la licencia más larga de cada SLEP. En el consolidado manda la mayor de todas (${val(consolidado)}).`;
+    } else {
+      capsula = `Campo ${this.n(id)}: en el consolidado es el promedio ponderado por funcionarios involucrados (${val(consolidado)}).`;
+    }
+    return { id, titulo: this.et(id, titulo), unidad, filas, propia, capsula };
+  }
+
+  // Color del % de avance (la única parte con rojo): 0 % rojo intenso →
+  // 50 % neutro → 100 % azul intenso, igual que el Histórico y el informe.
+  colorAvance(a: number | null): string {
+    if (a == null) return '#CBD5E1';
+    const t = Math.min(Math.abs(a - 0.5) / 0.5, 1) * 85 + 15, col = a < 0.5 ? '#d03b3b' : '#0f69b4';
+    return `color-mix(in oklab, ${col} ${t.toFixed(0)}%, #f0efec)`;
+  }
+  colorTextoAvance(a: number | null): string {
+    return a == null ? '#76839a' : a < 0.5 ? '#c23434' : '#0f69b4';
   }
 
   // Arco de la dona (anillo) entre dos ángulos, en un lienzo de 120 × 120.
@@ -204,28 +295,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return `M${p(R, a0)} A${R},${R} 0 ${grande} 1 ${p(R, a1)} L${p(r, a1)} A${r},${r} 0 ${grande} 0 ${p(r, a0)} Z`;
   }
 
-  // Medidor semicircular del % de avance (arco relleno hasta el avance).
-  medidor(av: number | null): string {
-    const f = Math.min(Math.max(av ?? 0, 0), 1), R = 80, cx = 100, cy = 92;
-    const p = (a: number) => `${(cx + R * Math.cos(a)).toFixed(2)},${(cy + R * Math.sin(a)).toFixed(2)}`;
-    return f <= 0 ? '' : `M${p(Math.PI)} A${R},${R} 0 0 1 ${p(Math.PI + f * Math.PI)}`;
-  }
-
   rem(v: number | null): string {
     return v == null ? '—' : '$' + fmt(v);
   }
 
-  // Las etiquetas del rango no se salen del bloque: cerca de un borde, se
-  // alinean hacia adentro.
-  alineaLic(pos: number): string {
-    return pos < 18 ? 'translateX(0)' : pos > 82 ? 'translateX(-100%)' : 'translateX(-50%)';
-  }
-
-  // Posición (0–100 %) de un valor en la barra de rango de las licencias.
-  posLic(v: number | null): number {
-    const { min, max } = this.licencias;
-    if (v == null || min == null || max == null || max === min) return 50;
-    return ((v - min) / (max - min)) * 100;
+  valorLic(r: RankingLic, v: number): string {
+    return r.unidad === '$' ? this.rem(v) : `${fmt(v)} d`;
   }
 
   // ---------- Tooltip completo, con los 5 SLEP que más aportan ----------
@@ -236,7 +311,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       let h = `<span class="h">${escaparHtml(label)}<small>${escaparHtml(this.slepActivo ?? `Todos los SLEP · ${this.mes} ${this.anio}`)}</small></span>`;
       h += `<span class="r"><span class="big">${fmt(valor)}</span>${base ? `<span class="muted">${pct((valor ?? 0) / base)} de ${escaparHtml(baseTxt.toLowerCase())}</span>` : ''}</span>`;
       if (id && !this.slepActivo) {
-        const des = this.desgloses.get(id);
+        const des = this.porSlep.get(id);
         h += `<span class="sep"></span><span class="sec">SLEP que más aportan</span>`;
         if (!des) h += `<span class="muted">Cargando…</span>`;
         else {
@@ -251,9 +326,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     };
     pintar();
     this.moverTip(e);
-    if (id && !this.slepActivo && !this.desgloses.has(id)) {
+    if (id && !this.slepActivo && !this.porSlep.has(id)) {
       this.dashboardApi.getDesglose(this.mes, this.anio, id).subscribe((des) => {
-        this.desgloses.set(id, des);
+        this.porSlep.set(id, des);
         if (this.tipActual === clave) pintar();
       });
     }

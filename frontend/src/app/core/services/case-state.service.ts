@@ -102,11 +102,16 @@ export class CaseStateService {
     this.recargaDetalle.next(this.recargaDetalle.value + 1);
   }
 
-  setMesActivo(mes: MesActivo | null): void {
+  // conservarSlep: al ir cambiando de mes para comparar, el SLEP que estaba
+  // abierto se vuelve a abrir en el mes nuevo (se busca por nombre: el id del
+  // contenedor cambia cada mes). Si ese SLEP no existe en el mes nuevo, queda
+  // el consolidado.
+  setMesActivo(mes: MesActivo | null, conservarSlep = false): void {
+    const slepAnterior = conservarSlep ? this.contenedoresSubject.value.find((c) => c.id === this.slepActivoSubject.value)?.slep ?? null : null;
     this.mesActivoSubject.next(mes);
     this.slepActivoSubject.next(null);
     this.campoActivoSubject.next(null);
-    if (mes) this.recargarContenedores(mes);
+    if (mes) this.recargarContenedores(mes, slepAnterior);
   }
 
   setSlepActivo(contenedorId: string | null): void {
@@ -149,8 +154,14 @@ export class CaseStateService {
     this.historicoSubject.next({ sleps, destacado: slep });
   }
 
-  recargarContenedores(mes: MesActivo): void {
-    this.api.listarPorMes(mes.mes, mes.anio).subscribe((lista) => this.contenedoresSubject.next(lista));
+  recargarContenedores(mes: MesActivo, slepAReabrir: string | null = null): void {
+    this.api.listarPorMes(mes.mes, mes.anio).subscribe((lista) => {
+      this.contenedoresSubject.next(lista);
+      // Solo si el usuario sigue en ese mes y no eligió otro SLEP mientras cargaba.
+      const sigueEnElMes = this.mesActivoSubject.value?.mes === mes.mes && this.mesActivoSubject.value?.anio === mes.anio;
+      const reabrir = slepAReabrir ? lista.find((c) => c.slep === slepAReabrir) : undefined;
+      if (reabrir && sigueEnElMes && this.slepActivoSubject.value === null) this.setSlepActivo(reabrir.id);
+    });
   }
 
   crearMes(mes: string, anio: string, formularioId: string, sleps: string[]): Observable<Contenedor[]> {

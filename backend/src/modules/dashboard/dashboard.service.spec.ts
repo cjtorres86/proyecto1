@@ -1,7 +1,7 @@
 import { DashboardService } from './dashboard.service';
 
 describe('DashboardService.calculateMetrics', () => {
-  const service = new DashboardService(null as any, null as any, null as any);
+  const service = new DashboardService(null as any, null as any, null as any, null as any);
 
   it('calcula pctAvance = procesosCerrados / sumariosInstruidos * 100', () => {
     const m = service.calculateMetrics({ Q37: 20, Q45: 10 });
