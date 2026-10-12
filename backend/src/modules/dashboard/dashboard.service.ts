@@ -159,6 +159,14 @@ export class DashboardService {
     return {
       totalContenedores,
       metricas,
+      // Todos los campos de la foto consolidada (mismas reglas de siempre:
+      // mínimo, máximo, promedio ponderado o suma), para el Dashboard por
+      // bloques. Vacío = null (no se confunde con 0).
+      campos: Object.fromEntries(
+        Object.entries(snapshot)
+          .filter(([id]) => !['Q01', 'Q02', 'Q03'].includes(id))
+          .map(([id, v]) => [id, v === '' || v == null || Number.isNaN(Number(v)) ? null : Number(v)]),
+      ) as Record<string, number | null>,
       cicPct: this.getCicSeriesPct(metricas),
       procedimientosPct: this.getProcedimientosSeriesPct(metricas),
       sancionesPct: this.getSancionesSeriesPct(metricas),

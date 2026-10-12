@@ -25,4 +25,6 @@ export interface DashboardDeMes {
   procedimientosPct: SerieItem[];
   sancionesPct: SerieItem[];
   ranking: RankingFila[];
+  // Todos los campos de la foto consolidada (Dashboard por bloques). null = vacío.
+  campos?: Record<string, number | null>;
 }
