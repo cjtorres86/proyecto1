@@ -223,6 +223,34 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   .descargas .extension { color: #AEB8CC; border-color: rgb(174 184 204 / 0.3); }
 }
 
+// ============================================================
+// INFORMES INTERACTIVOS (ranking y errores): claro y oscuro NEÓN
+// ============================================================
+// Barras del ranking por nivel (los mismos colores de siempre en claro).
+.barra-avance[data-nivel='alto'] { background: #00E0FF; }
+.barra-avance[data-nivel='medio-alto'] { background: #16A34A; }
+.barra-avance[data-nivel='medio'] { background: #D97706; }
+.barra-avance[data-nivel='bajo'] { background: #DC2626; }
+.barra-avance[data-nivel='na'] { background: #D1D5DB; }
+// Modo oscuro: fondo casi negro y datos ultra fluorescentes, con brillo. Al
+// imprimir siempre se vuelve a claro (ThemeService.claroAlImprimir).
+.dark .informe-raiz {
+  // !important: la regla general ".dark .bg-gray-100" (al final de este archivo) pinta otro fondo.
+  background-color: #04060c !important;
+  .hoja-informe { background: #0a0f1d !important; border: 1px solid #1f2b48; box-shadow: 0 0 40px -12px rgb(0 240 255 / 0.25) !important; }
+  .text-\[\#1E3A8A\] { color: #7DF9FF; text-shadow: 0 0 12px rgb(0 240 255 / 0.45); }
+  .barra-avance[data-nivel='alto'] { background: #00F5FF; box-shadow: 0 0 10px rgb(0 245 255 / 0.85); }
+  .barra-avance[data-nivel='medio-alto'] { background: #39FF14; box-shadow: 0 0 10px rgb(57 255 20 / 0.8); }
+  .barra-avance[data-nivel='medio'] { background: #FFE500; box-shadow: 0 0 10px rgb(255 229 0 / 0.8); }
+  .barra-avance[data-nivel='bajo'] { background: #FF2E6A; box-shadow: 0 0 10px rgb(255 46 106 / 0.85); }
+  .barra-avance[data-nivel='na'] { background: #2a3550; }
+  // Errores: el SLEP en cian, la explicación en rosado fluor y la fórmula en violeta.
+  .tabla-errores td.font-semibold { color: #00F0FF; }
+  .tabla-errores .text-red-700 { color: #FF2E6A; text-shadow: 0 0 8px rgb(255 46 106 / 0.6); }
+  .tabla-errores .font-mono.text-gray-600 { color: #C77DFF; }
+  .bg-blue-50 { background-color: rgb(0 240 255 / 0.12) !important; }
+}
+
 // Fila de un campo con error, cuando además es la seleccionada — usa las
 // variables de arriba, nunca un color suelto.
 .fila-con-error-activa {

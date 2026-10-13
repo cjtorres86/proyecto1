@@ -281,7 +281,8 @@ function drawTable(){
 function cellStyle(a){
   // 0 % rojo intenso → 50 % neutro → 100 % azul intenso
   const t=Math.min(Math.abs(a-.5)/.5,1)*78,col=a<.5?"var(--bajo)":"var(--alto)";
-  return `background:color-mix(in oklab, ${col} ${t.toFixed(0)}%, var(--mid));color:${t>55?"#fff":"var(--fg)"}`;
+  // --on-cell: blanco en claro; casi negro en oscuro neón (sobre el cian fluor el blanco no se lee).
+  return `background:color-mix(in oklab, ${col} ${t.toFixed(0)}%, var(--mid));color:${t>55?"var(--on-cell)":"var(--fg)"}`;
 }
 function ordenPanorama(m){
   const d=Y(),rk=ranking(S.year,m);

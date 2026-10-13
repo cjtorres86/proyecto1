@@ -16,7 +16,8 @@ import { InitialTotalsDonutComponent } from '../../dashboard/initial-totals-donu
 import { TotalAndBarsGroupComponent } from '../../dashboard/total-and-bars-group/total-and-bars-group.component';
 import { RankingConDetalleComponent } from '../ranking-con-detalle/ranking-con-detalle.component';
 import { TooltipHojaComponent, TooltipHojaFila } from '../tooltip-hoja/tooltip-hoja.component';
-import { descargarHtml, documentoAutonomo, estilosDeLaPagina, jsonParaScript } from '../../../core/utils/guardar-html';
+import { INTERRUPTOR_TEMA, descargarHtml, documentoAutonomo, estilosDeLaPagina, jsonParaScript } from '../../../core/utils/guardar-html';
+import { ThemeToggleComponent } from '../../../shared/theme-toggle/theme-toggle.component';
 
 // Informe Interactivo: página real de Angular que reutiliza los mismos
 // componentes del Dashboard. El PDF es esta misma página impresa por el
@@ -35,7 +36,7 @@ import { descargarHtml, documentoAutonomo, estilosDeLaPagina, jsonParaScript } f
 @Component({
   selector: 'app-informe',
   standalone: true,
-  imports: [CommonModule, AdvanceIndicatorComponent, InitialTotalsDonutComponent, TotalAndBarsGroupComponent, RankingConDetalleComponent, TooltipHojaComponent],
+  imports: [CommonModule, AdvanceIndicatorComponent, InitialTotalsDonutComponent, TotalAndBarsGroupComponent, RankingConDetalleComponent, TooltipHojaComponent, ThemeToggleComponent],
   templateUrl: './informe.component.html',
   styles: [`
     @media print {
@@ -208,10 +209,14 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     // trabajo (mismo motivo por el que ya se fuerza color-scheme claro
     // en el <head>). No toca la preferencia guardada de la persona: al
     // volver al resto del sistema, su tema sigue como lo dejó.
-    this.theme.forzarClaroSinGuardar();
     this.imprimirAlCargar = this.route.snapshot.queryParamMap.get('imprimir') === '1';
     const tipoPedido = this.route.snapshot.queryParamMap.get('tipo');
     this.tipo = tipoPedido === 'errores' || tipoPedido === 'ranking' ? tipoPedido : 'general';
+    // Los estáticos (PDF) y el nacional son documentos: siempre en claro. Los
+    // interactivos (ranking, errores) respetan el tema y tienen su
+    // interruptor; al imprimirlos, igual salen en claro.
+    if (this.imprimirAlCargar || this.tipo === 'general') this.theme.forzarClaroSinGuardar();
+    else this.quitarClaroAlImprimir = this.theme.claroAlImprimir();
     // Sin animaciones en esta pestaña: la impresión debe tomar las barras
     // ya en su valor final, no a medio "llenarse" (ver .sin-animaciones en
     // styles.scss).
@@ -276,8 +281,16 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.programarAjuste();
   }
 
+  private quitarClaroAlImprimir?: () => void;
+
+  // ¿Se muestra el interruptor claro/oscuro? Solo en los interactivos.
+  get conInterruptorTema(): boolean {
+    return !this.imprimirAlCargar && this.tipo !== 'general';
+  }
+
   ngOnDestroy(): void {
     this.subHojas?.unsubscribe();
+    this.quitarClaroAlImprimir?.();
     document.documentElement.classList.remove('sin-animaciones');
   }
 
@@ -414,11 +427,14 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     const fecha = new Date().toLocaleDateString('es-CL');
     const aviso = `<p style="margin:0 auto 12px;max-width:816px;padding:6px 12px;background:#eef4fb;color:#1E3A8A;font:12px Roboto,Arial,sans-serif">${nombre} · guardado el ${fecha} desde Avance de Sumarios. Los datos son los de ese momento.</p>`;
     copia.insertAdjacentHTML('afterbegin', aviso);
+    // El archivo lleva su propio interruptor claro/oscuro (sin Angular) y parte
+    // en el mismo tema con que se guardó.
     descargarHtml(nombre, documentoAutonomo({
       titulo: nombre,
-      estilos: estilosDeLaPagina(),
-      cuerpo: copia.outerHTML,
-      script: this.tipo === 'ranking' ? this.scriptDetalleRanking() : undefined,
+      estilos: estilosDeLaPagina() + INTERRUPTOR_TEMA.estilos,
+      cuerpo: INTERRUPTOR_TEMA.cuerpo + copia.outerHTML,
+      script: (this.tipo === 'ranking' ? this.scriptDetalleRanking() + '\n' : '') + INTERRUPTOR_TEMA.script,
+      claseHtml: document.documentElement.classList.contains('dark') ? 'dark' : undefined,
     }));
   }
 

@@ -10,16 +10,27 @@
   
   --bajo:#d03b3b; --bajo-soft:#fbe7e6; --medio:#b7791f; --medio-soft:#fbf1df; --alto:#0f69b4; --alto-soft:#e2eef9;
   --mid:#f0efec; --na:#eceef2; --on-accent:#ffffff; --good:#0a7d0a; --prev:#9aa3b1; --pend:#d03b3b;
+  --on-cell:#ffffff; // texto sobre las celdas más intensas del panorama
   --f-display:"Roboto Condensed","Roboto",Arial,sans-serif;
   --f-body:"Roboto",Arial,system-ui,sans-serif;
   --r:8px; color-scheme:light;
   box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
+// Modo oscuro NEÓN (ultra fluorescente): fondo casi negro y los datos en
+// cian, rosado y amarillo fluor, con un brillo suave. Al imprimir siempre se
+// vuelve a claro (ver informe-avance.component.ts, "beforeprint").
 .dark .ia{
-  --bg:#0f1622; --surface:#172131; --surface-2:#1f2b3e; --line:#2c3a52; --grid:#243147;
-  --fg:#e8edf5; --fg-2:#b3bfd2; --fg-3:#8492aa; --head:#a9c8ee; --accent:#4a9be0; --accent-soft:#1c3352;
-  --bajo:#f07070; --bajo-soft:#3d2228; --medio:#e0a84a; --medio-soft:#3b3020; --alto:#5aa7e8; --alto-soft:#1c3352;
-  --mid:#2a3446; --na:#222c3c; --prev:#6f7b8f; --pend:#f07070; color-scheme:dark}
+  --bg:#04060c; --surface:#0a0f1d; --surface-2:#121a2e; --line:#1f2b48; --grid:#17223a;
+  --fg:#f2f6ff; --fg-2:#bcc8e6; --fg-3:#8a98bd; --head:#7df9ff; --accent:#00f0ff; --accent-soft:#062a35;
+  --bajo:#ff2e6a; --bajo-soft:#3a0a1d; --medio:#ffe500; --medio-soft:#332e00; --alto:#00f0ff; --alto-soft:#062a35;
+  --mid:#151d33; --na:#121a2e; --prev:#c77dff; --pend:#ff2e6a; --good:#39ff14; --on-accent:#04060c; --on-cell:#04060c;
+  color-scheme:dark}
+// Brillo fluor en gráficos, distintivos y barras.
+.dark .ia .chartbox svg{filter:drop-shadow(0 0 3px rgb(0 240 255 / .45))}
+.dark .ia .pill{text-shadow:0 0 8px currentColor;box-shadow:0 0 0 1px currentColor inset}
+.dark .ia .scale .bar,.dark .ia .rk .bar i,.dark .ia .tip .mbar i{box-shadow:0 0 8px rgb(0 240 255 / .55)}
+.dark .ia .btn.primary{box-shadow:0 0 14px rgb(0 240 255 / .55)}
+.dark .ia h1,.dark .ia h2{text-shadow:0 0 12px rgb(0 240 255 / .35)}
 .ia *{box-sizing:border-box}
 .ia{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums}
 .ia h1,.ia h2,.ia h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:0;color:var(--head)}

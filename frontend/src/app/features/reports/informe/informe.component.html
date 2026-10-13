@@ -17,6 +17,13 @@
        pegada al lado izquierdo de la hoja (ver .barra-lateral-informe),
        no arriba de ella como antes. -->
   <div class="barra-lateral-informe print:hidden flex flex-col gap-2" [class.invisible]="imprimirAlCargar">
+    <!-- Modo claro / oscuro (neón): el mismo interruptor de la aplicación, solo en los interactivos. -->
+    @if (conInterruptorTema) {
+      <div class="flex items-center justify-between gap-2 text-xs text-gray-600 bg-white border border-gray-200 rounded px-3 py-1.5">
+        <span>Modo oscuro</span>
+        <app-theme-toggle />
+      </div>
+    }
     <button
       (click)="imprimir()"
       class="text-xs border border-blue-800 text-blue-800 rounded px-3 py-1.5 cursor-pointer bg-white"

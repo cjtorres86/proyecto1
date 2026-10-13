@@ -6,7 +6,9 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { HistoricoDetalle } from '../../../core/utils/avance';
 import { ConfigMotor, iniciarMotor } from './motor-informe';
-import { descargarHtml, documentoAutonomo, estilosDeLaPagina, jsonParaScript } from '../../../core/utils/guardar-html';
+import { INTERRUPTOR_TEMA, descargarHtml, documentoAutonomo, estilosDeLaPagina, jsonParaScript } from '../../../core/utils/guardar-html';
+import { ThemeService } from '../../../core/services/theme.service';
+import { ThemeToggleComponent } from '../../../shared/theme-toggle/theme-toggle.component';
 
 // Nombre formal del informe (catálogo único): título de la pestaña y del archivo guardado.
 const NOMBRE_INFORME = 'Informe interactivo nacional';
@@ -19,6 +21,8 @@ const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', '
 @Component({
   selector: 'app-informe-avance',
   standalone: true,
+  // El mismo interruptor claro/oscuro de la aplicación.
+  imports: [ThemeToggleComponent],
   templateUrl: './informe-avance.component.html',
   styleUrls: ['./informe-avance.component.scss'],
   encapsulation: ViewEncapsulation.None,
@@ -32,12 +36,17 @@ export class InformeAvanceComponent implements OnInit, OnDestroy {
   // mismo motor con esos datos, así conserva toda la interacción.
   private plantilla = '';
   private cfg?: ConfigMotor;
+  // Al imprimir, siempre en claro (aunque en pantalla esté en oscuro neón).
+  private readonly quitarClaroAlImprimir: () => void;
 
   constructor(
     private readonly http: HttpClient,
     private readonly auth: AuthService,
     private readonly ruta: ActivatedRoute,
-  ) {}
+    private readonly theme: ThemeService,
+  ) {
+    this.quitarClaroAlImprimir = this.theme.claroAlImprimir();
+  }
 
   async ngOnInit(): Promise<void> {
     document.title = `${NOMBRE_INFORME} · Avance de Sumarios`;
@@ -102,12 +111,22 @@ export class InformeAvanceComponent implements OnInit, OnDestroy {
   guardar(): void {
     if (!this.cfg || !this.plantilla) return;
     const { alSalir: _, ...datos } = this.cfg;
-    const estilos = estilosDeLaPagina() + '\n#g-save,#r-open,#salir,.u-sep{display:none!important}';
+    // Se ocultan lo que necesita el sistema y el interruptor de Angular (el
+    // archivo trae su propio interruptor claro/oscuro, sin Angular).
+    const estilos = estilosDeLaPagina() + '\n#g-save,#r-open,#salir,.u-sep,.tb-acc app-theme-toggle{display:none!important}' + INTERRUPTOR_TEMA.estilos;
     const script = `var CFG=${jsonParaScript(datos)};CFG.alSalir=function(){};
-document.addEventListener('DOMContentLoaded',function(){(${iniciarMotor.toString()})(CFG);});`;
+document.addEventListener('DOMContentLoaded',function(){(${iniciarMotor.toString()})(CFG);});
+${INTERRUPTOR_TEMA.script}`;
     const hoy = new Date().toLocaleDateString('es-CL');
-    const aviso = `<p style="margin:0;padding:6px 16px;background:#eef4fb;color:#25306B;font:12px Roboto,Arial,sans-serif">${NOMBRE_INFORME} · guardado el ${hoy} desde Avance de Sumarios. Los datos son los de ese momento.</p>`;
-    descargarHtml(NOMBRE_INFORME, documentoAutonomo({ titulo: NOMBRE_INFORME, estilos, cuerpo: aviso + this.plantilla, script }));
+    const aviso = `<p style="margin:0;padding:6px 76px 6px 16px;background:#eef4fb;color:#25306B;font:12px Roboto,Arial,sans-serif">${NOMBRE_INFORME} · guardado el ${hoy} desde Avance de Sumarios. Los datos son los de ese momento.</p>`;
+    descargarHtml(NOMBRE_INFORME, documentoAutonomo({
+      titulo: NOMBRE_INFORME,
+      estilos,
+      cuerpo: INTERRUPTOR_TEMA.cuerpo + aviso + this.plantilla,
+      script,
+      // El archivo parte en el mismo tema con que se guardó.
+      claseHtml: this.theme.esOscuro ? 'dark' : undefined,
+    }));
   }
 
   private async logoComoDataUrl(): Promise<string> {
@@ -122,5 +141,6 @@ document.addEventListener('DOMContentLoaded',function(){(${iniciarMotor.toString
 
   ngOnDestroy(): void {
     this.destruir?.();
+    this.quitarClaroAlImprimir();
   }
 }

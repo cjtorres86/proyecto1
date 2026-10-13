@@ -39,6 +39,26 @@ export class ThemeService {
     document.documentElement.classList.remove('dark');
   }
 
+  // Informes interactivos: se ven en el tema elegido, pero al IMPRIMIR (o
+  // "Guardar como PDF") siempre salen en claro — el neón sobre negro gasta
+  // tinta y no se lee en papel. Devuelve la función que quita los oyentes.
+  claroAlImprimir(): () => void {
+    let estabaOscuro = false;
+    const antes = () => {
+      estabaOscuro = document.documentElement.classList.contains('dark');
+      document.documentElement.classList.remove('dark');
+    };
+    const despues = () => {
+      if (estabaOscuro) document.documentElement.classList.add('dark');
+    };
+    window.addEventListener('beforeprint', antes);
+    window.addEventListener('afterprint', despues);
+    return () => {
+      window.removeEventListener('beforeprint', antes);
+      window.removeEventListener('afterprint', despues);
+    };
+  }
+
   private aplicar(tema: Tema): void {
     document.documentElement.classList.toggle('dark', tema === 'oscuro');
     try {

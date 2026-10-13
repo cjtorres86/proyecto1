@@ -27,7 +27,9 @@ import { TooltipHojaComponent, TooltipHojaFila } from '../tooltip-hoja/tooltip-h
           <span class="w-6 text-gray-400">{{ i + 1 }}</span>
           <span class="w-40 truncate" [title]="fila.slep">{{ fila.slep }}</span>
           <div class="flex-1 bg-gray-100 rounded h-2.5 overflow-hidden">
-            <div class="h-full" [style.width.%]="fila.pct ?? 0" [style.background]="colorBarra(fila.pct)"></div>
+            <!-- Color por nivel en CSS (styles.scss, .barra-avance): así hay
+                 versión clara y versión oscura neón, también en el .html guardado. -->
+            <div class="barra-avance h-full" [style.width.%]="fila.pct ?? 0" [attr.data-nivel]="nivelBarra(fila.pct)"></div>
           </div>
           <span class="w-10 text-right font-mono text-gray-500">{{ fila.pct === null ? '—' : fila.pct + '%' }}</span>
         </div>
@@ -55,11 +57,12 @@ export class RankingConDetalleComponent implements OnChanges {
     return fila.campos.map((c) => ({ etiqueta: `${c.numero}. ${c.nombre}`, valor: c.valor }));
   }
 
-  colorBarra(pct: number | null): string {
-    if (pct === null) return '#D1D5DB';
-    if (pct >= 75) return '#00E0FF';
-    if (pct >= 50) return '#16A34A';
-    if (pct >= 25) return '#D97706';
-    return '#DC2626';
+  // Mismos cortes de siempre: ≥75 % alto, ≥50 % medio-alto, ≥25 % medio, menos, bajo.
+  nivelBarra(pct: number | null): string {
+    if (pct === null) return 'na';
+    if (pct >= 75) return 'alto';
+    if (pct >= 50) return 'medio-alto';
+    if (pct >= 25) return 'medio';
+    return 'bajo';
   }
 }
