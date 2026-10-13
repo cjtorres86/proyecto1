@@ -21,6 +21,8 @@ export const routes: Routes = [
   // Informe Interactivo de avance (Descargar → Informe Interactivo): pestaña aparte.
   // Se carga solo al abrirlo (no pesa en la carga inicial de Sumarios).
   { path: 'informe-avance', loadComponent: () => import('./features/reports/informe-avance/informe-avance.component').then((m) => m.InformeAvanceComponent), canActivate: [authGuard] },
+  // Descarga directa de un Excel (la usa el asistente del portal).
+  { path: 'descargar', loadComponent: () => import('./features/reports/descarga/descarga.component').then((m) => m.DescargaComponent), canActivate: [authGuard] },
   {
     path: '',
     component: LayoutComponent,

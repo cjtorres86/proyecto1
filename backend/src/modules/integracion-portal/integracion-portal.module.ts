@@ -6,9 +6,10 @@ import { Usuario } from '../../auth/entities/usuario.entity';
 import { Perfil } from '../../auth/entities/perfil.entity';
 import { IntegracionPortalController } from './integracion-portal.controller';
 import { IntegracionPortalService } from './integracion-portal.service';
+import { CasesModule } from '../cases/cases.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Usuario, Perfil]), AuthModule],
+  imports: [TypeOrmModule.forFeature([Usuario, Perfil]), AuthModule, CasesModule],
   controllers: [IntegracionPortalController],
   providers: [IntegracionPortalService, EnvioBitacoraService],
 })

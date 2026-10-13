@@ -1,4 +1,5 @@
-import { Body, Controller, Headers, HttpCode, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Post, Req } from '@nestjs/common';
+import { CasesService } from '../cases/cases.service';
 import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 import { AuthService } from '../../auth/auth.service';
 import { Bitacora } from '../bitacora/decorators/bitacora.decorator';
@@ -15,7 +16,17 @@ export class IntegracionPortalController {
   constructor(
     private readonly servicio: IntegracionPortalService,
     private readonly auth: AuthService,
+    private readonly cases: CasesService,
   ) {}
+
+  // El asistente del portal pregunta de qué mes quiere un informe la persona:
+  // aquí se le entregan los meses que existen (el más reciente primero).
+  // De servidor a servidor, con la clave secreta compartida.
+  @Get('integracion/meses')
+  async meses(@Headers('x-clave-portal') clave: string | undefined) {
+    this.servicio.verificarClavePortal(clave);
+    return this.cases.listarMesesDisponibles();
+  }
 
   // El navegador llega desde el portal con un pase de un solo uso: Sumarios
   // lo canjea con el portal y abre la sesión, sin pedir clave.

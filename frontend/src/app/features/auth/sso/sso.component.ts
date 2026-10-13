@@ -6,6 +6,14 @@ import { environment } from '../../../../environments/environment';
 
 // Ingreso único: el portal GDP-SLEP Studio abre esta página con un pase de un
 // solo uso (?pase=...). Se canjea con el servidor y se entra sin pedir clave.
+// Con ?destino=..., el asistente del portal lleva directo a un informe.
+
+// Solo páginas de informes de esta misma aplicación: nunca una dirección
+// externa ni cualquier otra ruta que llegue en el enlace.
+const DESTINO_PERMITIDO = /^\/(informe\/[^/?#]+\/\d{4}|informe-avance|descargar)(\?[^#]*)?$/;
+export function destinoSeguro(destino: string | null): string {
+  return destino && DESTINO_PERMITIDO.test(destino) ? destino : '/';
+}
 @Component({
   selector: 'app-sso',
   standalone: true,
@@ -40,9 +48,10 @@ export class SsoComponent implements OnInit {
       this.error.set('Falta el pase de ingreso. Entra a Avance de Sumarios desde el portal.');
       return;
     }
+    const destino = destinoSeguro(this.ruta.snapshot.queryParamMap.get('destino'));
     this.auth.ingresarConPase(pase).subscribe({
       // replaceUrl: el pase no queda en el historial del navegador.
-      next: () => this.router.navigateByUrl('/', { replaceUrl: true }),
+      next: () => this.router.navigateByUrl(destino, { replaceUrl: true }),
       error: (err: HttpErrorResponse) =>
         this.error.set(
           err.status === 0
