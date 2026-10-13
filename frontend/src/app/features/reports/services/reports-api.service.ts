@@ -12,9 +12,29 @@ export interface RankingDetalleFila {
   campos: { numero: number; preguntaId: string; nombre: string; valor: string }[];
 }
 
+// Un informe del catálogo único del portal (solo metadatos), tal como lo
+// entrega el servidor de Sumarios para la ventana "Descargas de informes".
+export interface InformeCatalogo {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  categoria: 'consolidado' | 'interactivo' | 'estatico';
+  formato: 'xlsx' | 'html' | 'pdf';
+  estado: string;
+  permiso: string;
+  requiereAlcanceTodos: boolean;
+  palabrasClave: string[];
+  orden: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ReportsApiService {
   constructor(private readonly http: HttpClient) {}
+
+  // Los informes de Sumarios según el catálogo único (o su copia de respaldo).
+  getCatalogo(): Observable<{ origen: 'portal' | 'respaldo'; informes: InformeCatalogo[] }> {
+    return this.http.get<{ origen: 'portal' | 'respaldo'; informes: InformeCatalogo[] }>(`${environment.apiUrl}/reports/catalogo`);
+  }
 
   descargarExcelGeneral(): Observable<Blob> {
     return this.http.get(`${environment.apiUrl}/reports/excel/general`, { responseType: 'blob' });

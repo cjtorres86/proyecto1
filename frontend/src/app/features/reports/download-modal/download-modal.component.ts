@@ -2,27 +2,39 @@ import { Component, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
-import { ReportsApiService } from '../services/reports-api.service';
+import { InformeCatalogo, ReportsApiService } from '../services/reports-api.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
 export interface DownloadModalData { mes: string; anio: string; slep: string | null }
 
-// Tipo de archivo — decide el ícono y el color de cada fila (mejora
-// post-v2.23, rediseño). Un solo lugar para agregar una modalidad nueva
-// de descarga a futuro: basta un elemento más en \`opciones\`.
-export type TipoArchivo = 'excel' | 'pdf' | 'html';
+// Formato del archivo: decide el color del ícono (xlsx verde, html azul, pdf
+// rojo) y la etiqueta de extensión.
+export type FormatoInforme = InformeCatalogo['formato'];
 
-interface OpcionDescarga {
-  tipo: TipoArchivo;
+interface Columna {
+  categoria: InformeCatalogo['categoria'];
   titulo: string;
-  descripcion: string;
-  accion: () => void;
+  extension: string;
+  informes: InformeCatalogo[];
 }
 
-// Equivalente al modal único de descarga del PMV (TDD, sección 9.6) —
-// las mismas 4 modalidades, cada una visible u oculta según el permiso
-// y el alcance de quien lo abre.
+// Las 3 columnas, en orden. El contenido de cada una sale del catálogo único.
+const COLUMNAS: Omit<Columna, 'informes'>[] = [
+  { categoria: 'consolidado', titulo: 'Consolidado', extension: '.xlsx' },
+  { categoria: 'interactivo', titulo: 'Interactivo', extension: '.html' },
+  { categoria: 'estatico', titulo: 'Estático', extension: '.pdf' },
+];
+
+// Nombres de los archivos Excel al descargar (catálogo único).
+const ARCHIVO_CONSOLIDADO_MES = 'Informe consolidado de datos por mes.xlsx';
+const ARCHIVO_CONSOLIDADO_SLEP = 'Informe consolidado de datos por SLEP.xlsx';
+
+// Ventana "Descargas de informes": tres columnas (Consolidado, Interactivo,
+// Estático). Los nombres, descripciones, formatos y orden vienen del catálogo
+// único del portal (a través del servidor de Sumarios, con copia de
+// respaldo); aquí solo vive QUÉ HACER al elegir cada informe. Cada persona ve
+// solo los que su perfil permite.
 @Component({
   selector: 'app-download-modal',
   standalone: true,
@@ -31,72 +43,21 @@ interface OpcionDescarga {
 })
 export class DownloadModalComponent {
   descargando = false;
+  cargando = true;
+  columnas: Columna[] = [];
 
-  // La lista completa de opciones, ya armada con su ícono/descripción —
-  // la plantilla solo recorre esto, sin repetir 6 bloques casi iguales.
-  // Se recalcula cada vez (getter): sus 2 primeras filas dependen del
-  // alcance de quien abrió la ventana.
-  get opciones(): OpcionDescarga[] {
-    const lista: OpcionDescarga[] = [];
-    // Excel consolidado (todos los SLEP) y Excel por SLEP: permisos separados.
-    {
-      if (this.alcanceEsTodos && this.authService.can('exportar_excel_consolidado')) {
-        lista.push({
-          tipo: 'excel',
-          titulo: 'Consolidado por Mes',
-          descripcion: 'Los 36 SLEP, una hoja por mes.',
-          accion: () => this.descargarExcelGeneral(),
-        });
-      }
-      if (this.authService.can('exportar_excel_slep')) lista.push({
-        tipo: 'excel',
-        titulo: this.textoConsolidadoPorSlep,
-        descripcion: this.alcanceEsTodos ? 'Cada SLEP en su propia hoja, con todos sus meses.' : 'Todos tus meses, en una sola hoja.',
-        accion: () => this.descargarExcelPorSlep(),
-      });
-    }
-    if (this.authService.can('exportar_informe')) {
-      lista.push(
-        {
-          tipo: 'html',
-          titulo: 'Informe Interactivo',
-          descripcion: 'Avance de los sumarios: indicadores, gráficos, ranking y tabla por SLEP. Genera informes en Word, Excel y PDF.',
-          accion: () => this.verInformeInteractivo(),
-        },
-        {
-          tipo: 'pdf',
-          titulo: 'Informe General — PDF',
-          descripcion: 'El mismo informe, listo para guardar o imprimir.',
-          accion: () => this.descargarPDFGeneral(),
-        },
-        {
-          tipo: 'html',
-          titulo: 'Ranking — Interactivo',
-          descripcion: 'Solo el ranking — pasa el mouse sobre un SLEP para ver sus campos.',
-          accion: () => this.verRanking(),
-        },
-        {
-          tipo: 'pdf',
-          titulo: 'Ranking — PDF',
-          descripcion: 'El mismo ranking, sin el detalle al pasar el mouse (un PDF no reacciona al mouse).',
-          accion: () => this.descargarPDFRanking(),
-        },
-        {
-          tipo: 'html',
-          titulo: 'Informe de Errores — Interactivo',
-          descripcion: 'Solo los errores de validación del mes, para revisar en pantalla.',
-          accion: () => this.verInformeErrores(),
-        },
-        {
-          tipo: 'pdf',
-          titulo: 'Informe de Errores — PDF',
-          descripcion: 'Los mismos errores, listos para guardar o imprimir.',
-          accion: () => this.descargarPDFErrores(),
-        },
-      );
-    }
-    return lista;
-  }
+  // Qué hace cada informe del catálogo, por su id. Un informe nuevo en el
+  // catálogo sin acción aquí no se muestra (no habría qué abrir).
+  private readonly acciones: Record<string, () => void> = {
+    sumarios_consolidado_mes: () => this.descargarExcelGeneral(),
+    sumarios_consolidado_slep: () => this.descargarExcelPorSlep(),
+    sumarios_informe_interactivo: () => this.verInformeInteractivo(),
+    sumarios_ranking_interactivo: () => this.abrirInforme(false, 'ranking'),
+    sumarios_errores_interactivo: () => this.abrirInforme(false, 'errores'),
+    sumarios_informe_general_pdf: () => this.abrirInforme(true, 'general'),
+    sumarios_ranking_pdf: () => this.abrirInforme(true, 'ranking'),
+    sumarios_errores_pdf: () => this.abrirInforme(true, 'errores'),
+  };
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: DownloadModalData,
@@ -104,16 +65,38 @@ export class DownloadModalComponent {
     private readonly reportsApi: ReportsApiService,
     readonly authService: AuthService,
     private readonly notification: NotificationService,
-  ) {}
+  ) {
+    this.reportsApi.getCatalogo().subscribe({
+      next: ({ informes }) => this.armarColumnas(informes),
+      error: () => {
+        this.cargando = false;
+        this.notification.mostrar('No se pudo cargar la lista de informes.');
+      },
+    });
+  }
 
   get alcanceEsTodos(): boolean {
     const u = this.authService.usuarioActual();
     return !!u && (u.esSuperadmin || u.alcance === 'todos');
   }
 
-  get textoConsolidadoPorSlep(): string {
-    if (this.alcanceEsTodos) return 'Consolidado por SLEP';
-    return `El consolidado de ${this.authService.usuarioActual()?.alcance}`;
+  // Solo lo que la persona puede abrir: el permiso de su perfil, el alcance
+  // que exige el informe y que esté disponible.
+  private armarColumnas(informes: InformeCatalogo[]): void {
+    const permitidos = informes
+      .filter((i) => i.estado === 'activa' && this.acciones[i.id])
+      .filter((i) => this.authService.can(i.permiso) && (!i.requiereAlcanceTodos || this.alcanceEsTodos))
+      .sort((a, b) => a.orden - b.orden);
+    this.columnas = COLUMNAS.map((c) => ({ ...c, informes: permitidos.filter((i) => i.categoria === c.categoria) }));
+    this.cargando = false;
+  }
+
+  get hayInformes(): boolean {
+    return this.columnas.some((c) => c.informes.length);
+  }
+
+  elegir(i: InformeCatalogo): void {
+    if (!this.descargando) this.acciones[i.id]?.();
   }
 
   private descargarBlob(blob: Blob, nombreArchivo: string): void {
@@ -128,7 +111,7 @@ export class DownloadModalComponent {
   descargarExcelGeneral(): void {
     this.descargando = true;
     this.reportsApi.descargarExcelGeneral().subscribe({
-      next: (blob) => { this.descargarBlob(blob, 'GDP-SLEP_Consolidado_por_Mes.xlsx'); this.descargando = false; },
+      next: (blob) => { this.descargarBlob(blob, ARCHIVO_CONSOLIDADO_MES); this.descargando = false; },
       error: () => { this.notification.mostrar('No se pudo descargar el Excel.'); this.descargando = false; },
     });
   }
@@ -136,68 +119,23 @@ export class DownloadModalComponent {
   descargarExcelPorSlep(): void {
     this.descargando = true;
     this.reportsApi.descargarExcelPorSlep().subscribe({
-      next: (blob) => { this.descargarBlob(blob, 'GDP-SLEP_Consolidado_por_SLEP.xlsx'); this.descargando = false; },
+      next: (blob) => { this.descargarBlob(blob, ARCHIVO_CONSOLIDADO_SLEP); this.descargando = false; },
       error: () => { this.notification.mostrar('No se pudo descargar el Excel.'); this.descargando = false; },
     });
   }
 
-  // El informe interactivo ahora es una página real de Angular (mejora
-  // post-v2.23) — ya no se le pide HTML al backend, se abre la ruta
-  // directo. El botón "PDF" abre la misma página y dispara la
-  // impresión de inmediato (mismo documento, dos formas de verlo).
-  //
-  // Informe por SLEP (mejora post-v2.23): si hay un SLEP activo al
-  // abrir el modal, se agrega a la URL — el Informe ya sabe filtrarse
-  // por SLEP (mismo mecanismo del Dashboard por SLEP) y el ranking se
-  // esconde solo, sin código nuevo para eso.
-  // Informe Interactivo de avance: abre la página nueva en otra pestaña, en
-  // el mes (y el SLEP, si hay uno activo) que se está mirando.
+  // Informe interactivo nacional: la página del Informe Interactivo de
+  // avance, en otra pestaña, en el mes (y el SLEP, si hay uno activo) que se
+  // está mirando.
   verInformeInteractivo(): void {
     const p = new URLSearchParams({ mes: this.data.mes, anio: this.data.anio });
     if (this.data.slep) p.set('slep', this.data.slep);
     window.open(`/informe-avance?${p.toString()}`, '_blank');
   }
 
-  verInformeGeneral(): void {
-    this.abrirInforme(false, 'general');
-  }
-
-  // PDF (opción B): abre el Informe en otra pestaña y el propio Informe
-  // lanza la ventana de impresión del navegador apenas termina de
-  // dibujarse, lista para "Guardar como PDF". Lo arma el computador de la
-  // persona, al instante — antes lo armaba el servidor gratuito de Render
-  // desde cero (abrir Chrome, cargar el sistema, pedir los datos…) y
-  // tardaba mucho.
-  descargarPDFGeneral(): void {
-    this.abrirInforme(true, 'general');
-  }
-
-  // Informe de Errores (mejora post-v2.23): la MISMA página del Informe,
-  // con ?tipo=errores — reutiliza toda la maquetación, el ajuste de
-  // impresión y el mecanismo de PDF del Informe General; solo cambia qué
-  // hoja(s) muestra.
-  verInformeErrores(): void {
-    this.abrirInforme(false, 'errores');
-  }
-
-  descargarPDFErrores(): void {
-    this.abrirInforme(true, 'errores');
-  }
-
-  // Ranking Interactivo (corrección post-v2.23): NO es una página aparte
-  // — es la misma hoja del Informe (?tipo=ranking), con la misma
-  // maquetación y el mismo mecanismo de PDF que las demás. La versión
-  // interactiva agrega, además, el detalle de cada SLEP al pasar el
-  // mouse; el PDF muestra la misma tabla sin esa interacción (un PDF no
-  // reacciona al mouse — no es algo que se pueda evitar).
-  verRanking(): void {
-    this.abrirInforme(false, 'ranking');
-  }
-
-  descargarPDFRanking(): void {
-    this.abrirInforme(true, 'ranking');
-  }
-
+  // Ranking y errores (interactivos) y los tres estáticos: la página del
+  // Informe. Estático = la misma página con ?imprimir=1, que abre sola la
+  // ventana de impresión ("Guardar como PDF").
   private abrirInforme(imprimir: boolean, tipo: 'general' | 'errores' | 'ranking'): void {
     const params = new URLSearchParams();
     if (this.data.slep) params.set('slep', this.data.slep);

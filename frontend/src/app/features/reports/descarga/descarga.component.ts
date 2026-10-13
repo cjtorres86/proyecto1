@@ -9,8 +9,8 @@ import { environment } from '../../../../environments/environment';
 // la usa el asistente del portal, que no puede descargar archivos de Sumarios
 // por sí mismo. Mismos permisos que el botón Descargar (los verifica el servidor).
 const ARCHIVOS: Record<string, { nombre: string; titulo: string; pedir: (api: ReportsApiService) => Observable<Blob> }> = {
-  'consolidado-mes': { nombre: 'GDP-SLEP_Consolidado_por_Mes.xlsx', titulo: 'Consolidado por Mes', pedir: (api) => api.descargarExcelGeneral() },
-  'consolidado-slep': { nombre: 'GDP-SLEP_Consolidado_por_SLEP.xlsx', titulo: 'Consolidado por SLEP', pedir: (api) => api.descargarExcelPorSlep() },
+  'consolidado-mes': { nombre: 'Informe consolidado de datos por mes.xlsx', titulo: 'Informe consolidado de datos por mes', pedir: (api) => api.descargarExcelGeneral() },
+  'consolidado-slep': { nombre: 'Informe consolidado de datos por SLEP.xlsx', titulo: 'Informe consolidado de datos por SLEP', pedir: (api) => api.descargarExcelPorSlep() },
 };
 
 @Component({

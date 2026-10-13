@@ -16,6 +16,7 @@ import { InitialTotalsDonutComponent } from '../../dashboard/initial-totals-donu
 import { TotalAndBarsGroupComponent } from '../../dashboard/total-and-bars-group/total-and-bars-group.component';
 import { RankingConDetalleComponent } from '../ranking-con-detalle/ranking-con-detalle.component';
 import { TooltipHojaComponent, TooltipHojaFila } from '../tooltip-hoja/tooltip-hoja.component';
+import { descargarHtml, documentoAutonomo, estilosDeLaPagina, jsonParaScript } from '../../../core/utils/guardar-html';
 
 // Informe Interactivo: página real de Angular que reutiliza los mismos
 // componentes del Dashboard. El PDF es esta misma página impresa por el
@@ -232,9 +233,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   private cargarDatos(): void {
     // Título real de la pestaña (reemplaza el genérico "Frontend"): es el
     // nombre sugerido al guardar y el que usa el pie del PDF.
-    const sufijoTitulo = this.slep ? ` - ${this.slep}` : '';
-    const nombreInforme = this.nombreInforme();
-    this.titleService.setTitle(`${nombreInforme} - ${this.mes} ${this.anio}${sufijoTitulo}`);
+    this.ponerTitulo(this.imprimirAlCargar);
 
     if (this.tipo === 'ranking') {
       this.reportsApi.getRankingDetalle(this.mes, this.anio, this.slep ?? undefined).subscribe((lista) => {
@@ -286,8 +285,21 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // la dirección (con el Location de Angular), para que recargar la
   // pestaña no la vuelva a abrir. Espera 2 cuadros de pantalla para que
   // todo esté dibujado en su estado final.
-  private nombreInforme(): string {
-    return this.tipo === 'errores' ? 'Informe de Errores' : this.tipo === 'ranking' ? 'Ranking' : 'Informe Avance de Sumarios';
+  // Nombre formal (catálogo único): "Informe [formato] de [contenido]". En
+  // pantalla, ranking y errores son los interactivos; al imprimir, los
+  // estáticos. El nacional en esta página es siempre el estático (el
+  // interactivo nacional es /informe-avance).
+  nombreInforme(estatico = this.imprimirAlCargar): string {
+    if (this.tipo === 'general') return 'Informe estático nacional';
+    const contenido = this.tipo === 'errores' ? 'errores' : 'ranking';
+    return `Informe ${estatico ? 'estático' : 'interactivo'} de ${contenido}`;
+  }
+
+  // Título de la pestaña: es el nombre que el navegador propone al
+  // "Guardar como PDF" (ej. "Informe estático de ranking - Agosto 2026").
+  private ponerTitulo(estatico: boolean): void {
+    const sufijoTitulo = this.slep ? ` - ${this.slep}` : '';
+    this.titleService.setTitle(`${this.nombreInforme(estatico)} - ${this.mes} ${this.anio}${sufijoTitulo}`);
   }
 
   // Bitácora (mejora post-v2.23): estas 2 acciones ocurren enteras en el
@@ -308,7 +320,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   private abrirImpresion(): void {
     this.imprimirAlCargar = false;
     const sufijo = this.slep ? ` — ${this.slep}` : '';
-    this.bitacoraApi.registrarEvento('informe_pdf_descargado', `Descargó el PDF de ${this.nombreInforme()} — ${this.mes} ${this.anio}${sufijo}.`);
+    this.bitacoraApi.registrarEvento('informe_pdf_descargado', `Descargó el PDF de ${this.nombreInforme(true)} — ${this.mes} ${this.anio}${sufijo}.`);
     const params = new URLSearchParams();
     if (this.slep) params.set('slep', this.slep);
     if (this.tipo !== 'general') params.set('tipo', this.tipo);
@@ -381,8 +393,53 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // pequeño, no como tooltip — así también queda en el PDF impreso.
   readonly textoAutoria = textoAutoria;
 
+  // "Imprimir / Guardar como PDF" desde la vista en pantalla: lo que se guarda
+  // es el informe ESTÁTICO, así que el título (nombre del PDF) cambia mientras
+  // dura la impresión y después vuelve.
   imprimir(): void {
+    this.ponerTitulo(true);
+    window.addEventListener('afterprint', () => this.ponerTitulo(false), { once: true });
     window.print();
+  }
+
+  // Guardar (solo ranking y errores interactivos): un .html que se abre sin el
+  // sistema. Es la página tal como se ve, con sus estilos; el ranking conserva
+  // el detalle al pasar el mouse sobre un SLEP (un script propio con los datos).
+  guardar(): void {
+    const raiz = document.querySelector<HTMLElement>('.informe-raiz');
+    if (!raiz) return;
+    const copia = raiz.cloneNode(true) as HTMLElement;
+    copia.querySelectorAll('.barra-lateral-informe, .tooltip-hoja, .fixed').forEach((x) => x.remove());
+    const nombre = `${this.nombreInforme(false)} - ${this.mes} ${this.anio}${this.slep ? ` - ${this.slep}` : ''}`;
+    const fecha = new Date().toLocaleDateString('es-CL');
+    const aviso = `<p style="margin:0 auto 12px;max-width:816px;padding:6px 12px;background:#eef4fb;color:#1E3A8A;font:12px Roboto,Arial,sans-serif">${nombre} · guardado el ${fecha} desde Avance de Sumarios. Los datos son los de ese momento.</p>`;
+    copia.insertAdjacentHTML('afterbegin', aviso);
+    descargarHtml(nombre, documentoAutonomo({
+      titulo: nombre,
+      estilos: estilosDeLaPagina(),
+      cuerpo: copia.outerHTML,
+      script: this.tipo === 'ranking' ? this.scriptDetalleRanking() : undefined,
+    }));
+  }
+
+  // El detalle de cada SLEP al pasar el mouse, sin Angular: mismos datos y la
+  // misma caja (mismas clases) que el tooltip de la página.
+  private scriptDetalleRanking(): string {
+    const datos = this.rankingDetalle.map((f) => ({ t: f.slep, f: f.campos.map((c) => [`${c.numero}. ${c.nombre}`, c.valor]) }));
+    return `var D=${jsonParaScript(datos)};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+document.querySelectorAll('[data-fila]').forEach(function(fila){
+  fila.addEventListener('mouseenter',function(){
+    var d=D[+fila.getAttribute('data-fila')],hoja=fila.closest('.hoja-informe');if(!d||!hoja)return;
+    fila.classList.add('bg-blue-50');
+    var t=document.createElement('div');t.id='tip-guardado';
+    t.className='w-[280px] max-h-[85%] overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg p-4';
+    t.style.cssText='position:absolute;top:90px;right:calc(100% + 20px)';
+    t.innerHTML='<h3 class="text-sm font-bold text-gray-800 border-b border-gray-100 pb-2 mb-2">'+esc(d.t)+'</h3><dl class="flex flex-col gap-1">'+d.f.map(function(x){return '<div class="flex justify-between gap-2 text-[11px]"><dt class="text-gray-500 truncate">'+esc(x[0])+'</dt><dd class="font-mono text-gray-800 shrink-0">'+(esc(x[1])||'—')+'</dd></div>'}).join('')+'</dl>';
+    hoja.appendChild(t);
+  });
+  fila.addEventListener('mouseleave',function(){fila.classList.remove('bg-blue-50');var t=document.getElementById('tip-guardado');if(t)t.remove();});
+});`;
   }
 
   colorBarraRanking(pct: number | null): string {

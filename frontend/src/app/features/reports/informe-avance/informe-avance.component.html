@@ -47,6 +47,9 @@
   <button type="button" class="btn" id="rk-open" aria-controls="drawer" aria-expanded="false" title="SLEP con avance bajo en el mes de referencia">
     <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 13.5V9M6.5 13.5V4.5M10.5 13.5V7M14 13.5H2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Ranking de avance<span class="badge" id="rk-badge"></span></button>
   <div class="tb-acc">
+    <!-- Guardar: descarga este informe como .html que se abre sin el sistema. -->
+    <button type="button" class="btn" id="g-save" (click)="guardar()" title="Descarga este informe como archivo .html, interactivo, que se abre sin el sistema">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 13.5h11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Guardar</button>
     <button type="button" class="btn primary" id="r-open" aria-expanded="false" aria-controls="rpanel">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.5h5.5L13 5v9.5H4zM9.5 1.5V5H13M6.5 8.5h4M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Generar informe</button>
     <button type="button" class="btn info" id="h-open" aria-expanded="false" aria-controls="hpanel">

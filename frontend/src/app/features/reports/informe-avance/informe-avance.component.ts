@@ -6,6 +6,10 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { HistoricoDetalle } from '../../../core/utils/avance';
 import { ConfigMotor, iniciarMotor } from './motor-informe';
+import { descargarHtml, documentoAutonomo, estilosDeLaPagina, jsonParaScript } from '../../../core/utils/guardar-html';
+
+// Nombre formal del informe (catálogo único): título de la pestaña y del archivo guardado.
+const NOMBRE_INFORME = 'Informe interactivo nacional';
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
@@ -23,6 +27,11 @@ export class InformeAvanceComponent implements OnInit, OnDestroy {
   estado: 'cargando' | 'listo' | 'error' | 'sin-permiso' = 'cargando';
   mensaje = '';
   private destruir?: () => void;
+  // Para "Guardar": la página tal como es ANTES de que el motor la llene, y
+  // los datos con que se arrancó. El archivo guardado vuelve a arrancar el
+  // mismo motor con esos datos, así conserva toda la interacción.
+  private plantilla = '';
+  private cfg?: ConfigMotor;
 
   constructor(
     private readonly http: HttpClient,
@@ -31,7 +40,7 @@ export class InformeAvanceComponent implements OnInit, OnDestroy {
   ) {}
 
   async ngOnInit(): Promise<void> {
-    document.title = 'Informe Interactivo · Avance de Sumarios';
+    document.title = `${NOMBRE_INFORME} · Avance de Sumarios`;
     if (!this.auth.can('exportar_informe')) {
       this.estado = 'sin-permiso';
       return;
@@ -57,8 +66,12 @@ export class InformeAvanceComponent implements OnInit, OnDestroy {
         alSalir: () => this.auth.logout(),
       };
       this.estado = 'listo';
+      this.cfg = cfg;
       // El motor necesita la página ya dibujada (y visible) para medirla.
-      setTimeout(() => (this.destruir = iniciarMotor(cfg)));
+      setTimeout(() => {
+        this.plantilla = document.querySelector('.ia')?.outerHTML ?? '';
+        this.destruir = iniciarMotor(cfg);
+      });
     } catch {
       this.estado = 'error';
       this.mensaje = 'No se pudo cargar el informe. Espera un minuto y vuelve a intentarlo.';
@@ -80,6 +93,21 @@ export class InformeAvanceComponent implements OnInit, OnDestroy {
       posiciones[m.anio][mi] = d.posicion?.[k] ?? null;
     });
     return { fuente: { sleps: d.sleps.map((s) => s.slep), anios }, posiciones, alcanceCompleto: d.alcanceCompleto };
+  }
+
+  // Guardar: un .html que se abre sin el sistema y conserva lo interactivo
+  // (filtros, gráficos, tooltips, ranking). Lleva los estilos, la página
+  // original, el motor y los datos. Generar Word/Excel/PDF y "Salir" necesitan
+  // el sistema, así que en el archivo guardado no aparecen.
+  guardar(): void {
+    if (!this.cfg || !this.plantilla) return;
+    const { alSalir: _, ...datos } = this.cfg;
+    const estilos = estilosDeLaPagina() + '\n#g-save,#r-open,#salir,.u-sep{display:none!important}';
+    const script = `var CFG=${jsonParaScript(datos)};CFG.alSalir=function(){};
+document.addEventListener('DOMContentLoaded',function(){(${iniciarMotor.toString()})(CFG);});`;
+    const hoy = new Date().toLocaleDateString('es-CL');
+    const aviso = `<p style="margin:0;padding:6px 16px;background:#eef4fb;color:#25306B;font:12px Roboto,Arial,sans-serif">${NOMBRE_INFORME} · guardado el ${hoy} desde Avance de Sumarios. Los datos son los de ese momento.</p>`;
+    descargarHtml(NOMBRE_INFORME, documentoAutonomo({ titulo: NOMBRE_INFORME, estilos, cuerpo: aviso + this.plantilla, script }));
   }
 
   private async logoComoDataUrl(): Promise<string> {

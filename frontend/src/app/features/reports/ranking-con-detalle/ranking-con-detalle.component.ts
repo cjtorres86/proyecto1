@@ -20,6 +20,7 @@ import { TooltipHojaComponent, TooltipHojaFila } from '../tooltip-hoja/tooltip-h
         <div
           class="flex items-center gap-3 py-1 border-b border-gray-100 text-[11px]"
           [class.bg-blue-50]="slepConMouseEncima === fila"
+          [attr.data-fila]="i"
           (mouseenter)="slepConMouseEncima = fila"
           (mouseleave)="slepConMouseEncima = null"
         >

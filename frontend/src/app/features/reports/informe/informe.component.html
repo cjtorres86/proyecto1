@@ -1,4 +1,4 @@
-<div class="bg-gray-100 min-h-screen py-8 print:bg-white print:min-h-0 print:py-0">
+<div class="informe-raiz bg-gray-100 min-h-screen py-8 print:bg-white print:min-h-0 print:py-0">
   <!-- "Preparando tu PDF…" (mejora post-v2.23): al llegar desde el botón
        "PDF" de la ventana Descargar, tapa el informe interactivo con un
        mensaje simple mientras carga — la impresión SÍ necesita que la
@@ -23,6 +23,16 @@
     >
       Imprimir / Guardar como PDF
     </button>
+    <!-- Guardar el informe interactivo (ranking, errores) como .html que se abre sin el sistema. -->
+    @if (tipo !== 'general' && listoParaMostrar) {
+      <button
+        (click)="guardar()"
+        class="text-xs border border-blue-800 bg-blue-800 text-white rounded px-3 py-1.5 cursor-pointer"
+        title="Descarga este informe como archivo .html, que se abre sin el sistema"
+      >
+        Guardar (.html)
+      </button>
+    }
 
     <!-- Selector de SLEP: un botón que despliega la lista de 36 hacia
          abajo, del mismo ancho — la persona elige uno y la página se
@@ -174,7 +184,8 @@
       <div class="hoja-informe relative block mx-auto bg-white shadow-md w-[816px] min-h-[1056px] p-10 print:shadow-none print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
         <div #contenidoHoja class="contenido-hoja flex flex-col gap-3 w-[736px] mx-auto">
           <header class="border-b border-gray-200 pb-4">
-            <h2 class="text-lg font-bold text-[#1E3A8A]">Ranking Interactivo — {{ mes }} {{ anio }}</h2>
+            <!-- Nombre formal: en pantalla el interactivo, al imprimir el estático. -->
+            <h2 class="text-lg font-bold text-[#1E3A8A]"><span class="print:hidden">{{ nombreInforme(false) }}</span><span class="hidden print:inline">{{ nombreInforme(true) }}</span> — {{ mes }} {{ anio }}</h2>
             <p class="text-sm text-gray-500 mt-1 print:hidden">{{ slep ? slep : 'Todos los SLEP' }} — pasa el mouse sobre un SLEP para ver el detalle de sus campos.</p>
             @if (slep) {
               <p class="text-sm text-gray-500 mt-1 hidden print:block">SLEP: {{ slep }}</p>
@@ -197,7 +208,11 @@
     <div class="hoja-informe block mx-auto bg-white shadow-md w-[816px] min-h-[1056px] p-10 print:shadow-none print:w-full print:min-h-0 print:p-6">
       <div class="flex flex-col gap-3 w-[736px] mx-auto">
         <header class="border-b border-gray-200 pb-4">
-          <h2 class="text-lg font-bold text-[#1E3A8A]">Informe de Errores — {{ mes }} {{ anio }}</h2>
+          <h2 class="text-lg font-bold text-[#1E3A8A]">
+            @if (tipo === 'errores') {
+              <span class="print:hidden">{{ nombreInforme(false) }}</span><span class="hidden print:inline">{{ nombreInforme(true) }}</span>
+            } @else { Errores de validación }
+            — {{ mes }} {{ anio }}</h2>
           <p class="text-sm text-gray-500 mt-1">{{ slep ? slep : 'Todos los SLEP' }} — {{ errores.length }} {{ errores.length === 1 ? 'error' : 'errores' }} de validación</p>
         </header>
         @if (!errores.length) {

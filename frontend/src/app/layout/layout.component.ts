@@ -116,6 +116,13 @@ export class LayoutComponent implements OnInit {
 
   abrirDescargas(mes: { mes: string; anio: string } | null): void {
     if (!mes) return;
-    this.dialog.open(DownloadModalComponent, { width: '440px', data: { ...mes, slep: this.slepActivoNombre } });
+    // Ventana ancha (tres columnas) con acabado de vidrio: ver .dialogo-vidrio en styles.scss.
+    this.dialog.open(DownloadModalComponent, {
+      width: '1060px',
+      maxWidth: '96vw',
+      panelClass: 'dialogo-vidrio',
+      backdropClass: 'fondo-dialogo-vidrio',
+      data: { ...mes, slep: this.slepActivoNombre },
+    });
   }
 }

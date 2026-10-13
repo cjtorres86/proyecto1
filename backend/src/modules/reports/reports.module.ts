@@ -6,10 +6,11 @@ import { Contenedor } from '../cases/entities/contenedor.entity';
 import { ValorCampo } from '../cases/entities/valor-campo.entity';
 import { Slep } from '../forms/entities/slep.entity';
 import { FormsModule } from '../forms/forms.module';
+import { CatalogoInformesService } from './catalogo-informes.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Contenedor, ValorCampo, Slep]), FormsModule],
   controllers: [ReportsController],
-  providers: [ExcelService],
+  providers: [ExcelService, CatalogoInformesService],
 })
 export class ReportsModule {}

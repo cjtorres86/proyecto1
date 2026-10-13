@@ -144,6 +144,85 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   --color-seleccion-bg: #242F4A;
 }
 
+// ============================================================
+// VENTANA "DESCARGAS DE INFORMES": vidrio esmerilado
+// ============================================================
+// Con la identidad propia de Avance de Sumarios (azules y grises), no con los
+// colores del portal: fondo translúcido con desenfoque, bordes de luz suaves y
+// sombra ligera. El contenedor es de Angular Material (panelClass/backdropClass
+// en layout.component.ts), por eso estos estilos son globales.
+.dialogo-vidrio .mat-mdc-dialog-surface {
+  background: linear-gradient(140deg, rgb(255 255 255 / 0.78), rgb(237 241 247 / 0.62)) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgb(255 255 255 / 0.7);
+  border-radius: 16px !important;
+  box-shadow: 0 28px 64px -28px rgb(30 58 138 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.9) !important;
+}
+.fondo-dialogo-vidrio {
+  background: rgb(30 58 138 / 0.18);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.descargas {
+  // Columna: un panel de vidrio dentro del vidrio.
+  .columna {
+    background: rgb(255 255 255 / 0.5);
+    border: 1px solid rgb(255 255 255 / 0.75);
+    border-radius: 12px;
+    box-shadow: 0 6px 18px -12px rgb(30 58 138 / 0.35);
+  }
+  .fila {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    &:hover:not(:disabled) { background: rgb(255 255 255 / 0.8); border-color: rgb(30 58 138 / 0.12); }
+    &:disabled { opacity: 0.45; cursor: not-allowed; }
+  }
+  // Ícono: cuadro con hoja; el color según el formato, en tonos sobrios.
+  .icono {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    color: #fff;
+    svg { width: 19px; height: 19px; }
+  }
+  .icono-xlsx { background: #1D6F42; }
+  .icono-html { background: #1E4FA0; }
+  .icono-pdf { background: #B42318; }
+  // Etiqueta de extensión (xlsx, html, pdf).
+  .extension {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+    border: 1px solid rgb(71 85 105 / 0.25);
+    border-radius: 4px;
+    padding: 0 5px;
+    line-height: 16px;
+  }
+}
+.dark {
+  .dialogo-vidrio .mat-mdc-dialog-surface {
+    background: linear-gradient(140deg, rgb(20 27 46 / 0.82), rgb(27 36 64 / 0.7)) !important;
+    border-color: rgb(255 255 255 / 0.1);
+  }
+  .descargas .columna { background: rgb(255 255 255 / 0.05); border-color: rgb(255 255 255 / 0.1); }
+  .descargas .fila:hover:not(:disabled) { background: rgb(255 255 255 / 0.08); border-color: rgb(255 255 255 / 0.12); }
+  .descargas .extension { color: #AEB8CC; border-color: rgb(174 184 204 / 0.3); }
+}
+
 // Fila de un campo con error, cuando además es la seleccionada — usa las
 // variables de arriba, nunca un color suelto.
 .fila-con-error-activa {
