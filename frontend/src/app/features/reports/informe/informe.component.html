@@ -30,7 +30,7 @@
     >
       Imprimir / Guardar como PDF
     </button>
-    <!-- Guardar el informe interactivo (ranking, errores) como .html que se abre sin el sistema. -->
+    <!-- Guardar el informe interactivo de errores como .html que se abre sin el sistema. -->
     @if (tipo !== 'general' && listoParaMostrar) {
       <button
         (click)="guardar()"
@@ -79,7 +79,7 @@
 
   @if (!listoParaMostrar) {
     <p class="text-gray-400 text-center">
-      {{ tipo === 'errores' ? 'Cargando informe de errores…' : tipo === 'ranking' ? 'Cargando ranking…' : 'Cargando informe…' }}
+      {{ tipo === 'errores' ? 'Cargando informe de errores…' : 'Cargando informe…' }}
     </p>
   } @else {
     @if (tipo === 'general' && datos) {
@@ -177,30 +177,6 @@
         </div>
       </div>
     </div>
-    }
-
-    <!-- Ranking Interactivo (mejora post-v2.23): hoja propia, ajustada a
-         una sola hoja carta como el Dashboard y el Formulario (el
-         ranking siempre tiene el mismo tamaño: 36 SLEP como máximo). Con
-         position:relative para que el tooltip (fuera de #contenidoHoja,
-         así el ajuste-a-hoja no lo mueve ni lo escala) se pegue a su
-         borde izquierdo — ver .tooltip-ranking. Solo tiene sentido en
-         pantalla: un PDF no reacciona al mouse, así que ahí se ve la
-         tabla sola, sin la interacción. -->
-    @if (tipo === 'ranking') {
-      <div class="hoja-informe relative block mx-auto bg-white shadow-md w-[816px] min-h-[1056px] p-10 print:shadow-none print:w-full print:min-h-0 print:h-[940px] print:p-6 print:overflow-hidden">
-        <div #contenidoHoja class="contenido-hoja flex flex-col gap-3 w-[736px] mx-auto">
-          <header class="border-b border-gray-200 pb-4">
-            <!-- Nombre formal: en pantalla el interactivo, al imprimir el estático. -->
-            <h2 class="text-lg font-bold text-[#1E3A8A]"><span class="print:hidden">{{ nombreInforme(false) }}</span><span class="hidden print:inline">{{ nombreInforme(true) }}</span> — {{ mes }} {{ anio }}</h2>
-            <p class="text-sm text-gray-500 mt-1 print:hidden">{{ slep ? slep : 'Todos los SLEP' }} — pasa el mouse sobre un SLEP para ver el detalle de sus campos.</p>
-            @if (slep) {
-              <p class="text-sm text-gray-500 mt-1 hidden print:block">SLEP: {{ slep }}</p>
-            }
-          </header>
-          <app-ranking-con-detalle [ranking]="rankingDetalle" />
-        </div>
-      </div>
     }
 
     <!-- Hoja de Errores (mejora post-v2.23): a diferencia de las demás,

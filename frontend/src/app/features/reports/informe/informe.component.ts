@@ -16,7 +16,7 @@ import { InitialTotalsDonutComponent } from '../../dashboard/initial-totals-donu
 import { TotalAndBarsGroupComponent } from '../../dashboard/total-and-bars-group/total-and-bars-group.component';
 import { RankingConDetalleComponent } from '../ranking-con-detalle/ranking-con-detalle.component';
 import { TooltipHojaComponent, TooltipHojaFila } from '../tooltip-hoja/tooltip-hoja.component';
-import { INTERRUPTOR_TEMA, descargarHtml, documentoAutonomo, estilosDeLaPagina, jsonParaScript } from '../../../core/utils/guardar-html';
+import { INTERRUPTOR_TEMA, descargarHtml, documentoAutonomo, estilosDeLaPagina } from '../../../core/utils/guardar-html';
 import { ThemeToggleComponent } from '../../../shared/theme-toggle/theme-toggle.component';
 
 // Informe Interactivo: página real de Angular que reutiliza los mismos
@@ -96,12 +96,9 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   errores: ErrorFila[] = [];
   erroresCargados = false;
 
-  // Ranking Interactivo (mejora post-v2.23): hoja propia dentro del
-  // MISMO Informe (no una página aparte) — misma maquetación, mismo
-  // ajuste a una hoja carta y mismo mecanismo de PDF que las demás. Solo
-  // en modo interactivo tiene sentido el detalle al pasar el mouse: un
-  // PDF no puede reaccionar al mouse, así que en PDF se ve la tabla sin
-  // esa interacción, nada más.
+  // Ranking con el detalle de cada SLEP: alimenta el ranking de la hoja del
+  // Dashboard (con tooltip) y los tooltips de sus totales. (El informe de
+  // ranking propio es /informe-ranking.)
   rankingDetalle: RankingDetalleFila[] = [];
   rankingDetalleCargado = false;
 
@@ -119,9 +116,8 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   selectorSlepAbierto = false;
 
   // 'errores' fluye libre en varias hojas (sin ajuste-a-una-hoja);
-  // 'ranking' y 'general' sí usan ese ajuste, como el Dashboard y el
-  // Formulario.
-  tipo: 'general' | 'errores' | 'ranking' = 'general';
+  // 'general' sí usa ese ajuste (Dashboard y Formulario).
+  tipo: 'general' | 'errores' = 'general';
 
   // Geometría (96 px por pulgada). Carta = 816 x 1056 px. Márgenes de
   // impresión (@page en styles.scss): 1cm arriba/lados, 1,5cm abajo
@@ -155,7 +151,6 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // General": espera Dashboard, Formulario Y Errores (se agrega al final).
   get listoParaMostrar(): boolean {
     if (this.tipo === 'errores') return this.erroresCargados;
-    if (this.tipo === 'ranking') return this.rankingDetalleCargado;
     return !!this.datos && this.camposFormulario.length > 0 && this.erroresCargados && this.rankingDetalleCargado;
   }
 
@@ -211,9 +206,10 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     // volver al resto del sistema, su tema sigue como lo dejó.
     this.imprimirAlCargar = this.route.snapshot.queryParamMap.get('imprimir') === '1';
     const tipoPedido = this.route.snapshot.queryParamMap.get('tipo');
-    this.tipo = tipoPedido === 'errores' || tipoPedido === 'ranking' ? tipoPedido : 'general';
-    // Los estáticos (PDF) y el nacional son documentos: siempre en claro. Los
-    // interactivos (ranking, errores) respetan el tema y tienen su
+    // (?tipo=ranking ya no llega aquí: la ruta lo lleva a /informe-ranking.)
+    this.tipo = tipoPedido === 'errores' ? tipoPedido : 'general';
+    // Los estáticos (PDF) y el nacional son documentos: siempre en claro. El
+    // interactivo de errores respeta el tema y tiene su
     // interruptor; al imprimirlos, igual salen en claro.
     if (this.imprimirAlCargar || this.tipo === 'general') this.theme.forzarClaroSinGuardar();
     else this.quitarClaroAlImprimir = this.theme.claroAlImprimir();
@@ -239,15 +235,6 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     // Título real de la pestaña (reemplaza el genérico "Frontend"): es el
     // nombre sugerido al guardar y el que usa el pie del PDF.
     this.ponerTitulo(this.imprimirAlCargar);
-
-    if (this.tipo === 'ranking') {
-      this.reportsApi.getRankingDetalle(this.mes, this.anio, this.slep ?? undefined).subscribe((lista) => {
-        this.rankingDetalle = lista;
-        this.rankingDetalleCargado = true;
-        this.programarAjuste();
-      });
-      return;
-    }
 
     this.reportsApi.listarErrores(this.mes, this.anio, this.slep ?? undefined).subscribe((lista) => {
       this.errores = lista;
@@ -299,17 +286,16 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // pestaña no la vuelva a abrir. Espera 2 cuadros de pantalla para que
   // todo esté dibujado en su estado final.
   // Nombre formal (catálogo único): "Informe [formato] de [contenido]". En
-  // pantalla, ranking y errores son los interactivos; al imprimir, los
-  // estáticos. El nacional en esta página es siempre el estático (el
-  // interactivo nacional es /informe-avance).
+  // pantalla, errores es el interactivo; al imprimir, el estático. El
+  // nacional en esta página es siempre el estático (el interactivo nacional
+  // es /informe-avance).
   nombreInforme(estatico = this.imprimirAlCargar): string {
     if (this.tipo === 'general') return 'Informe estático nacional';
-    const contenido = this.tipo === 'errores' ? 'errores' : 'ranking';
-    return `Informe ${estatico ? 'estático' : 'interactivo'} de ${contenido}`;
+    return `Informe ${estatico ? 'estático' : 'interactivo'} de errores`;
   }
 
   // Título de la pestaña: es el nombre que el navegador propone al
-  // "Guardar como PDF" (ej. "Informe estático de ranking - Agosto 2026").
+  // "Guardar como PDF" (ej. "Informe estático de errores - Agosto 2026").
   private ponerTitulo(estatico: boolean): void {
     const sufijoTitulo = this.slep ? ` - ${this.slep}` : '';
     this.titleService.setTitle(`${this.nombreInforme(estatico)} - ${this.mes} ${this.anio}${sufijoTitulo}`);
@@ -415,9 +401,9 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     window.print();
   }
 
-  // Guardar (solo ranking y errores interactivos): un .html que se abre sin el
-  // sistema. Es la página tal como se ve, con sus estilos; el ranking conserva
-  // el detalle al pasar el mouse sobre un SLEP (un script propio con los datos).
+  // Guardar (errores interactivo): un .html que se abre sin el sistema. Es la
+  // página tal como se ve, con sus estilos. (El ranking tiene su propio
+  // informe: /informe-ranking.)
   guardar(): void {
     const raiz = document.querySelector<HTMLElement>('.informe-raiz');
     if (!raiz) return;
@@ -433,29 +419,9 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
       titulo: nombre,
       estilos: estilosDeLaPagina() + INTERRUPTOR_TEMA.estilos,
       cuerpo: INTERRUPTOR_TEMA.cuerpo + copia.outerHTML,
-      script: (this.tipo === 'ranking' ? this.scriptDetalleRanking() + '\n' : '') + INTERRUPTOR_TEMA.script,
+      script: INTERRUPTOR_TEMA.script,
       claseHtml: document.documentElement.classList.contains('dark') ? 'dark' : undefined,
     }));
-  }
-
-  // El detalle de cada SLEP al pasar el mouse, sin Angular: mismos datos y la
-  // misma caja (mismas clases) que el tooltip de la página.
-  private scriptDetalleRanking(): string {
-    const datos = this.rankingDetalle.map((f) => ({ t: f.slep, f: f.campos.map((c) => [`${c.numero}. ${c.nombre}`, c.valor]) }));
-    return `var D=${jsonParaScript(datos)};
-function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
-document.querySelectorAll('[data-fila]').forEach(function(fila){
-  fila.addEventListener('mouseenter',function(){
-    var d=D[+fila.getAttribute('data-fila')],hoja=fila.closest('.hoja-informe');if(!d||!hoja)return;
-    fila.classList.add('bg-blue-50');
-    var t=document.createElement('div');t.id='tip-guardado';
-    t.className='w-[280px] max-h-[85%] overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg p-4';
-    t.style.cssText='position:absolute;top:90px;right:calc(100% + 20px)';
-    t.innerHTML='<h3 class="text-sm font-bold text-gray-800 border-b border-gray-100 pb-2 mb-2">'+esc(d.t)+'</h3><dl class="flex flex-col gap-1">'+d.f.map(function(x){return '<div class="flex justify-between gap-2 text-[11px]"><dt class="text-gray-500 truncate">'+esc(x[0])+'</dt><dd class="font-mono text-gray-800 shrink-0">'+(esc(x[1])||'—')+'</dd></div>'}).join('')+'</dl>';
-    hoja.appendChild(t);
-  });
-  fila.addEventListener('mouseleave',function(){fila.classList.remove('bg-blue-50');var t=document.getElementById('tip-guardado');if(t)t.remove();});
-});`;
   }
 
   colorBarraRanking(pct: number | null): string {

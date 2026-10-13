@@ -52,10 +52,10 @@ export class DownloadModalComponent {
     sumarios_consolidado_mes: () => this.descargarExcelGeneral(),
     sumarios_consolidado_slep: () => this.descargarExcelPorSlep(),
     sumarios_informe_interactivo: () => this.verInformeInteractivo(),
-    sumarios_ranking_interactivo: () => this.abrirInforme(false, 'ranking'),
+    sumarios_ranking_interactivo: () => this.verRanking(false),
     sumarios_errores_interactivo: () => this.abrirInforme(false, 'errores'),
     sumarios_informe_general_pdf: () => this.abrirInforme(true, 'general'),
-    sumarios_ranking_pdf: () => this.abrirInforme(true, 'ranking'),
+    sumarios_ranking_pdf: () => this.verRanking(true),
     sumarios_errores_pdf: () => this.abrirInforme(true, 'errores'),
   };
 
@@ -133,10 +133,19 @@ export class DownloadModalComponent {
     window.open(`/informe-avance?${p.toString()}`, '_blank');
   }
 
-  // Ranking y errores (interactivos) y los tres estáticos: la página del
+  // Informe de ranking (mismo diseño que el nacional), en el mes que se está
+  // mirando. Estático = la misma página con ?imprimir=1, que abre sola la
+  // ventana de impresión ("Guardar como PDF"). El ranking es de todos los SLEP.
+  private verRanking(imprimir: boolean): void {
+    const p = new URLSearchParams({ mes: this.data.mes, anio: this.data.anio });
+    if (imprimir) p.set('imprimir', '1');
+    window.open(`/informe-ranking?${p.toString()}`, '_blank');
+  }
+
+  // Errores (interactivo) y los estáticos nacional y de errores: la página del
   // Informe. Estático = la misma página con ?imprimir=1, que abre sola la
   // ventana de impresión ("Guardar como PDF").
-  private abrirInforme(imprimir: boolean, tipo: 'general' | 'errores' | 'ranking'): void {
+  private abrirInforme(imprimir: boolean, tipo: 'general' | 'errores'): void {
     const params = new URLSearchParams();
     if (this.data.slep) params.set('slep', this.data.slep);
     if (imprimir) params.set('imprimir', '1');

@@ -1,5 +1,6 @@
-// Informe Interactivo de avance: mismos estilos de la propuesta aprobada,
-// encerrados bajo .ia para que no afecten al resto de Avance de Sumarios.
+// Informes interactivos (nacional y ranking): mismos estilos de la propuesta
+// aprobada, encerrados bajo .ia para que no afecten al resto de Avance de
+// Sumarios. Banner institucional, barra fija, paneles y modo oscuro neón.
 // Modo oscuro: la clase .dark de Sumarios. Fuentes Roboto incluidas en el
 // sistema (no se descargan de internet): se cargan en src/styles.scss.
 
@@ -60,7 +61,7 @@
 .ia .field{display:flex;flex-direction:column;gap:4px;min-width:0}
 .ia .field label,.ia .field .lbl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
 .ia select{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0;max-width:100%}
-.ia #slep{min-width:min(300px,100%)}
+.ia #slep{min-width:min(260px,100%)}
 .ia .ctl-end{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .ia .btn{font:inherit;font-weight:600;font-size:.84rem;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:6px;padding:8px 12px;cursor:pointer;white-space:nowrap}
 .ia .btn:hover{border-color:var(--fg-3)}
@@ -98,11 +99,14 @@
 .ia .tb-in{max-width:1180px;margin:0 auto;padding:12px 20px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;position:relative}
 @media (max-width:560px){.ia .tb-in{padding:10px 16px}}
 .ia .tb-sep{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
-.ia .tb-acc{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+// Acciones (Guardar, Generar informe, ¿Cómo se calcula?): en la MISMA fila y
+// con el mismo alto y línea de base que los filtros, al extremo derecho.
+.ia .tb-acc{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
 .ia .btn.info{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
 .ia .btn.info:hover{background:var(--accent-soft)}
 .ia .btn[aria-expanded="true"]{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
-.ia .tb-in select,.ia .tb-in .btn,.ia #years{height:40px}
+.ia .tb-in select,.ia .tb-in .btn,.ia .tb-in .seg{height:40px}
+.ia .tb-in .seg button{flex-direction:row;align-items:center}
 .ia #years button{padding:0 14px;height:100%;flex-direction:row;align-items:center;justify-content:center}
 .ia #years button small{display:none}
 .ia .bloque{scroll-margin-top:calc(var(--alto-barra,90px) + 12px)}
@@ -215,5 +219,76 @@
 .ia footer{font-size:.76rem;color:var(--fg-3)}
 @media (prefers-reduced-motion:reduce){.ia *{transition:none!important}}
 .ia{min-height:100vh;display:block}
+
+// ===== Informe de ranking (.ir) =====
+.ir .rk-ctrl{gap:8px 10px}
+.ir .rkh,.ir .rkr{display:grid;grid-template-columns:44px minmax(170px,1.3fr) minmax(120px,2fr) 70px 86px 64px 118px;gap:12px;align-items:center}
+.ir .rkh{padding:0 12px 6px;border-bottom:1px solid var(--line);font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);font-weight:700}
+.ir .rkh span:nth-child(n+4){text-align:right}
+.ir .rkh span:nth-child(3){grid-column:3/5}
+.ir .rkl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.ir .rkf{border-bottom:1px solid var(--grid)}
+.ir .rkr{font:inherit;width:100%;text-align:left;border:0;border-left:3px solid transparent;background:transparent;color:var(--fg);padding:9px 12px 9px 9px;cursor:pointer}
+.ir .rkr:hover,.ir .rkr[aria-expanded="true"]{background:var(--surface-2)}
+.ir .rkf.sel .rkr{border-left-color:var(--accent);background:var(--accent-soft)}
+.ir .rkr .p{font-family:var(--f-display);font-weight:700;font-size:1rem;color:var(--fg-3);text-align:right}
+.ir .rkf.top .rkr .p{color:var(--accent)}
+.ir .rkr .sn{font-weight:600;font-size:.9rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ir .rkr .bar{position:relative;height:10px;border-radius:5px;background:var(--surface-2);overflow:hidden}
+.ir .rkr .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+.ir .rkr .ex{font-family:var(--f-display);font-weight:700;font-size:1rem;text-align:right}
+.ir .rkr .vr,.ir .rkr .mv,.ir .rkr .ci{font-size:.82rem;text-align:right;white-space:nowrap;color:var(--fg-2)}
+.ir .up{color:var(--alto)!important;font-weight:700}
+.ir .dn{color:var(--bajo)!important;font-weight:700}
+.ir .rkd{display:grid;grid-template-columns:minmax(260px,1fr) minmax(300px,1.4fr);gap:10px 28px;padding:6px 16px 16px 59px;font-size:.82rem;background:var(--surface-2)}
+.ir .rkd .dt-col,.ir .tip-r .dt-col{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ir .rkd .r,.ir .tip-r .r{display:flex;justify-content:space-between;gap:14px}
+.ir .rkd .r span:first-child,.ir .tip-r .r span:first-child{color:var(--fg-2)}
+.ir .rkd .sep,.ir .tip-r .sep{border-top:1px solid var(--grid);margin:4px 0 2px}
+.ir .rkd .sec,.ir .tip-r .sec{font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);font-weight:700;margin-top:2px}
+.ir .rkd .big,.ir .tip-r .big{font-family:var(--f-display);font-size:1.2rem;font-weight:700}
+.ir .rkd .mbar{height:5px;border-radius:3px;background:var(--surface);overflow:hidden;margin:2px 0 3px}
+.ir .rkd .mbar i{display:block;height:100%}
+.ir .campos{display:grid;grid-template-columns:1fr;gap:2px}
+.ir .rkd .campos{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px 20px}
+// Tooltip del ranking: dos columnas (detalle y formulario), fijo junto al mouse.
+.ir .tip-r{position:fixed;display:grid;grid-template-columns:240px 270px;gap:4px 18px;min-width:0;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:hidden;z-index:45}
+.ir .tip-r .h{grid-column:1/-1}
+.ir .tip-r .campos .r{font-size:.74rem}
+.ir .vacio{list-style:none;color:var(--fg-3);font-size:.86rem;padding:12px}
+.ir .fuera{font-size:.82rem;color:var(--fg-2);display:flex;flex-direction:column;gap:4px}
+.ir .fuera p{margin:0}
+.ir .fuera b{color:var(--fg);font-weight:600}
+.ir .mov{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px 28px}
+.ir .mov h3{margin-bottom:6px}
+.ir .movl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.ir .movl button{font:inherit;width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;border:0;background:transparent;color:var(--fg);border-radius:6px;padding:7px 8px;cursor:pointer}
+.ir .movl button:hover{background:var(--surface-2)}
+.ir .movl .sn{display:flex;flex-direction:column;font-weight:600;font-size:.88rem;min-width:0}
+.ir .movl .sn small{font-weight:400;font-size:.76rem;color:var(--fg-3)}
+.ir .movl .vr{font-size:.86rem;white-space:nowrap}
+.dark .ir .rkr .bar i{box-shadow:0 0 8px currentColor}
+@media (max-width:860px){
+  .ir .rkh{display:none}
+  .ir .rkr{grid-template-columns:36px 1fr 70px 70px;row-gap:4px}
+  .ir .rkr .bar{grid-column:2/-1;grid-row:2}
+  .ir .rkr .mv,.ir .rkr .ci{display:none}
+  .ir .rkd{grid-template-columns:1fr;padding-left:16px}
+  .ir .tip-r{display:none!important}
+}
+// Informe estático de ranking (?imprimir=1) y cualquier impresión: hoja carta
+// vertical, en claro, solo el contenido (sin barra, botones ni tooltips).
+@media print{
+  @page{size:letter portrait;margin:12mm 10mm 14mm}
+  .ia{background:#fff!important;min-height:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .ia .toolbar,.ia .usuario,.ia .bloque,.ia .tip,.ia .rk-ctrl,.ia .scrim,.ia .drawer{display:none!important}
+  .ia .band-in,.ia .wrap{max-width:none;padding-inline:0}
+  .ia .wrap{padding-top:14px;gap:14px}
+  .ia .panel{border-color:#d6dce5;break-inside:auto}
+  .ir .rkf{break-inside:avoid}
+  .ir .rkd{display:none!important}
+  .ir .rkr{padding:5px 8px}
+  .ir .rkh,.ir .rkr{grid-template-columns:34px 1.4fr 1.6fr 62px 74px 56px 100px;gap:8px}
+}
 .ia-estado{min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:Roboto,Arial,sans-serif;color:#46536a;background:#f1f3f6;padding:24px;text-align:center}
 .dark .ia-estado{background:#0f1622;color:#b3bfd2}

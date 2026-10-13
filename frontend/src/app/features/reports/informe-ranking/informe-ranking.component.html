@@ -1,0 +1,121 @@
+<!-- Informe interactivo de ranking: el mismo lenguaje de diseño del Informe
+     interactivo nacional (banner institucional, barra fija y paneles). La
+     lógica vive en motor-ranking.ts. Con ?imprimir=1 es el informe estático
+     (la misma página, en claro, lista para "Guardar como PDF"). -->
+@if (estado !== 'listo') {
+  <div class="ia-estado" role="status">
+    @switch (estado) {
+      @case ('cargando') { <p>Preparando el ranking de avance…</p> }
+      @case ('sin-permiso') { <p>Tu perfil no incluye el informe de ranking.</p> }
+      @default { <p>{{ mensaje }}</p> }
+    }
+  </div>
+}
+<div class="ia ir" [class.imprimiendo]="imprimir" [hidden]="estado !== 'listo'">
+<div class="flag" aria-hidden="true"></div>
+<header class="band"><div class="band-in">
+  <div class="brand"><img id="logo" alt="Dirección de Educación Pública, Ministerio de Educación" width="88" height="80">
+    <div class="t">
+      <span class="eyebrow">Seguimiento de sumarios administrativos</span>
+      <h1>Ranking de avance de los Servicios Locales</h1>
+      <span class="subt">Procesos cerrados / Sumarios instruidos</span>
+    </div>
+  </div>
+  <!-- Modo claro / oscuro, persona conectada y Salir: el mismo lugar que en todos los sistemas. -->
+  <div class="usuario" data-lugar-tema>
+    @if (!imprimir) { <app-theme-toggle /> }
+    <span class="u-sep" aria-hidden="true"></span>
+    <div class="u-txt"><b id="u-nombre"></b><small id="u-perfil"></small></div>
+    <span class="u-sep" aria-hidden="true"></span>
+    <button type="button" class="btn-salir" id="salir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/></svg>Salir</button>
+  </div>
+</div></header>
+
+<div class="toolbar" id="toolbar"><div class="tb-in">
+  <div class="field"><span class="lbl" id="lbl-anio">Año</span><div class="seg" id="years" role="group" aria-labelledby="lbl-anio"></div></div>
+  <div class="field"><label for="mes">Mes de referencia</label><select id="mes"></select></div>
+  <div class="field"><label for="slep">Destacar servicio</label><select id="slep"></select></div>
+  <div class="tb-acc">
+    <!-- Guardar: descarga este informe como .html que se abre sin el sistema. -->
+    <button type="button" class="btn" id="g-save" (click)="guardar()" [disabled]="guardando" title="Descarga este informe como archivo .html, interactivo, que se abre sin el sistema">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 13.5h11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ guardando ? 'Guardando…' : 'Guardar' }}</button>
+    <button type="button" class="btn primary" id="r-open" aria-expanded="false" aria-controls="rpanel">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.5h5.5L13 5v9.5H4zM9.5 1.5V5H13M6.5 8.5h4M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Generar informe</button>
+    <button type="button" class="btn info" id="h-open" aria-expanded="false" aria-controls="hpanel">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 7.2v4M8 4.8v.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>¿Cómo se calcula?</button>
+  </div>
+</div></div>
+
+<div class="wrap">
+  <!-- Ventana: generar informe (acción) -->
+  <section class="panel bloque accion" id="rpanel" aria-labelledby="h-rep" hidden>
+    <div class="bloque-h"><div class="tit"><span class="ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 1.5h5.5L13 5v9.5H4zM9.5 1.5V5H13M6.5 8.5h4M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span><div><span class="eyebrow">Informes</span><h2 id="h-rep">Generar informe de ranking</h2>
+      <span class="muted small">El informe toma el año y el mes de referencia (o el trimestre elegido) seleccionados arriba. Hojas verticales, con el ranking de cada servicio, los cambios de posición, nota metodológica y el banner institucional.</span></div></div><button type="button" class="x" data-cerrar aria-label="Cerrar">✕</button></div>
+    <div class="rgrid">
+      <fieldset><legend>Período</legend>
+        <label class="opt"><input type="radio" name="r-tipo" value="mensual" checked><span id="r-tipo-m-t">Mensual</span></label>
+        <label class="opt trim"><input type="radio" name="r-tipo" value="trimestral"><span>Trimestral</span><select id="r-trim" aria-label="Trimestre"></select></label>
+        <label class="opt"><input type="radio" name="r-tipo" value="anual"><span id="r-tipo-a-t">Anual</span></label>
+      </fieldset>
+      <fieldset><legend>Formato</legend>
+        <label class="opt"><input type="radio" name="r-fmt" value="xlsx" checked><span>Excel (.xlsx)<small>Una hoja por tabla, con filtros</small></span></label>
+        <label class="opt"><input type="radio" name="r-fmt" value="pdf"><span>PDF<small>Listo para enviar o imprimir · hoja vertical</small></span></label>
+      </fieldset>
+    </div>
+    <div class="rowbtns"><button type="button" class="btn primary" id="r-go">Descargar informe</button><button type="button" class="btn" id="r-close">Cerrar</button><span class="status" id="r-status" role="status"></span></div>
+  </section>
+  <!-- Ventana: ¿cómo se calcula? (ayuda) -->
+  <section class="panel bloque ayuda" id="hpanel" aria-labelledby="h-calc" hidden>
+    <div class="bloque-h"><div class="tit"><span class="ico" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 7.2v4M8 4.8v.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><div><span class="eyebrow">Ayuda</span><h2 id="h-calc">¿Cómo se calcula el ranking?</h2></div></div><button type="button" class="x" data-cerrar aria-label="Cerrar">✕</button></div>
+    <ul class="calc">
+      <li><b>% de avance = procesos cerrados / sumarios instruidos.</b> Es la misma regla que usa Avance de Sumarios en su panel.</li>
+      <li>El <b>ranking</b> ordena a los servicios por su % de avance del mes: <b>1° = mayor avance</b>. En empate, primero el que tiene más procesos cerrados y luego por nombre.</li>
+      <li>Nivel de avance: <b>bajo</b> bajo 25 %, <b>medio</b> de 25 % a menos de 75 %, <b>alto</b> 75 % o más. La meta es el 100 %.</li>
+      <li>Un SLEP <b>sin sumarios instruidos</b> no tiene avance que medir, y uno <b>sin información</b> no informó el mes: ambos quedan fuera del ranking.</li>
+      <li>El <b>cambio de posición</b> compara con el ranking del mes anterior (▲ sube, ▼ baja, = se mantiene).</li>
+      <li>La variación del avance se informa en <b>puntos porcentuales (pp)</b>: de 35 % a 40 % es +5,0 pp.</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="resumen" aria-labelledby="h-res">
+    <div class="panel-head">
+      <div><span class="eyebrow" id="res-eyebrow"></span><h2 id="h-res"></h2></div>
+      <span id="res-pill"></span>
+    </div>
+    <p class="lede" id="res-lede"></p>
+    <div class="tiles" id="tiles" role="list" aria-label="Resumen del ranking"></div>
+  </section>
+
+  <section class="panel" id="ranking" aria-labelledby="h-rk">
+    <div class="panel-head">
+      <div><span class="eyebrow">Ranking del mes</span><h2 id="h-rk">Avance de los sumarios por SLEP</h2><span class="muted small" id="lista-sub"></span></div>
+      <div class="rowbtns rk-ctrl" id="filtros">
+        <div class="seg mini" id="orden" role="group" aria-label="Orden del ranking">
+          <button type="button" data-o="desc" aria-pressed="true">Mayor avance primero</button>
+          <button type="button" data-o="asc" aria-pressed="false">Menor avance primero</button>
+        </div>
+        <div class="seg mini" id="nivel" role="group" aria-label="Nivel de avance">
+          <button type="button" data-n="todos" aria-pressed="true">Todos</button>
+          <button type="button" data-n="alto" aria-pressed="false">Alto</button>
+          <button type="button" data-n="medio" aria-pressed="false">Medio</button>
+          <button type="button" data-n="bajo" aria-pressed="false">Bajo</button>
+        </div>
+      </div>
+    </div>
+    <div class="rowbtns rk-ctrl"><span id="lista-cuenta"></span><button type="button" class="btn" data-copy="rk">Copiar ranking</button><span class="muted small">Copia la lista en formato compatible con Excel y Word.</span><span class="status" data-copymsg="rk"></span></div>
+    <div class="rkh" aria-hidden="true"><span>N°</span><span>Servicio Local</span><span>% de avance (meta 100 %)</span><span>Var. mensual</span><span>Posición</span><span>Cerrados / instruidos</span></div>
+    <ol class="rkl" id="rkl" aria-label="Ranking de avance"></ol>
+    <div class="fuera" id="fuera"></div>
+    <div class="tip tip-r" id="tip-r" hidden></div>
+  </section>
+
+  <section class="panel" id="movimientos" aria-labelledby="h-mov">
+    <div><span class="eyebrow">Respecto del mes anterior</span><h2 id="h-mov">Movimientos del mes</h2><span class="muted small" id="mov-sub"></span></div>
+    <div class="mov">
+      <div><h3>Mayores avances</h3><ol class="movl" id="mov-up"></ol></div>
+      <div><h3>Retrocesos</h3><ol class="movl" id="mov-dn"></ol></div>
+    </div>
+  </section>
+  <footer id="foot"></footer>
+</div>
+</div>

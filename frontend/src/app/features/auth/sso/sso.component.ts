@@ -10,7 +10,7 @@ import { environment } from '../../../../environments/environment';
 
 // Solo páginas de informes de esta misma aplicación: nunca una dirección
 // externa ni cualquier otra ruta que llegue en el enlace.
-const DESTINO_PERMITIDO = /^\/(informe\/[^/?#]+\/\d{4}|informe-avance|descargar)(\?[^#]*)?$/;
+const DESTINO_PERMITIDO = /^\/(informe\/[^/?#]+\/\d{4}|informe-avance|informe-ranking|descargar)(\?[^#]*)?$/;
 export function destinoSeguro(destino: string | null): string {
   return destino && DESTINO_PERMITIDO.test(destino) ? destino : '/';
 }

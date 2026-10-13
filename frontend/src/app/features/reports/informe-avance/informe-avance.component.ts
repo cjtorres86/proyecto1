@@ -7,6 +7,8 @@ import { AuthService } from '../../../core/services/auth.service';
 import { HistoricoDetalle } from '../../../core/utils/avance';
 import { ConfigMotor, iniciarMotor } from './motor-informe';
 import { INTERRUPTOR_TEMA, descargarHtml, documentoAutonomo, estilosDeLaPagina, jsonParaScript } from '../../../core/utils/guardar-html';
+import { OCULTOS_AL_GUARDAR } from '../informe-guardado';
+import { generarDocumento } from '../documentos-informe';
 import { ThemeService } from '../../../core/services/theme.service';
 import { ThemeToggleComponent } from '../../../shared/theme-toggle/theme-toggle.component';
 
@@ -24,7 +26,7 @@ const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', '
   // El mismo interruptor claro/oscuro de la aplicación.
   imports: [ThemeToggleComponent],
   templateUrl: './informe-avance.component.html',
-  styleUrls: ['./informe-avance.component.scss'],
+  styleUrls: ['../informe-interactivo.scss'],
   encapsulation: ViewEncapsulation.None,
 })
 export class InformeAvanceComponent implements OnInit, OnDestroy {
@@ -73,6 +75,7 @@ export class InformeAvanceComponent implements OnInit, OnDestroy {
         usuario: { nombre: u?.nombreParaMostrar ?? '', perfil: u?.esSuperadmin ? 'Superadmin' : (u?.perfil?.nombre ?? '') },
         inicial: { anio: q.get('anio') ?? undefined, mes: mesPedido >= 0 ? mesPedido : undefined, slep: q.get('slep') ?? undefined },
         alSalir: () => this.auth.logout(),
+        documento: (modelo, formato) => generarDocumento(modelo, formato, logo),
       };
       this.estado = 'listo';
       this.cfg = cfg;
@@ -110,10 +113,11 @@ export class InformeAvanceComponent implements OnInit, OnDestroy {
   // el sistema, así que en el archivo guardado no aparecen.
   guardar(): void {
     if (!this.cfg || !this.plantilla) return;
-    const { alSalir: _, ...datos } = this.cfg;
+    const { alSalir: _, documento: __, ...datos } = this.cfg;
     // Se ocultan lo que necesita el sistema y el interruptor de Angular (el
-    // archivo trae su propio interruptor claro/oscuro, sin Angular).
-    const estilos = estilosDeLaPagina() + '\n#g-save,#r-open,#salir,.u-sep,.tb-acc app-theme-toggle{display:none!important}' + INTERRUPTOR_TEMA.estilos;
+    // archivo trae su propio interruptor claro/oscuro, sin Angular, que se
+    // ubica en el mismo lugar del banner).
+    const estilos = estilosDeLaPagina() + '\n' + OCULTOS_AL_GUARDAR + INTERRUPTOR_TEMA.estilos;
     const script = `var CFG=${jsonParaScript(datos)};CFG.alSalir=function(){};
 document.addEventListener('DOMContentLoaded',function(){(${iniciarMotor.toString()})(CFG);});
 ${INTERRUPTOR_TEMA.script}`;
