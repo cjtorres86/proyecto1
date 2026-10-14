@@ -59,7 +59,7 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
   private des: Record<string, { slep: string; valor: number }[]> = {};
 
   panel: 'informe' | 'ayuda' | null = null;
-  formato: 'xlsx' | 'pdf' = 'pdf';
+  formato: 'pdf' | 'xlsx' | 'html' = 'pdf';
   generando = false;
   estadoInforme: { tipo: '' | 'ok' | 'err'; texto: string } = { tipo: '', texto: '' };
   guardando = false;
@@ -276,11 +276,22 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     this.panel = null;
   }
 
-  // ---------- Generar informe (Excel o PDF) ----------
+  // ---------- Generar informe (PDF, Excel o HTML interactivo) ----------
   async generar(): Promise<void> {
     if (!this.modelo || this.generando) return;
+    if (this.formato === 'pdf') return this.imprimirPdf();
     this.generando = true;
     this.estadoInforme = { tipo: '', texto: 'Preparando el informe…' };
+    if (this.formato === 'html') {
+      try {
+        this.estadoInforme = { tipo: 'ok', texto: `Informe guardado: ${await this.guardar()}` };
+      } catch (e) {
+        this.estadoInforme = { tipo: 'err', texto: `No fue posible guardar el informe: ${(e as Error).message}` };
+      } finally {
+        this.generando = false;
+      }
+      return;
+    }
     try {
       // Gráficos de cada bloque como imagen (azules y grises; rojo solo si el avance es bajo).
       const G = graficosDashboard(this.modelo, { ambito: this.slep ?? 'todos los SLEP', consolidado: !this.slep, et: (id, l) => this.et(id, l) });
@@ -295,6 +306,18 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     } finally {
       this.generando = false;
     }
+  }
+
+  // PDF: esta misma página con el diseño del informe estático (en claro, hoja
+  // carta). Se abre la ventana de impresión del navegador ("Guardar como PDF");
+  // el título de la pestaña es el nombre que se propone para el archivo.
+  private imprimirPdf(): void {
+    const titulo = document.title;
+    document.title = `Informe de dashboard - ${this.mes} ${this.anio}${this.slep ? ` - ${this.slep}` : ''}`;
+    window.addEventListener('afterprint', () => (document.title = titulo), { once: true });
+    this.bitacora.registrarEvento('informe_pdf_descargado', `Descargó el PDF de ${this.nombre} — ${this.mes} ${this.anio}${this.slep ? ` — ${this.slep}` : ''}.`);
+    this.estadoInforme = { tipo: 'ok', texto: 'Se abrió la ventana de impresión: elige «Guardar como PDF».' };
+    requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
   }
 
   // El dashboard como modelo de documento (documentos-informe.ts): un
@@ -350,16 +373,17 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     };
   }
 
-  // ---------- Guardar (.html) ----------
+  // ---------- HTML interactivo (formato de Generar informe) ----------
   // El dashboard del mes tal como se ve, que se abre sin el sistema y conserva
   // el detalle al pasar el mouse (con los desgloses por SLEP ya incluidos).
   // Cambiar de mes o de SLEP, Generar informe y Salir necesitan el sistema.
-  async guardar(): Promise<void> {
-    if (!this.modelo || this.guardando) return;
+  async guardar(): Promise<string> {
+    if (!this.modelo) throw new Error('el informe todavía no está listo.');
+    if (this.guardando) throw new Error('ya se está guardando.');
     this.guardando = true;
     try {
       const raiz = document.querySelector<HTMLElement>('.ia.id');
-      if (!raiz) return;
+      if (!raiz) throw new Error('el informe todavía no está listo.');
       if (!this.slep) {
         const ids = [...new Set([...raiz.querySelectorAll('[data-tip]')].map((e) => JSON.parse(e.getAttribute('data-tip') || '{}').id).filter(Boolean))] as string[];
         await Promise.all(ids.filter((id) => !this.des[id]).map(async (id) => {
@@ -387,6 +411,7 @@ ${INTERRUPTOR_TEMA.script}`;
         script,
         claseHtml: this.theme.esOscuro ? 'dark' : undefined,
       }));
+      return `${nombre}.html`;
     } finally {
       this.guardando = false;
     }

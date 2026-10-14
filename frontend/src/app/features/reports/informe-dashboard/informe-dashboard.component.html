@@ -48,8 +48,6 @@
       </select></div>
   }
   <div class="tb-acc">
-    <button type="button" class="btn" id="g-save" (click)="guardar()" [disabled]="guardando || !modelo" aria-label="Guardar" title="Guardar: descarga este informe como archivo .html, interactivo, que se abre sin el sistema">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 13.5h11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="tx">{{ guardando ? 'Guardando…' : 'Guardar' }}</span></button>
     <button type="button" class="btn primary" id="r-open" [attr.aria-expanded]="panel === 'informe'" aria-controls="rpanel" (click)="alternarPanel('informe')" aria-label="Generar informe" title="Generar informe">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.5h5.5L13 5v9.5H4zM9.5 1.5V5H13M6.5 8.5h4M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span class="tx">Generar informe</span></button>
     <button type="button" class="btn info" id="h-open" [attr.aria-expanded]="panel === 'ayuda'" aria-controls="hpanel" (click)="alternarPanel('ayuda')" aria-label="¿Cómo se calcula?" title="¿Cómo se calcula?">
@@ -64,11 +62,12 @@
       <span class="muted small">El informe toma el mes de referencia y el servicio seleccionados arriba ({{ slep ?? 'todos los SLEP' }} · {{ mes }} {{ anio }}). Hojas verticales, con cada bloque del dashboard, sus observaciones, el ranking y el banner institucional.</span></div></div><button type="button" class="x" data-cerrar aria-label="Cerrar" (click)="alternarPanel(null)">✕</button></div>
     <div class="rgrid">
       <fieldset><legend>Formato</legend>
-        <label class="opt"><input type="radio" name="r-fmt" value="pdf" [checked]="formato === 'pdf'" (change)="formato = 'pdf'"><span>PDF<small>Listo para enviar o imprimir · hoja vertical</small></span></label>
-        <label class="opt"><input type="radio" name="r-fmt" value="xlsx" [checked]="formato === 'xlsx'" (change)="formato = 'xlsx'"><span>Excel (.xlsx)<small>Una hoja por tabla, con filtros</small></span></label>
+        <label class="opt"><input type="radio" name="r-fmt" value="pdf" [checked]="formato === 'pdf'" (change)="formato = 'pdf'"><span>PDF<small>El mismo diseño del informe estático · se abre la ventana de impresión: elige «Guardar como PDF»</small></span></label>
+        <label class="opt"><input type="radio" name="r-fmt" value="xlsx" [checked]="formato === 'xlsx'" (change)="formato = 'xlsx'"><span>Excel (.xlsx)<small>Una hoja por tabla, con sus gráficos</small></span></label>
+        <label class="opt"><input type="radio" name="r-fmt" value="html" [checked]="formato === 'html'" (change)="formato = 'html'"><span>HTML interactivo (.html)<small>Este informe completo, que se abre sin el sistema</small></span></label>
       </fieldset>
     </div>
-    <div class="rowbtns"><button type="button" class="btn primary" id="r-go" (click)="generar()" [disabled]="generando">Descargar informe</button><button type="button" class="btn" (click)="alternarPanel(null)">Cerrar</button><span class="status" [class.ok]="estadoInforme.tipo === 'ok'" [class.err]="estadoInforme.tipo === 'err'" role="status">{{ estadoInforme.texto }}</span></div>
+    <div class="rowbtns"><button type="button" class="btn primary" id="r-go" (click)="generar()" [disabled]="generando || guardando">Descargar informe</button><button type="button" class="btn" (click)="alternarPanel(null)">Cerrar</button><span class="status" [class.ok]="estadoInforme.tipo === 'ok'" [class.err]="estadoInforme.tipo === 'err'" role="status">{{ estadoInforme.texto }}</span></div>
   </section>
   <!-- Ventana: ¿cómo se calcula? (ayuda) -->
   <section class="panel bloque ayuda" id="hpanel" aria-labelledby="h-calc" [hidden]="panel !== 'ayuda'">

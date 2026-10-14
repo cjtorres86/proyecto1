@@ -76,6 +76,7 @@ export class InformeAvanceComponent implements OnInit, OnDestroy {
         inicial: { anio: q.get('anio') ?? undefined, mes: mesPedido >= 0 ? mesPedido : undefined, slep: q.get('slep') ?? undefined },
         alSalir: () => this.auth.logout(),
         documento: (modelo, formato) => generarDocumento(modelo, formato, logo),
+        guardar: async () => this.guardar(),
       };
       this.estado = 'listo';
       this.cfg = cfg;
@@ -107,13 +108,14 @@ export class InformeAvanceComponent implements OnInit, OnDestroy {
     return { fuente: { sleps: d.sleps.map((s) => s.slep), anios }, posiciones, alcanceCompleto: d.alcanceCompleto };
   }
 
-  // Guardar: un .html que se abre sin el sistema y conserva lo interactivo
-  // (filtros, gráficos, tooltips, ranking). Lleva los estilos, la página
-  // original, el motor y los datos. Generar Word/Excel/PDF y "Salir" necesitan
-  // el sistema, así que en el archivo guardado no aparecen.
-  guardar(): void {
-    if (!this.cfg || !this.plantilla) return;
-    const { alSalir: _, documento: __, ...datos } = this.cfg;
+  // Formato "HTML interactivo" de Generar informe: un .html que se abre sin el
+  // sistema y conserva lo interactivo (filtros, gráficos, tooltips, ranking).
+  // Lleva los estilos, la página original, el motor y los datos. Generar
+  // informe y "Salir" necesitan el sistema, así que en el archivo no aparecen.
+  // Devuelve el nombre del archivo descargado.
+  guardar(): string {
+    if (!this.cfg || !this.plantilla) throw new Error('el informe todavía no está listo.');
+    const { alSalir: _, documento: __, guardar: ___, ...datos } = this.cfg;
     // Se ocultan lo que necesita el sistema y el interruptor de Angular (el
     // archivo trae su propio interruptor claro/oscuro, sin Angular, que se
     // ubica en el mismo lugar del banner).
@@ -131,6 +133,7 @@ ${INTERRUPTOR_TEMA.script}`;
       // El archivo parte en el mismo tema con que se guardó.
       claseHtml: this.theme.esOscuro ? 'dark' : undefined,
     }));
+    return `${NOMBRE_INFORME}.html`;
   }
 
   private async logoComoDataUrl(): Promise<string> {

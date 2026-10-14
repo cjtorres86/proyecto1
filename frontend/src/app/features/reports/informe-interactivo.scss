@@ -106,9 +106,10 @@
 // (solo el ícono; el nombre aparece al pasar el mouse) y, si ni así caben,
 // pasan juntos a su propia fila, alineados a la izquierda. Lo decide
 // acomodarBarra() midiendo la barra real.
-.ia .toolbar.compacta .tb-acc .btn .tx{display:none}
-.ia .toolbar.compacta .tb-acc .btn{width:40px;padding:0;justify-content:center}
-.ia .toolbar.compacta .tb-acc .btn svg{width:17px;height:17px}
+// «Generar informe» nunca se compacta: siempre rectangular, con su texto.
+.ia .toolbar.compacta .tb-acc .btn:not(#r-open) .tx{display:none}
+.ia .toolbar.compacta .tb-acc .btn:not(#r-open){width:40px;padding:0;justify-content:center}
+.ia .toolbar.compacta .tb-acc .btn:not(#r-open) svg{width:17px;height:17px}
 .ia .toolbar.apilada .tb-acc{margin-left:0;flex-basis:100%}
 .ia .toolbar.apilada .tb-acc .btn{flex:1 1 auto;justify-content:center}
 .ia .btn.info{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}

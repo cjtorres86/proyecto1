@@ -23,6 +23,8 @@ export interface ConfigMotor {
   alSalir: () => void;
   // Genera el Word/Excel/PDF del modelo (documentos-informe.ts). No viaja en el .html guardado.
   documento?: (modelo: unknown, formato: 'docx' | 'xlsx' | 'pdf') => Promise<string>;
+  // Formato "HTML interactivo": descarga este informe como .html. No viaja en el .html guardado.
+  guardar?: () => Promise<string>;
 }
 
 export function iniciarMotor(CFG: ConfigMotor): () => void {
@@ -477,6 +479,8 @@ async function withCharts(M){for(const s of M.secs)if(s.charts)for(const c of s.
 async function generateReport(){
   const tipo=document.querySelector('input[name="r-tipo"]:checked').value,alc=document.querySelector('input[name="r-alc"]:checked').value,fx=document.querySelector('input[name="r-fmt"]:checked').value;
   const st=$("r-status"),btn=$("r-go");btn.disabled=true;st.className="status";st.textContent="Preparando el informe…";
+  // HTML interactivo: este mismo informe, completo, que se abre sin el sistema.
+  if(fx==="html"){try{const nombre=await CFG.guardar();st.className="status ok";st.textContent=`Informe guardado: ${nombre}`}catch(e){st.className="status err";st.textContent="No fue posible guardar el informe: "+e.message}finally{btn.disabled=false}return}
   try{let M=reportModel(tipo,alc);if(fx!=="xlsx")M=await withCharts(M);
     const nombre=await CFG.documento(M,fx);
     st.className="status ok";st.textContent=`Informe generado: ${nombre}`;

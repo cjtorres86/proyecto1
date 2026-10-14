@@ -25,6 +25,8 @@ export interface ConfigRanking {
   alSalir: () => void;
   pedirDetalle?: (anio: string, mes: number) => Promise<Record<string, [number, string, string][]>>;
   documento?: (modelo: unknown, formato: 'xlsx' | 'pdf') => Promise<string>;
+  // Formato "HTML interactivo": descarga este informe como .html.
+  guardar?: () => Promise<string>;
 }
 
 export interface MotorRanking {
@@ -356,8 +358,9 @@ function reportModel(tipo){
 function generateReport(){
   const tipo=document.querySelector('input[name="r-tipo"]:checked').value,fx=document.querySelector('input[name="r-fmt"]:checked').value;
   const st=$("r-status"),btn=$("r-go");btn.disabled=true;st.className="status";st.textContent="Preparando el informe…";
-  Promise.resolve().then(()=>CFG.documento(reportModel(tipo),fx))
-    .then(nombre=>{st.className="status ok";st.textContent=`Informe generado: ${nombre}`},
+  // HTML interactivo: este mismo informe, completo, que se abre sin el sistema.
+  Promise.resolve().then(()=>fx==="html"?CFG.guardar():CFG.documento(reportModel(tipo),fx))
+    .then(nombre=>{st.className="status ok";st.textContent=`${fx==="html"?"Informe guardado":"Informe generado"}: ${nombre}`},
       e=>{st.className="status err";st.textContent="No fue posible generar el informe: "+e.message})
     .then(()=>{btn.disabled=false});
 }

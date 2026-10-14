@@ -88,6 +88,7 @@ export class InformeRankingComponent implements OnInit, OnDestroy {
         alSalir: () => this.auth.logout(),
         pedirDetalle: (a, m) => this.pedirDetalle(a, m),
         documento: (modelo, formato) => generarDocumento(modelo, formato, logo),
+        guardar: () => this.guardar(),
       };
       this.estado = 'listo';
       this.cfg = cfg;
@@ -135,12 +136,14 @@ export class InformeRankingComponent implements OnInit, OnDestroy {
     document.fonts.ready.then(() => requestAnimationFrame(() => requestAnimationFrame(() => window.print())));
   }
 
-  // Guardar: un .html que se abre sin el sistema y conserva lo interactivo
-  // (filtros, orden, detalle de cada SLEP). Lleva el formulario de todos los
-  // meses del año que se está mirando. Generar informe y Salir necesitan el
-  // sistema, así que en el archivo guardado no aparecen.
-  async guardar(): Promise<void> {
-    if (!this.cfg || !this.plantilla || !this.motor || this.guardando) return;
+  // Formato "HTML interactivo" de Generar informe: un .html que se abre sin el
+  // sistema y conserva lo interactivo (filtros, orden, detalle de cada SLEP).
+  // Lleva el formulario de todos los meses del año que se está mirando.
+  // Generar informe y Salir necesitan el sistema: en el archivo no aparecen.
+  // Devuelve el nombre del archivo descargado.
+  async guardar(): Promise<string> {
+    if (!this.cfg || !this.plantilla || !this.motor) throw new Error('el informe todavía no está listo.');
+    if (this.guardando) throw new Error('ya se está guardando.');
     this.guardando = true;
     try {
       const anio = this.motor.anio();
@@ -151,7 +154,7 @@ export class InformeRankingComponent implements OnInit, OnDestroy {
           this.cfg!.detalle[`${anio}-${m}`] = false;
         }
       }));
-      const { alSalir: _, pedirDetalle: __, documento: ___, ...datos } = this.cfg;
+      const { alSalir: _, pedirDetalle: __, documento: ___, guardar: ____, ...datos } = this.cfg;
       const estilos = estilosDeLaPagina() + '\n' + OCULTOS_AL_GUARDAR + INTERRUPTOR_TEMA.estilos;
       const script = `var CFG=${jsonParaScript({ ...datos, imprimir: false })};CFG.alSalir=function(){};
 document.addEventListener('DOMContentLoaded',function(){(${iniciarMotorRanking.toString()})(CFG);});
@@ -166,6 +169,7 @@ ${INTERRUPTOR_TEMA.script}`;
         script,
         claseHtml: this.theme.esOscuro ? 'dark' : undefined,
       }));
+      return `${nombre}.html`;
     } finally {
       this.guardando = false;
     }
