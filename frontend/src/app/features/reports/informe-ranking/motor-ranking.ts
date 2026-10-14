@@ -298,7 +298,8 @@ const sinFlecha=t=>t==="="?"Se mantiene":t.replace("▲ ","Sube ").replace("▼ 
 function reportModel(tipo){
   const y=S.year,d=Y(),m=S.mes,mesTxt=`${cap1(MESES_L[m])} ${y}`,secs=[];
   const Q=tipo==="trimestral"?+$("r-trim").value:null;
-  const rangeM=(tipo==="mensual"?[m]:Q!=null?[Q*3,Q*3+1,Q*3+2]:[...Array(12).keys()]).filter(i=>i>=d.primero&&i<d.ultimoMes);
+  // Hasta el mes de referencia (nunca meses posteriores al elegido).
+  const rangeM=(tipo==="mensual"?[m]:Q!=null?[Q*3,Q*3+1,Q*3+2]:[...Array(12).keys()]).filter(i=>i>=d.primero&&i<d.ultimoMes&&i<=m);
   const last=rangeM[rangeM.length-1],first=rangeM[0];
   const perTxt=Q!=null?`T${Q+1} ${y} (${MESES_L[first]}${rangeM.length>1?" a "+MESES_L[last]:""})`:`${y} (${MESES_L[first]} a ${MESES_L[last]})`;
   const scope=CFG.alcanceCompleto?`${d.sleps.length} Servicios Locales de Educación Pública`:d.sleps[0].nombre;
@@ -363,9 +364,10 @@ function generateReport(){
 function syncReportForm(){
   const d=Y();
   $("r-tipo-m-t").textContent=`Mensual · ${cap1(MESES_L[S.mes])} ${S.year}`;
-  $("r-tipo-a-t").textContent=`Anual · ${S.year} (${d.rango})`;
+  // Anual y trimestral, hasta el mes de referencia.
+  $("r-tipo-a-t").textContent=`Anual · ${S.year} (${MESES[d.primero]}–${MESES[S.mes]})`;
   const tq=$("r-trim"),prev=tq.value;
-  tq.innerHTML=[0,1,2,3].filter(q=>q*3+2>=d.primero&&q*3<d.ultimoMes).map(q=>`<option value="${q}">T${q+1} · ${MESES[q*3]}–${MESES[q*3+2]}${q*3+2>=d.ultimoMes||q*3<d.primero?" (parcial)":""}</option>`).join("");
+  tq.innerHTML=[0,1,2,3].filter(q=>q*3+2>=d.primero&&q*3<=S.mes).map(q=>`<option value="${q}">T${q+1} · ${MESES[q*3]}–${MESES[q*3+2]}${q*3+2>S.mes||q*3<d.primero?" (parcial)":""}</option>`).join("");
   tq.value=[...tq.options].some(o=>o.value===prev)?prev:String(Math.floor(S.mes/3));
 }
 
@@ -399,7 +401,14 @@ function init(){
   alto();const ro=new ResizeObserver(alto);ro.observe(tb);observadores.push(ro);
   const sombra=()=>tb.classList.toggle("pegada",tb.getBoundingClientRect().top<=1&&scrollY>0);
   escuchar(window,"scroll",sombra,{passive:true});sombra();
+  // Acciones en la misma fila que los filtros; si no caben, se compactan y,
+  // si ni así, pasan juntas a su propia fila (ver .compacta / .apilada).
+  const acomodarBarra=()=>{const acc=tb.querySelector(".tb-acc"),ref=tb.querySelector(".tb-in>.field");if(!acc||!ref)return;
+    tb.classList.remove("compacta","apilada");const baja=()=>acc.offsetTop>=ref.offsetTop+ref.offsetHeight-1;
+    if(!baja())return;tb.classList.add("compacta");if(baja()){tb.classList.remove("compacta");tb.classList.add("apilada")}};
+  escuchar(window,"resize",acomodarBarra);
   buildSelects();render();
+  acomodarBarra();if(document.fonts)document.fonts.ready.then(acomodarBarra);
   if(S.slep!=null)setTimeout(()=>{const li=document.querySelector(`#rkl li[data-c="${S.slep}"]`);li&&li.scrollIntoView({block:"center"})});
 }
 

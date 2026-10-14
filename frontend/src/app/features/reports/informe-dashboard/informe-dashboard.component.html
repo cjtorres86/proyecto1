@@ -1,0 +1,224 @@
+<!-- Informe interactivo de dashboard: el Dashboard de la aplicación con el
+     lenguaje de los informes (banner institucional, barra fija y paneles).
+     Con ?imprimir=1 es el informe estático (la misma página, en claro, lista
+     para "Guardar como PDF"). -->
+@if (estado !== 'listo') {
+  <div class="ia-estado" role="status">
+    @switch (estado) {
+      @case ('cargando') { <p>Preparando el informe del dashboard…</p> }
+      @case ('sin-permiso') { <p>Tu perfil no incluye el informe del dashboard.</p> }
+      @default { <p>{{ mensaje }}</p> }
+    }
+  </div>
+}
+<div class="ia id" [hidden]="estado !== 'listo'">
+<div class="flag" aria-hidden="true"></div>
+<header class="band"><div class="band-in">
+  <div class="brand"><img [src]="logo" alt="Dirección de Educación Pública, Ministerio de Educación" width="88" height="80">
+    <div class="t">
+      <span class="eyebrow">Seguimiento de sumarios administrativos</span>
+      <h1>Dashboard de los Servicios Locales</h1>
+      <span class="subt">{{ slep ?? 'Todos los SLEP' }} · {{ mes }} {{ anio }}</span>
+    </div>
+  </div>
+  <!-- Modo claro / oscuro, persona conectada y Salir: el mismo lugar que en todos los sistemas. -->
+  <div class="usuario" data-lugar-tema>
+    @if (!imprimir) { <app-theme-toggle /> }
+    <span class="u-sep" aria-hidden="true"></span>
+    <div class="u-txt"><b>{{ usuario.nombre }}</b><small>{{ usuario.perfil }}</small></div>
+    <span class="u-sep" aria-hidden="true"></span>
+    <button type="button" class="btn-salir" id="salir" (click)="salir()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/></svg>Salir</button>
+  </div>
+</div></header>
+
+<div class="toolbar" id="toolbar" #barra [class.pegada]="barraPegada"><div class="tb-in">
+  <div class="field"><span class="lbl" id="lbl-anio">Año</span>
+    <div class="seg" id="years" role="group" aria-labelledby="lbl-anio">
+      @for (a of anios; track a) { <button type="button" [attr.aria-pressed]="a === anio" (click)="elegirAnio(a)">{{ a }}</button> }
+    </div></div>
+  <div class="field"><label for="mes">Mes de referencia</label>
+    <select id="mes" [value]="mes" (change)="elegirMes($any($event.target).value)">
+      @for (m of mesesDelAnio; track m) { <option [value]="m" [selected]="m === mes">{{ m }} {{ anio }}</option> }
+    </select></div>
+  @if (alcanceTodos) {
+    <div class="field"><label for="slep">Servicio Local</label>
+      <select id="slep" (change)="elegirSlep($any($event.target).value)">
+        <option value="" [selected]="!slep">Todos los SLEP (consolidado)</option>
+        @for (s of sleps; track s) { <option [value]="s" [selected]="s === slep">{{ s }}</option> }
+      </select></div>
+  }
+  <div class="tb-acc">
+    <button type="button" class="btn" id="g-save" (click)="guardar()" [disabled]="guardando || !modelo" aria-label="Guardar" title="Guardar: descarga este informe como archivo .html, interactivo, que se abre sin el sistema">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 13.5h11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="tx">{{ guardando ? 'Guardando…' : 'Guardar' }}</span></button>
+    <button type="button" class="btn primary" id="r-open" [attr.aria-expanded]="panel === 'informe'" aria-controls="rpanel" (click)="alternarPanel('informe')" aria-label="Generar informe" title="Generar informe">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.5h5.5L13 5v9.5H4zM9.5 1.5V5H13M6.5 8.5h4M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span class="tx">Generar informe</span></button>
+    <button type="button" class="btn info" id="h-open" [attr.aria-expanded]="panel === 'ayuda'" aria-controls="hpanel" (click)="alternarPanel('ayuda')" aria-label="¿Cómo se calcula?" title="¿Cómo se calcula?">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 7.2v4M8 4.8v.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span class="tx">¿Cómo se calcula?</span></button>
+  </div>
+</div></div>
+
+<div class="wrap">
+  <!-- Ventana: generar informe (acción) -->
+  <section class="panel bloque accion" id="rpanel" aria-labelledby="h-rep" [hidden]="panel !== 'informe'">
+    <div class="bloque-h"><div class="tit"><span class="ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 1.5h5.5L13 5v9.5H4zM9.5 1.5V5H13M6.5 8.5h4M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span><div><span class="eyebrow">Informes</span><h2 id="h-rep">Generar informe del dashboard</h2>
+      <span class="muted small">El informe toma el mes de referencia y el servicio seleccionados arriba ({{ slep ?? 'todos los SLEP' }} · {{ mes }} {{ anio }}). Hojas verticales, con cada bloque del dashboard, sus observaciones, el ranking y el banner institucional.</span></div></div><button type="button" class="x" data-cerrar aria-label="Cerrar" (click)="alternarPanel(null)">✕</button></div>
+    <div class="rgrid">
+      <fieldset><legend>Formato</legend>
+        <label class="opt"><input type="radio" name="r-fmt" value="xlsx" [checked]="formato === 'xlsx'" (change)="formato = 'xlsx'"><span>Excel (.xlsx)<small>Una hoja por tabla, con filtros</small></span></label>
+        <label class="opt"><input type="radio" name="r-fmt" value="pdf" [checked]="formato === 'pdf'" (change)="formato = 'pdf'"><span>PDF<small>Listo para enviar o imprimir · hoja vertical</small></span></label>
+      </fieldset>
+    </div>
+    <div class="rowbtns"><button type="button" class="btn primary" id="r-go" (click)="generar()" [disabled]="generando">Descargar informe</button><button type="button" class="btn" (click)="alternarPanel(null)">Cerrar</button><span class="status" [class.ok]="estadoInforme.tipo === 'ok'" [class.err]="estadoInforme.tipo === 'err'" role="status">{{ estadoInforme.texto }}</span></div>
+  </section>
+  <!-- Ventana: ¿cómo se calcula? (ayuda) -->
+  <section class="panel bloque ayuda" id="hpanel" aria-labelledby="h-calc" [hidden]="panel !== 'ayuda'">
+    <div class="bloque-h"><div class="tit"><span class="ico" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 7.2v4M8 4.8v.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><div><span class="eyebrow">Ayuda</span><h2 id="h-calc">¿Cómo se calcula el dashboard?</h2></div></div><button type="button" class="x" data-cerrar aria-label="Cerrar" (click)="alternarPanel(null)">✕</button></div>
+    <ul class="calc">
+      <li><b>Cada dato lleva su número de campo</b> del Formulario del mes; el consolidado suma los SLEP que informan.</li>
+      <li><b>% de avance = procesos cerrados (campo {{ n('Q45') }}) / sumarios instruidos (campo {{ n('Q37') }}).</b> La meta es el 100 %.</li>
+      <li>Nivel de avance: <b>bajo</b> bajo 25 %, <b>medio</b> de 25 % a menos de 75 %, <b>alto</b> 75 % o más.</li>
+      <li>En los bloques 4, 5 y 6, cada barra es la <b>parte del dato principal</b> que representa ese campo.</li>
+      <li>Licencias (campos {{ n('Q21') }} y {{ n('Q22') }}): los 6 SLEP con los valores más altos. En el consolidado, el {{ n('Q21') }} es la licencia más larga de todas y el {{ n('Q22') }}, el promedio ponderado por funcionarios involucrados.</li>
+      <li>Las <b>observaciones</b> (ⓘ) explican una diferencia entre campos que deberían coincidir o resumen lo importante del bloque.</li>
+    </ul>
+  </section>
+
+  @if (modelo; as M) {
+    <!-- 0 · Consolidado: campos 1 a 3 y el % de avance -->
+    <section class="panel" id="resumen" aria-labelledby="h-res">
+      <div class="panel-head">
+        <div><span class="eyebrow">{{ slep ? 'Servicio Local' : 'Consolidado' }} · {{ mes }} {{ anio }}</span><h2 id="h-res">{{ slep ?? 'Todos los SLEP' }}</h2></div>
+        <span class="pill" [ngClass]="nivel(M.av)">{{ M.av === null ? 'Sin sumarios instruidos' : textoNivel(M.av) + ' · ' + pct(M.av) }}</span>
+      </div>
+      <dl class="ident">
+        @for (i of M.identificacion; track i.n) { <div><dt>{{ i.n }}. {{ i.label }}</dt><dd>{{ i.valor }}</dd></div> }
+      </dl>
+      <div class="avance">
+        <div class="av-cab"><span class="lb">Avance de los sumarios</span><span class="av-num" [ngClass]="nivel(M.av)">{{ M.av === null ? '—' : pct(M.av) }}</span></div>
+        <div class="av-barra" role="img" [attr.aria-label]="'Avance ' + (M.av === null ? 'sin datos' : pct(M.av)) + ', meta 100 %'" [attr.data-tip]="tip('Q45', et('Q45', 'Procesos cerrados'), M.cerrados, et('Q37', 'Sumarios instruidos'), M.instruidos)">
+          @if (M.av !== null) { <i [style.width.%]="(M.av > 1 ? 1 : M.av < 0.01 ? 0.01 : M.av) * 100" [style.background]="colorAvance(M.av)"></i> }
+        </div>
+        <div class="av-escala"><span>0 %</span><span>50 %</span><span>Meta 100 %</span></div>
+        <p class="lede">{{ M.frase }}</p>
+      </div>
+      @for (cp of M.capsulasAvance; track cp) { <p class="nota"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
+    </section>
+
+    <div class="dgrid">
+      <!-- 1 · Origen: campos 4, 5 y 6 -->
+      <section class="panel" aria-labelledby="d-b1">
+        <div><span class="eyebrow">1 · Origen</span><h2 id="d-b1">Lo que informó Contraloría</h2></div>
+        <div class="tiles">
+          @for (c of M.origen; track c.id) {
+            <div class="tile" [attr.data-tip]="tip(c.id, et(c.id, c.label), c.valor)"><span class="nm">{{ et(c.id, c.label) }}</span><span class="val">{{ fmt(c.valor) }}</span><span class="gl">{{ c.nota }}</span></div>
+          }
+        </div>
+        @for (cp of M.capsulasOrigen; track cp) { <p class="nota"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
+      </section>
+
+      <!-- 2 · Involucrados: campos 7 y 8 (dona) -->
+      <section class="panel" aria-labelledby="d-b2">
+        <div><span class="eyebrow">2 · Involucrados</span><h2 id="d-b2">Situación de los funcionarios involucrados</h2></div>
+        @if (!M.dona.total) {
+          <p class="muted small">Sin datos de los campos {{ n('Q07') }} y {{ n('YA_NO_ESTAN') }} para este mes.</p>
+        } @else {
+          <div class="dona">
+            <svg viewBox="0 0 120 120" role="img" aria-label="Funcionarios involucrados según si continúan en el servicio">
+              @for (p of M.dona.partes; track p.id; let k = $index) {
+                @if (p.d) { <path [attr.d]="p.d" [attr.fill]="k === 0 ? 'var(--accent)' : 'var(--prev)'" [attr.data-tip]="tip(p.id, p.label, p.valor, 'los involucrados', M.dona.total)" /> }
+              }
+              <text x="60" y="58" text-anchor="middle" font-size="18" font-weight="700" fill="currentColor">{{ fmt(M.dona.total) }}</text>
+              <text x="60" y="73" text-anchor="middle" font-size="8.5" fill="var(--fg-3)">involucrados</text>
+            </svg>
+            <div class="dona-ley">
+              @for (p of M.dona.partes; track p.id; let k = $index) {
+                <span [attr.data-tip]="tip(p.id, p.label, p.valor, 'los involucrados', M.dona.total)"><i class="sw" [style.background]="k === 0 ? 'var(--accent)' : 'var(--prev)'"></i>{{ p.label }}<b>{{ fmt(p.valor) }}</b><small>{{ pct(p.pct) }}</small></span>
+              }
+            </div>
+          </div>
+        }
+        @for (cp of M.capsulasInvolucrados; track cp) { <p class="nota"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
+      </section>
+
+      <!-- 3 · Licencias: rankings de los campos 17 y 18 -->
+      <section class="panel ancho" aria-labelledby="d-b3">
+        <div><span class="eyebrow">3 · Licencias</span><h2 id="d-b3">Los SLEP con las licencias más largas y las remuneraciones más altas</h2></div>
+        <div class="dos">
+          @for (r of M.rankingsLic; track r.id) {
+            <div class="lic">
+              <h3>{{ r.titulo }}</h3>
+              @if (!r.filas.length) { <p class="muted small">Ningún SLEP informa este dato.</p> }
+              @for (f of r.filas; track f.slep) {
+                <div class="fila-rk" [class.propio]="f.propio"><span class="pos">{{ f.pos }}°</span><span class="sn" [title]="f.slep">{{ f.slep }}</span><span class="bar"><i [style.width.%]="f.ancho * 100" [style.background]="f.propio ? 'var(--head)' : f.pos === 1 ? 'var(--accent)' : 'color-mix(in srgb, var(--accent) 45%, var(--surface-2))'"></i></span><span class="num">{{ valorLic(r, f.valor) }}</span></div>
+              }
+              @if (r.propia; as f) {
+                <div class="fila-rk propio sep-rk"><span class="pos">{{ f.pos }}°</span><span class="sn" [title]="f.slep">{{ f.slep }}</span><span class="bar"><i [style.width.%]="f.ancho * 100" style="background:var(--head)"></i></span><span class="num">{{ valorLic(r, f.valor) }}</span></div>
+              }
+              @if (r.capsula) { <p class="nota"><span aria-hidden="true">ⓘ</span>{{ r.capsula }}</p> }
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- 4, 5 y 6: un dato principal y su desglose -->
+      @for (b of M.desgloses; track b.clave) {
+        <section class="panel" [attr.aria-labelledby]="'d-' + b.clave">
+          <div><span class="eyebrow">{{ b.eyebrow }}</span><h2 [id]="'d-' + b.clave">{{ b.titulo }}</h2></div>
+          <div class="tile key" [attr.data-tip]="tip(b.principal.id, et(b.principal.id, b.principal.label), b.principal.valor)"><span class="nm">{{ et(b.principal.id, b.principal.label) }}</span><span class="val">{{ fmt(b.principal.valor) }}</span><span class="gl">{{ b.principal.nota }}</span></div>
+          <p class="muted small">{{ b.orden }}</p>
+          <div class="barras">
+            @for (x of b.filas; track x.id) {
+              <div class="fila-h" [attr.data-tip]="tip(x.id, x.label, x.valor, et(b.principal.id, b.principal.label), b.principal.valor)">
+                <div class="arriba"><span>{{ x.label }}</span><span class="num">{{ fmt(x.valor) }}</span><span class="pc">{{ b.principal.valor ? pct(x.pct) : '' }}</span></div>
+                <span class="bar"><i [style.width.%]="(x.pct > 1 ? 1 : x.pct) * 100" [style.background]="colorBarra(x.rango)"></i></span>
+              </div>
+            }
+          </div>
+          @for (cp of b.capsulas; track cp) { <p class="nota"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
+        </section>
+      }
+
+      <!-- 7 · Anexo (solo con el formulario de 44 campos) -->
+      @if (M.anexo.length) {
+        <section class="panel" aria-labelledby="d-b7">
+          <div><span class="eyebrow">7 · Anexo</span><h2 id="d-b7">Seguimiento adicional (anexo)</h2></div>
+          <div class="tiles">
+            @for (c of M.anexo; track c.id) {
+              <div class="tile" [attr.data-tip]="tip(c.id, c.label, c.valor)"><span class="nm">{{ c.label }}</span><span class="val">{{ c.id === 'Q62' ? rem(c.valor) : fmt(c.valor) }}</span></div>
+            }
+          </div>
+        </section>
+      }
+    </div>
+
+    <!-- Ranking completo (todos los SLEP) -->
+    @if (!slep && M.ranking.length) {
+      <section class="panel" aria-labelledby="d-rk">
+        <div><span class="eyebrow">Ranking · {{ mes }} {{ anio }}</span><h2 id="d-rk">Avance de los sumarios por SLEP</h2>
+          <span class="muted small">1° = mayor avance; en empate, más procesos cerrados. Se destacan en rojo los servicios con avance bajo.</span></div>
+        <div class="tscroll">
+          <table class="dt rk-d">
+            <caption class="sr-only">Ranking de avance por SLEP</caption>
+            <thead><tr><th>N°</th><th>Servicio Local</th><th>{{ n('Q04') }}. Casos</th><th>{{ n('Q37') }}. Instruidos</th><th>{{ n('Q45') }}. Cerrados</th><th>% de avance</th><th class="izq">Avance (meta 100 %)</th></tr></thead>
+            <tbody>
+              @for (f of M.ranking; track f.slep) {
+                <tr>
+                  <td class="pos" [class.top]="f.pos && f.pos <= 3">{{ f.pos ? f.pos + '°' : '—' }}</td>
+                  <td class="sn">{{ f.slep }}</td>
+                  <td>{{ fmt(f.casos) }}</td><td>{{ fmt(f.instruidos) }}</td><td>{{ fmt(f.cerrados) }}</td>
+                  <td class="ex" [ngClass]="nivel(f.av)">{{ f.av === null ? '—' : pct(f.av) }}</td>
+                  <td class="izq">@if (f.av !== null) { <span class="barra"><i [style.width.%]="(f.av < 0.02 ? 0.02 : f.av > 1 ? 1 : f.av) * 100" [style.background]="'var(--' + nivel(f.av) + ')'"></i></span> } @else { <span class="muted small">Sin instruidos</span> }</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+    <footer>Fuente: Avance de Sumarios, datos informados por los Servicios Locales ({{ mes }} {{ anio }}). % de avance = procesos cerrados ÷ sumarios instruidos. Cada dato lleva su número de campo del Formulario del mes.</footer>
+  } @else if (cargandoDatos) {
+    <p class="muted" role="status">Cargando {{ mes }} {{ anio }}…</p>
+  }
+  <div class="tip tip-d" id="tip-d" hidden></div>
+</div>
+</div>

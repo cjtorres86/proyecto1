@@ -7,6 +7,7 @@ describe('destinoSeguro (ingreso único con destino)', () => {
     expect(destinoSeguro('/informe-avance')).toBe('/informe-avance');
     expect(destinoSeguro('/informe-ranking?mes=Agosto&anio=2026')).toBe('/informe-ranking?mes=Agosto&anio=2026');
     expect(destinoSeguro('/informe-ranking?imprimir=1&mes=Agosto&anio=2026')).toBe('/informe-ranking?imprimir=1&mes=Agosto&anio=2026');
+    expect(destinoSeguro('/informe-dashboard?mes=Agosto&anio=2026&slep=Valdivia')).toBe('/informe-dashboard?mes=Agosto&anio=2026&slep=Valdivia');
     expect(destinoSeguro('/descargar?archivo=consolidado-mes')).toBe('/descargar?archivo=consolidado-mes');
   });
 

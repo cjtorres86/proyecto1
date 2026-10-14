@@ -33,6 +33,8 @@ export const routes: Routes = [
   { path: 'informe-avance', loadComponent: () => import('./features/reports/informe-avance/informe-avance.component').then((m) => m.InformeAvanceComponent), canActivate: [authGuard] },
   // Informe de ranking (interactivo y, con ?imprimir=1, estático): mismo diseño que el nacional.
   { path: 'informe-ranking', loadComponent: () => import('./features/reports/informe-ranking/informe-ranking.component').then((m) => m.InformeRankingComponent), canActivate: [authGuard] },
+  // Informe de dashboard (interactivo y, con ?imprimir=1, estático): el Dashboard con el diseño de los informes.
+  { path: 'informe-dashboard', loadComponent: () => import('./features/reports/informe-dashboard/informe-dashboard.component').then((m) => m.InformeDashboardComponent), canActivate: [authGuard] },
   // Descarga directa de un Excel (la usa el asistente del portal).
   { path: 'descargar', loadComponent: () => import('./features/reports/descarga/descarga.component').then((m) => m.DescargaComponent), canActivate: [authGuard] },
   {

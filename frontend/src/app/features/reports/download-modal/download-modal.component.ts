@@ -52,6 +52,8 @@ export class DownloadModalComponent {
     sumarios_consolidado_mes: () => this.descargarExcelGeneral(),
     sumarios_consolidado_slep: () => this.descargarExcelPorSlep(),
     sumarios_informe_interactivo: () => this.verInformeInteractivo(),
+    sumarios_dashboard_interactivo: () => this.verDashboard(false),
+    sumarios_dashboard_pdf: () => this.verDashboard(true),
     sumarios_ranking_interactivo: () => this.verRanking(false),
     sumarios_errores_interactivo: () => this.abrirInforme(false, 'errores'),
     sumarios_informe_general_pdf: () => this.abrirInforme(true, 'general'),
@@ -131,6 +133,15 @@ export class DownloadModalComponent {
     const p = new URLSearchParams({ mes: this.data.mes, anio: this.data.anio });
     if (this.data.slep) p.set('slep', this.data.slep);
     window.open(`/informe-avance?${p.toString()}`, '_blank');
+  }
+
+  // Informe de dashboard: el Dashboard del mes (y del SLEP, si hay uno activo)
+  // con el diseño de los informes. Estático = la misma página con ?imprimir=1.
+  private verDashboard(imprimir: boolean): void {
+    const p = new URLSearchParams({ mes: this.data.mes, anio: this.data.anio });
+    if (this.data.slep) p.set('slep', this.data.slep);
+    if (imprimir) p.set('imprimir', '1');
+    window.open(`/informe-dashboard?${p.toString()}`, '_blank');
   }
 
   // Informe de ranking (mismo diseño que el nacional), en el mes que se está

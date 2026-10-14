@@ -128,7 +128,7 @@ function render(){
     (key==="TOTAL"?` Informan ${R.n} de ${d.sleps.length} SLEP.`:"");
   drawTiles(R,Rp);
   $("h-chart").textContent=`% de avance · ${nm}, ${S.year}`;
-  const vals=[...Array(12).keys()].map(i=>rec(S.year,key,i)).filter(x=>x&&x.av!=null);
+  const vals=[...Array(m+1).keys()].map(i=>rec(S.year,key,i)).filter(x=>x&&x.av!=null);
   $("sub-chart").textContent=!vals.length?"Sin avance que medir en el año.":
     `${vals.filter(x=>nivel(x.av)==="bajo").length} de ${vals.length} meses informados con avance bajo. Pase el mouse sobre un mes para ver el detalle; haga clic para elegirlo.`;
   $("lg-prev").hidden=!cmpOn();$("lg-prev-t").textContent=`% de avance ${prevYear()}`;
@@ -175,8 +175,11 @@ function buildLine(svg,W,o){
   const C=o.C,H=o.H||(W<560?240:300),pl=W<560?46:58,pr=W<560?16:86,pt=18,pb=26;
   svg.setAttribute("viewBox",`0 0 ${W} ${H}`);svg.setAttribute("height",H);svg.innerHTML="";
   if(!o.interactive){svg.setAttribute("width",W);svg.setAttribute("font-family","Arial, Helvetica, sans-serif");el("rect",{x:0,y:0,width:W,height:H,fill:C.surface},svg)}
-  const yr=o.y,R=[...Array(12).keys()].map(i=>rec(yr,o.key,i)),A=R.map(r=>r?r.av:null);
-  const P=o.cmp?[...Array(12).keys()].map(i=>{const r=rec(String(+yr-1),o.key,i);return r?r.av:null}):null;
+  // El mes de referencia (o el último del período) es el tope: los meses
+  // posteriores no se dibujan, aunque ya tengan datos cargados.
+  const tope=o.range?o.range[1]:o.mes!=null?o.mes:11;
+  const yr=o.y,R=[...Array(12).keys()].map(i=>i>tope?null:rec(yr,o.key,i)),A=R.map(r=>r?r.av:null);
+  const P=o.cmp?[...Array(12).keys()].map(i=>{if(i>tope)return null;const r=rec(String(+yr-1),o.key,i);return r?r.av:null}):null;
   const vals=A.filter(v=>v!=null),pv=P?P.filter(v=>v!=null):[];
   if(!vals.length){el("text",{x:W/2,y:H/2,"text-anchor":"middle",fill:C.fg3,"font-size":13},svg,"Sin avance que medir en el año");return false}
   let hi=1;if(o.escala==="aj"){const mx=Math.max(...vals,...pv,.01);hi=Math.min(1,niceTicks(0,mx*1.3,4).slice(-1)[0]||mx*1.3);if(hi<mx)hi=mx*1.15}
@@ -205,9 +208,9 @@ function buildLine(svg,W,o){
   if(!o.interactive)return true;
   const tip=$("tip"),cross=el("line",{y1:pt,y2:H-pb,stroke:C.fg3,"stroke-width":1,visibility:"hidden"},svg);
   MESES.forEach((_,i)=>{const r=el("rect",{x:pl+bw*i,y:pt,width:bw,height:H-pt-pb,fill:"transparent",style:"cursor:pointer"},svg);
-    r.addEventListener("mouseenter",()=>{cross.setAttribute("x1",x(i));cross.setAttribute("x2",x(i));cross.setAttribute("visibility","visible");showTip(tip,tipMes(o.key,i),x(i),W)});
+    r.addEventListener("mouseenter",()=>{if(i>tope)return;cross.setAttribute("x1",x(i));cross.setAttribute("x2",x(i));cross.setAttribute("visibility","visible");showTip(tip,tipMes(o.key,i),x(i),W)});
     r.addEventListener("mouseleave",()=>{tip.hidden=true;cross.setAttribute("visibility","hidden")});
-    r.addEventListener("click",()=>{if(A[i]!=null||rec(yr,o.key,i)){S.mes=i;$("mes").value=i;render()}});
+    r.addEventListener("click",()=>{if(i<=tope&&(A[i]!=null||rec(yr,o.key,i))){S.mes=i;$("mes").value=i;render()}});
   });
   return true;
 }
@@ -244,7 +247,7 @@ function tipMes(key,i,yr=S.year){
 function drawDiff(){
   const svg=$("diff"),box=$("cb-diff"),W=Math.max(300,box.clientWidth),H=W<560?160:180,pl=W<560?46:58,pr=W<560?16:86,pt=18,pb=22;
   svg.setAttribute("viewBox",`0 0 ${W} ${H}`);svg.setAttribute("height",H);svg.innerHTML="";
-  const A=[...Array(12).keys()].map(i=>{const r=rec(S.year,S.slep,i);return r?r.av:null});
+  const A=[...Array(12).keys()].map(i=>{if(i>S.mes)return null;const r=rec(S.year,S.slep,i);return r?r.av:null});
   const D=A.map((v,i)=>v==null||i===0||A[i-1]==null?null:v-A[i-1]),dv=D.filter(v=>v!=null);
   if(!dv.length){el("text",{x:W/2,y:H/2,"text-anchor":"middle",fill:"var(--fg-3)","font-size":13},svg,"Se necesitan dos meses seguidos con avance para calcular la variación");return}
   let m=Math.max(...dv.map(Math.abs),.005)*1.25;const ticks=niceTicks(-m,m,4);m=Math.max(m,Math.abs(ticks[0]),Math.abs(ticks[ticks.length-1]));
@@ -262,7 +265,7 @@ function drawDiff(){
       el("path",{d:path,fill:v>=0?"var(--alto)":"var(--bajo)"},svg);
       if(i===S.mes||bw>44)el("text",{x:x(i)+bw/2,y:v>=0?top-4:top+h+11,"text-anchor":"middle",fill:"var(--fg)","font-size":10.5,"font-weight":i===S.mes?700:500},svg,pp(v).replace(" pp",""))}
     const hit=el("rect",{x:x(i),y:pt,width:bw,height:H-pt-pb,fill:"transparent",style:"cursor:pointer"},svg);
-    hit.addEventListener("mouseenter",()=>{const R=rec(S.year,S.slep,i),Rp=rec(S.year,S.slep,i-1);
+    hit.addEventListener("mouseenter",()=>{if(i>S.mes)return;const R=rec(S.year,S.slep,i),Rp=rec(S.year,S.slep,i-1);
       showTip(tip,`<span class="h">${cap1(MESES_L[i])} ${S.year}<small>${slepName(S.slep)}</small></span>`+(v==null?`<span class="muted">${R?"Sin mes anterior con avance para comparar.":"Sin información."}</span>`:
         `<span class="r"><span class="big">${pp(v)}</span><span class="muted">vs. ${MESES_L[i-1]}</span></span>`+fila(`Avance ${MESES_L[i-1]}`,pct(A[i-1]))+fila(`Avance ${MESES_L[i]}`,`<b>${pct(A[i])}</b>`)+
         `<span class="sep"></span><span class="sec">Qué explica el cambio</span>`+fila("Procesos cerrados en el mes",fmtS(R.cerr-Rp.cerr))+fila("Nuevos sumarios instruidos",fmtS(R.ins-Rp.ins))+fila("Procesos en curso",fmtS(R.curso-Rp.curso))),x(i)+bw/2,W)});
@@ -272,7 +275,7 @@ function drawDiff(){
 }
 
 function drawTable(){
-  const rows=[...Array(12).keys()].map(i=>{const R=rec(S.year,S.slep,i),Rp=rec(S.year,S.slep,i-1);
+  const rows=[...Array(S.mes+1).keys()].map(i=>{const R=rec(S.year,S.slep,i),Rp=rec(S.year,S.slep,i-1);
     if(!R)return `<tr><td>${cap1(MESES_L[i])}</td>${"<td>—</td>".repeat(7)}<td><span class="pill na">Sin información</span></td></tr>`;
     return `<tr${i===S.mes?' style="font-weight:600"':""}><td>${cap1(MESES_L[i])}</td><td>${fmt(R.inv)}</td><td>${fmt(R.ins)}</td><td>${fmt(R.curso)}</td><td>${fmt(R.cerr)}</td><td>${fmt(R.san)}</td><td><b>${pct(R.av)}</b></td><td>${Rp&&Rp.av!=null&&R.av!=null?pp(R.av-Rp.av):"—"}</td><td>${pill(nivel(R.av))}</td></tr>`}).join("");
   $("tbl").innerHTML=`<thead><tr><th>Mes</th><th>Involucrados</th><th>Instruidos</th><th>En curso</th><th>Cerrados</th><th>Sanciones</th><th>% de avance</th><th>Var. mensual</th><th>Nivel</th></tr></thead><tbody>${rows}</tbody>`;
@@ -301,7 +304,8 @@ function drawHeat(){
   const cuenta=nv=>rk.L.filter(x=>nivel(x.r.av)===nv).length;
   const top=rk.L.slice(0,3).map(x=>`${x.s.nombre} (${pct(x.r.av)})`);
   $("pan-lede").innerHTML=`En ${MESES_L[m]} de ${S.year}, de ${rk.n} SLEP con sumarios instruidos: <b>${cuenta("alto")}</b> con avance alto, <b>${cuenta("medio")}</b> medio y <b>${cuenta("bajo")}</b> bajo.${top.length?` Mayores avances: ${top.join(", ")}.`:""}`;
-  const meses=[...Array(12).keys()];
+  // Hasta el mes de referencia: los meses posteriores no se muestran.
+  const meses=[...Array(m+1).keys()];
   const head=`<thead><tr><th title="Posición en el ranking del mes de referencia">N°</th><th class="rh">Servicio</th>${meses.map(i=>`<th>${MESES[i]}${i>=d.primero&&i<d.ultimoMes?`<span class="cnt" title="SLEP con avance bajo">▼ ${bajos[i]}</span>`:""}</th>`).join("")}</tr></thead>`;
   const body=list.map(({s,pos})=>`<tr data-c="${s.cod}" class="${S.slep===s.cod?"sel":""}"><td class="pos${pos&&pos<=3?" top":""}">${pos?pos+"°":"—"}</td><td class="name" tabindex="0">${s.nombre}</td>${meses.map(mm=>{
     const r=metr(s.m[mm]);
@@ -389,7 +393,8 @@ const slug=s=>s.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Za-z0-9]+/g
 function reportModel(tipo,alcance){
   const y=S.year,d=Y(),m=S.mes,mesTxt=`${cap1(MESES_L[m])} ${y}`,secs=[];
   const Q=tipo==="trimestral"?+$("r-trim").value:null;
-  const rangeM=(Q!=null?[Q*3,Q*3+1,Q*3+2]:[...Array(12).keys()]).filter(i=>i>=d.primero&&i<d.ultimoMes);
+  // Hasta el mes de referencia (nunca meses posteriores al elegido).
+  const rangeM=(Q!=null?[Q*3,Q*3+1,Q*3+2]:[...Array(12).keys()]).filter(i=>i>=d.primero&&i<d.ultimoMes&&i<=m);
   const last=rangeM[rangeM.length-1];
   const perTxt=Q!=null?`T${Q+1} ${y} (${MESES_L[rangeM[0]]}${rangeM.length>1?" a "+MESES_L[last]:""})`:`${y} (${MESES_L[rangeM[0]]} a ${MESES_L[last]})`;
   const nota={h:"Nota metodológica",p:[`El % de avance corresponde a los procesos cerrados divididos por los sumarios instruidos, la misma regla que usa Avance de Sumarios. La meta es el 100 %. Nivel de avance: bajo, menos de 25 %; medio, de 25 % a menos de 75 %; alto, 75 % o más. La variación se expresa en puntos porcentuales (pp). Sanciones aplicadas = censura, multa, suspensión y destitución. Los servicios sin sumarios instruidos no tienen avance que medir y no entran en el ranking; los servicios sin información en un mes no se consideran en el consolidado de ese mes.`]};
@@ -412,7 +417,7 @@ function reportModel(tipo,alcance){
           ...IND.map(e=>({c:[e.n,R[e.k],Rp?Rp[e.k]:null,Rp?R[e.k]-Rp[e.k]:null],over:new Set()})),
           {c:["% de avance",null,null,null],avance:[R.av,Rp?Rp.av:null],bold:true,over:new Set()}]}});
       const ultFila=secs[0].table.rows[secs[0].table.rows.length-1];ultFila.c=["% de avance",pct(R.av),Rp?pct(Rp.av):"—",Rp&&Rp.av!=null?pp(R.av-Rp.av):"—"];ultFila.txtRow=true;
-      secs.push({h:"2. Evolución del avance consolidado",sheet:null,p:["Línea azul: % de avance de todos los SLEP que informan; línea segmentada: meta del 100 %. Puntos rojos, ámbar y azules: avance bajo, medio y alto."],charts:[{key:"TOTAL",cap:`% de avance consolidado, ${y}`,mes:m}]});
+      secs.push({h:"2. Evolución del avance consolidado",sheet:null,p:[],charts:[{key:"TOTAL",cap:`% de avance consolidado, ${y}`,mes:m}]});
       secs.push({h:"3. Ranking de avance por SLEP",sheet:"Ranking",p:[`Servicios ordenados por % de avance en ${MESES_L[m]} de ${y} (1° = mayor avance). Se destacan en rojo los servicios con avance bajo.`],table:tabRanking(m)});
     }else{
       title=`Informe ${Q!=null?"trimestral":"anual"} de avance de sumarios · ${perTxt}`;file=Q!=null?`Informe_trimestral_avance_sumarios_${y}_T${Q+1}`:`Informe_anual_avance_sumarios_${y}`;
@@ -435,7 +440,7 @@ function reportModel(tipo,alcance){
       secs.push({h:"1. Situación del mes",sheet:"Resumen",p:[!R?`${s.nombre} no registra información en ${MESES_L[m]} de ${y}.`:R.av==null?`${s.nombre} no registra sumarios instruidos en ${MESES_L[m]} de ${y}.`:
         `En ${MESES_L[m]} de ${y}, ${s.nombre} tiene ${fmt(R.cerr)} de ${fmt(R.ins)} sumarios instruidos con proceso cerrado: un avance de ${pct(R.av)} (${NIVEL_TXT[nivel(R.av)].toLowerCase()})${Rp&&Rp.av!=null?`, ${pp(R.av-Rp.av)} respecto de ${MESES_L[m-1]}`:""}. Ocupa el lugar ${p}° de ${rk.n} en el ranking del mes; el avance consolidado de los SLEP es ${pct(RT.av)}. Quedan ${fmt(R.pend)} procesos por cerrar.`],
         table:R?{cols:[{h:"Indicador",t:"txt",w:2.4},{h:mesTxt,t:"n"},{h:cap1(MESES_L[m-1]||""),t:"n"},{h:"Variación",t:"s"}],rows:IND.map(e=>({c:[e.n,R[e.k],Rp?Rp[e.k]:null,Rp?R[e.k]-Rp[e.k]:null],over:new Set()}))}:null});
-      secs.push({h:"2. Evolución del avance en el año",sheet:null,p:["Línea azul: % de avance del servicio; línea segmentada: meta del 100 %. Puntos rojos, ámbar y azules: avance bajo, medio y alto."],charts:[{key:s.cod,cap:`% de avance · ${s.nombre}, ${y}`,mes:m}]});
+      secs.push({h:"2. Evolución del avance en el año",sheet:null,p:[],charts:[{key:s.cod,cap:`% de avance · ${s.nombre}, ${y}`,mes:m}]});
       secs.push({h:"3. Detalle mensual",sheet:"Detalle mensual",p:[],table:{small:true,cols:colsMes,rows:filasMes([...Array(m+1).keys()].filter(i=>i>=d.primero))}});
     }else{
       title=`Informe ${Q!=null?"trimestral":"anual"} de avance de sumarios · ${s.nombre} · ${perTxt}`;file=Q!=null?`Informe_trimestral_${slug(s.nombre)}_${y}_T${Q+1}`:`Informe_anual_${slug(s.nombre)}_${y}`;
@@ -479,9 +484,10 @@ function syncReportForm(){
   $("r-alc-slep").disabled=!single;$("r-alc-slep-t").textContent=single?`Solo ${slepName(S.slep)}`:"Solo un SLEP (seleccione uno arriba)";
   if(!single&&CFG.alcanceCompleto)$("r-alc-todos").checked=true;
   $("r-tipo-m-t").textContent=`Mensual · ${cap1(MESES_L[S.mes])} ${S.year}`;
-  $("r-tipo-a-t").textContent=`Anual · ${S.year} (${d.rango})`;
+  // Anual y trimestral, hasta el mes de referencia.
+  $("r-tipo-a-t").textContent=`Anual · ${S.year} (${MESES[d.primero]}–${MESES[S.mes]})`;
   const tq=$("r-trim"),prev=tq.value;
-  tq.innerHTML=[0,1,2,3].filter(q=>q*3+2>=d.primero&&q*3<d.ultimoMes).map(q=>`<option value="${q}">T${q+1} · ${MESES[q*3]}–${MESES[q*3+2]}${q*3+2>=d.ultimoMes||q*3<d.primero?" (parcial)":""}</option>`).join("");
+  tq.innerHTML=[0,1,2,3].filter(q=>q*3+2>=d.primero&&q*3<=S.mes).map(q=>`<option value="${q}">T${q+1} · ${MESES[q*3]}–${MESES[q*3+2]}${q*3+2>S.mes||q*3<d.primero?" (parcial)":""}</option>`).join("");
   tq.value=[...tq.options].some(o=>o.value===prev)?prev:String(Math.floor(S.mes/3));
 }
 
@@ -512,6 +518,12 @@ function init(){
   alto();const ro1=new ResizeObserver(alto);ro1.observe(tb);observadores.push(ro1);
   const sombra=()=>tb.classList.toggle("pegada",tb.getBoundingClientRect().top<=1&&scrollY>0);
   escuchar(window,"scroll",sombra,{passive:true});sombra();
+  // Acciones en la misma fila que los filtros; si no caben, se compactan y,
+  // si ni así, pasan juntas a su propia fila (ver .compacta / .apilada).
+  const acomodarBarra=()=>{const acc=tb.querySelector(".tb-acc"),ref=tb.querySelector(".tb-in>.field");if(!acc||!ref)return;
+    tb.classList.remove("compacta","apilada");const baja=()=>acc.offsetTop>=ref.offsetTop+ref.offsetHeight-1;
+    if(!baja())return;tb.classList.add("compacta");if(baja()){tb.classList.remove("compacta");tb.classList.add("apilada")}};
+  escuchar(window,"resize",acomodarBarra);acomodarBarra();if(document.fonts)document.fonts.ready.then(acomodarBarra);
   $("r-go").onclick=generateReport;
   $("r-trim").addEventListener("change",()=>{document.querySelector('input[name="r-tipo"][value="trimestral"]').checked=true});
   escuchar(document,"click",e=>{const b=e.target.closest("[data-copy]");if(b)copyTable(b.dataset.copy)});
