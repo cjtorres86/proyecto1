@@ -1,5 +1,5 @@
 import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
-import { NgClass, Location } from '@angular/common';
+import { NgClass, NgTemplateOutlet, Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { catchError, firstValueFrom, forkJoin, of } from 'rxjs';
@@ -30,7 +30,7 @@ const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/
 @Component({
   selector: 'app-informe-dashboard',
   standalone: true,
-  imports: [NgClass, ThemeToggleComponent],
+  imports: [NgClass, NgTemplateOutlet, ThemeToggleComponent],
   templateUrl: './informe-dashboard.component.html',
   styleUrls: ['../informe-interactivo.scss'],
   encapsulation: ViewEncapsulation.None,
@@ -138,6 +138,7 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
   // la dirección al día, para que un enlace o F5 abran lo mismo.
   private cargar(): void {
     this.cargandoDatos = true;
+    this.notasAbiertas = null;
     this.modelo = null;
     this.des = {};
     this.porSlep.clear();
@@ -273,7 +274,46 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   alEscape(): void {
-    this.panel = null;
+    if (this.notasAbiertas) this.cerrarNotas();
+    else this.panel = null;
+  }
+
+  // ---------- Avance en una sola línea ----------
+  // Cerrados de instruidos y cuánto falta para la meta (sin cápsulas aparte).
+  lineaAvance(M: ModeloDashboard): string {
+    if (M.av === null) return M.frase;
+    const faltan = Math.max(M.instruidos - M.cerrados, 0);
+    return `${M.frase.replace(/\.$/, '')}; ${faltan ? `faltan ${fmt(faltan)} para la meta del 100 %` : 'meta cumplida: todos tienen su proceso cerrado'}.`;
+  }
+
+  // ---------- Notas (ⓘ) por sección ----------
+  // No se muestran a la vista: cada sección con notas tiene su botón «Notas»
+  // que abre la ventana con todas, ordenadas por sección.
+  notasAbiertas: string | null = null;
+  get seccionesNotas(): { clave: string; eyebrow: string; titulo: string; notas: string[] }[] {
+    const M = this.modelo;
+    if (!M) return [];
+    return [
+      { clave: 'origen', eyebrow: '1 · Origen', titulo: 'Lo que informó Contraloría', notas: M.capsulasOrigen },
+      { clave: 'involucrados', eyebrow: '2 · Involucrados', titulo: 'Situación de los funcionarios involucrados', notas: M.capsulasInvolucrados },
+      { clave: 'licencias', eyebrow: '3 · Licencias', titulo: 'Los SLEP con las licencias más largas y las remuneraciones más altas', notas: M.rankingsLic.map((r) => r.capsula).filter(Boolean) },
+      ...M.desgloses.map((b) => ({ clave: b.clave, eyebrow: b.eyebrow, titulo: b.titulo, notas: b.capsulas })),
+    ].filter((s) => s.notas.length);
+  }
+  notasDe(clave: string): string[] {
+    return this.seccionesNotas.find((s) => s.clave === clave)?.notas ?? [];
+  }
+  abrirNotas(clave: string): void {
+    this.notasAbiertas = clave;
+    setTimeout(() => {
+      document.querySelector(`#notas [data-sec="${clave}"]`)?.scrollIntoView({ block: 'nearest' });
+      document.querySelector<HTMLElement>('#notas [data-cerrar-notas]')?.focus();
+    });
+  }
+  cerrarNotas(): void {
+    const clave = this.notasAbiertas;
+    this.notasAbiertas = null;
+    if (clave) setTimeout(() => document.querySelector<HTMLElement>(`[data-notas="${clave}"]`)?.focus());
   }
 
   // ---------- Generar informe (PDF, Excel o HTML interactivo) ----------
@@ -329,7 +369,7 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     const hoy = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const mm = String(MESES.indexOf(this.mes) + 1).padStart(2, '0');
     const secs: unknown[] = [];
-    secs.push({ h: 'Avance de los sumarios', sheet: 'Resumen', p: M.capsulasAvance, charts: g['avance'],
+    secs.push({ h: 'Avance de los sumarios', sheet: 'Resumen', p: [this.lineaAvance(M)], charts: g['avance'],
       table: { cols: [{ h: 'Dato', t: 'txt', w: 2.6 }, { h: 'Valor', t: 'txt', w: 1.4 }], rows: [
         ...M.identificacion.map((i) => fila([`${i.n}. ${i.label}`, i.valor], { txtRow: true })),
         fila([this.et('Q37', 'Sumarios instruidos'), fmt(M.instruidos)], { txtRow: true }),
@@ -402,7 +442,10 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
       const aviso = `<p style="margin:0;padding:6px 16px;background:#eef4fb;color:#25306B;font:12px Roboto,Arial,sans-serif">${nombre} · guardado el ${hoy} desde Avance de Sumarios. Los datos son los de ese momento.</p>`;
       const ctx = { ambito: this.slep ?? `Todos los SLEP · ${this.mes} ${this.anio}`, consolidado: !this.slep, des: this.des };
       const script = `document.addEventListener('DOMContentLoaded',function(){var r=document.querySelector('.ia.id');(${activarTipsDashboard.toString()})(r,${jsonParaScript(ctx)});
-var b=document.getElementById('h-open'),p=document.getElementById('hpanel');if(b&&p){b.onclick=function(){p.hidden=!p.hidden;b.setAttribute('aria-expanded',String(!p.hidden))};p.querySelectorAll('[data-cerrar]').forEach(function(x){x.onclick=function(){p.hidden=true;b.setAttribute('aria-expanded','false')}})}});
+var b=document.getElementById('h-open'),p=document.getElementById('hpanel');if(b&&p){b.onclick=function(){p.hidden=!p.hidden;b.setAttribute('aria-expanded',String(!p.hidden))};p.querySelectorAll('[data-cerrar]').forEach(function(x){x.onclick=function(){p.hidden=true;b.setAttribute('aria-expanded','false')}})}
+var v=document.getElementById('notas');if(v){var cerrar=function(){v.hidden=true};v.onclick=cerrar;v.querySelector('.notas-ventana').onclick=function(e){e.stopPropagation()};v.querySelectorAll('[data-cerrar-notas]').forEach(function(x){x.onclick=cerrar});
+document.querySelectorAll('[data-notas]').forEach(function(x){x.onclick=function(){var c=x.getAttribute('data-notas');v.querySelectorAll('[data-sec]').forEach(function(s){s.classList.toggle('activa',s.getAttribute('data-sec')===c)});v.hidden=false;var s=v.querySelector('[data-sec="'+c+'"]');if(s)s.scrollIntoView({block:'nearest'})}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')cerrar()})}});
 ${INTERRUPTOR_TEMA.script}`;
       descargarHtml(nombre, documentoAutonomo({
         titulo: nombre,

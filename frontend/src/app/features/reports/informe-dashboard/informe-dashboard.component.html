@@ -98,26 +98,24 @@
           @if (M.av !== null) { <i [style.width.%]="(M.av > 1 ? 1 : M.av < 0.01 ? 0.01 : M.av) * 100" [style.background]="colorAvance(M.av)"></i> }
         </div>
         <div class="av-escala"><span>0 %</span><span>50 %</span><span>Meta 100 %</span></div>
-        <p class="lede">{{ M.frase }}</p>
+        <p class="lede">{{ lineaAvance(M) }}</p>
       </div>
-      @for (cp of M.capsulasAvance; track cp) { <p class="nota"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
     </section>
 
     <div class="dgrid">
       <!-- 1 · Origen: campos 4, 5 y 6 -->
       <section class="panel" aria-labelledby="d-b1">
-        <div><span class="eyebrow">1 · Origen</span><h2 id="d-b1">Lo que informó Contraloría</h2></div>
+        <div class="sec-head"><div><span class="eyebrow">1 · Origen</span><h2 id="d-b1">Lo que informó Contraloría</h2></div><ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'origen' }" /></div>
         <div class="tiles">
           @for (c of M.origen; track c.id) {
             <div class="tile" [attr.data-tip]="tip(c.id, et(c.id, c.label), c.valor)"><span class="nm">{{ et(c.id, c.label) }}</span><span class="val">{{ fmt(c.valor) }}</span><span class="gl">{{ c.nota }}</span></div>
           }
         </div>
-        @for (cp of M.capsulasOrigen; track cp) { <p class="nota"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
       </section>
 
       <!-- 2 · Involucrados: campos 7 y 8 (dona) -->
       <section class="panel" aria-labelledby="d-b2">
-        <div><span class="eyebrow">2 · Involucrados</span><h2 id="d-b2">Situación de los funcionarios involucrados</h2></div>
+        <div class="sec-head"><div><span class="eyebrow">2 · Involucrados</span><h2 id="d-b2">Situación de los funcionarios involucrados</h2></div><ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'involucrados' }" /></div>
         @if (!M.dona.total) {
           <p class="muted small">Sin datos de los campos {{ n('Q07') }} y {{ n('YA_NO_ESTAN') }} para este mes.</p>
         } @else {
@@ -136,12 +134,11 @@
             </div>
           </div>
         }
-        @for (cp of M.capsulasInvolucrados; track cp) { <p class="nota"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
       </section>
 
       <!-- 3 · Licencias: rankings de los campos 17 y 18 -->
       <section class="panel ancho" aria-labelledby="d-b3">
-        <div><span class="eyebrow">3 · Licencias</span><h2 id="d-b3">Los SLEP con las licencias más largas y las remuneraciones más altas</h2></div>
+        <div class="sec-head"><div><span class="eyebrow">3 · Licencias</span><h2 id="d-b3">Los SLEP con las licencias más largas y las remuneraciones más altas</h2></div><ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'licencias' }" /></div>
         <div class="dos">
           @for (r of M.rankingsLic; track r.id) {
             <div class="lic">
@@ -153,7 +150,6 @@
               @if (r.propia; as f) {
                 <div class="fila-rk propio sep-rk"><span class="pos">{{ f.pos }}°</span><span class="sn" [title]="f.slep">{{ f.slep }}</span><span class="bar"><i [style.width.%]="f.ancho * 100" style="background:var(--head)"></i></span><span class="num">{{ valorLic(r, f.valor) }}</span></div>
               }
-              @if (r.capsula) { <p class="nota"><span aria-hidden="true">ⓘ</span>{{ r.capsula }}</p> }
             </div>
           }
         </div>
@@ -162,7 +158,7 @@
       <!-- 4, 5 y 6: un dato principal y su desglose -->
       @for (b of M.desgloses; track b.clave) {
         <section class="panel" [attr.aria-labelledby]="'d-' + b.clave">
-          <div><span class="eyebrow">{{ b.eyebrow }}</span><h2 [id]="'d-' + b.clave">{{ b.titulo }}</h2></div>
+          <div class="sec-head"><div><span class="eyebrow">{{ b.eyebrow }}</span><h2 [id]="'d-' + b.clave">{{ b.titulo }}</h2></div><ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: b.clave }" /></div>
           <div class="tile key" [attr.data-tip]="tip(b.principal.id, et(b.principal.id, b.principal.label), b.principal.valor)"><span class="nm">{{ et(b.principal.id, b.principal.label) }}</span><span class="val">{{ fmt(b.principal.valor) }}</span><span class="gl">{{ b.principal.nota }}</span></div>
           <p class="muted small">{{ b.orden }}</p>
           <div class="barras">
@@ -173,7 +169,6 @@
               </div>
             }
           </div>
-          @for (cp of b.capsulas; track cp) { <p class="nota"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
         </section>
       }
 
@@ -219,5 +214,35 @@
     <p class="muted" role="status">Cargando {{ mes }} {{ anio }}…</p>
   }
   <div class="tip tip-d" id="tip-d" hidden></div>
+
+  <!-- Notas (ⓘ) de todas las secciones, ordenadas por sección: se abren con
+       el botón «Notas» de cada una, que queda destacada. No se imprimen. -->
+  <div class="notas-velo" id="notas" [hidden]="!notasAbiertas" (click)="cerrarNotas()">
+    <section class="panel notas-ventana" role="dialog" aria-modal="true" aria-labelledby="h-notas" (click)="$event.stopPropagation()">
+      <div class="bloque-h">
+        <div class="tit"><span class="ico" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 7.2v4M8 4.8v.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
+          <div><span class="eyebrow">Notas</span><h2 id="h-notas">Notas del dashboard · {{ slep ?? 'Todos los SLEP' }} · {{ mes }} {{ anio }}</h2>
+            <span class="muted small">Observaciones de cada sección: diferencias entre campos que deberían coincidir y lo más importante del bloque.</span></div></div>
+        <button type="button" class="x" data-cerrar-notas aria-label="Cerrar notas" (click)="cerrarNotas()">✕</button>
+      </div>
+      <div class="notas-lista">
+        @for (s of seccionesNotas; track s.clave) {
+          <div class="notas-sec" [class.activa]="s.clave === notasAbiertas" [attr.data-sec]="s.clave">
+            <span class="eyebrow">{{ s.eyebrow }}</span><h3>{{ s.titulo }}</h3>
+            <ul>@for (x of s.notas; track x) { <li>{{ x }}</li> }</ul>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
 </div>
 </div>
+
+<!-- Botón «Notas» de una sección (solo si la sección tiene notas). -->
+<ng-template #botonNotas let-clave>
+  @if (notasDe(clave).length) {
+    <button type="button" class="btn-notas" [attr.data-notas]="clave" (click)="abrirNotas(clave)" aria-haspopup="dialog" title="Ver las notas de esta sección">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 7.2v4M8 4.8v.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Notas<span class="n">{{ notasDe(clave).length }}</span>
+    </button>
+  }
+</ng-template>
