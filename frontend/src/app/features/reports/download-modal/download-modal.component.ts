@@ -56,7 +56,8 @@ export class DownloadModalComponent {
     sumarios_dashboard_pdf: () => this.verDashboard(true),
     sumarios_ranking_interactivo: () => this.verRanking(false),
     sumarios_errores_interactivo: () => this.abrirInforme(false, 'errores'),
-    sumarios_informe_general_pdf: () => this.abrirInforme(true, 'general'),
+    sumarios_informe_general_pdf: () => this.abrirInforme(true, 'general', null),
+    sumarios_informe_slep_pdf: () => this.verInformePorSlep(),
     sumarios_ranking_pdf: () => this.verRanking(true),
     sumarios_errores_pdf: () => this.abrirInforme(true, 'errores'),
   };
@@ -153,12 +154,29 @@ export class DownloadModalComponent {
     window.open(`/informe-ranking?${p.toString()}`, '_blank');
   }
 
-  // Errores (interactivo) y los estáticos nacional y de errores: la página del
-  // Informe. Estático = la misma página con ?imprimir=1, que abre sola la
-  // ventana de impresión ("Guardar como PDF").
-  private abrirInforme(imprimir: boolean, tipo: 'general' | 'errores'): void {
+  // Informe estático por SLEP: el informe nacional, del SLEP que se está
+  // mirando en la aplicación (quien trabaja con un solo SLEP, el suyo).
+  get slepParaInforme(): string | null {
+    const u = this.authService.usuarioActual();
+    return this.data.slep ?? (u && !u.esSuperadmin && u.alcance !== 'todos' ? u.alcance : null);
+  }
+
+  private verInformePorSlep(): void {
+    const slep = this.slepParaInforme;
+    if (!slep) {
+      this.notification.mostrar('Para el informe por SLEP, primero elige un SLEP en la aplicación.');
+      return;
+    }
+    this.abrirInforme(true, 'general', slep);
+  }
+
+  // Errores (interactivo) y los estáticos nacional, por SLEP y de errores: la
+  // página del Informe. Estático = la misma página con ?imprimir=1, que abre
+  // sola la ventana de impresión ("Guardar como PDF"). El nacional va siempre
+  // con todos los SLEP (quien trabaja con uno solo, igual ve solo el suyo).
+  private abrirInforme(imprimir: boolean, tipo: 'general' | 'errores', slep: string | null = this.data.slep): void {
     const params = new URLSearchParams();
-    if (this.data.slep) params.set('slep', this.data.slep);
+    if (slep) params.set('slep', slep);
     if (imprimir) params.set('imprimir', '1');
     if (tipo !== 'general') params.set('tipo', tipo);
     const query = params.toString();

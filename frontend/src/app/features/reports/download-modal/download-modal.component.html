@@ -35,6 +35,10 @@
                       <span class="extension">{{ i.formato }}</span>
                     </span>
                     <span class="block text-xs text-[#64748B] dark:text-[#94A3B8] leading-snug mt-0.5">{{ i.descripcion }}</span>
+                    <!-- Por SLEP: cuál se va a usar (el que se está mirando en la aplicación). -->
+                    @if (i.id === 'sumarios_informe_slep_pdf') {
+                      <span class="block text-[11px] font-semibold leading-snug mt-0.5" [ngClass]="slepParaInforme ? 'text-[#1E3A8A] dark:text-[#A9C8EE]' : 'text-[#B45309] dark:text-[#FCD34D]'">{{ slepParaInforme ? 'SLEP: ' + slepParaInforme : 'Elige primero un SLEP en la aplicación' }}</span>
+                    }
                   </span>
                 </button>
               } @empty {

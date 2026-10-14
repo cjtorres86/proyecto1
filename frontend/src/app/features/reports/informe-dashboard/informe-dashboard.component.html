@@ -64,8 +64,8 @@
       <span class="muted small">El informe toma el mes de referencia y el servicio seleccionados arriba ({{ slep ?? 'todos los SLEP' }} · {{ mes }} {{ anio }}). Hojas verticales, con cada bloque del dashboard, sus observaciones, el ranking y el banner institucional.</span></div></div><button type="button" class="x" data-cerrar aria-label="Cerrar" (click)="alternarPanel(null)">✕</button></div>
     <div class="rgrid">
       <fieldset><legend>Formato</legend>
-        <label class="opt"><input type="radio" name="r-fmt" value="xlsx" [checked]="formato === 'xlsx'" (change)="formato = 'xlsx'"><span>Excel (.xlsx)<small>Una hoja por tabla, con filtros</small></span></label>
         <label class="opt"><input type="radio" name="r-fmt" value="pdf" [checked]="formato === 'pdf'" (change)="formato = 'pdf'"><span>PDF<small>Listo para enviar o imprimir · hoja vertical</small></span></label>
+        <label class="opt"><input type="radio" name="r-fmt" value="xlsx" [checked]="formato === 'xlsx'" (change)="formato = 'xlsx'"><span>Excel (.xlsx)<small>Una hoja por tabla, con filtros</small></span></label>
       </fieldset>
     </div>
     <div class="rowbtns"><button type="button" class="btn primary" id="r-go" (click)="generar()" [disabled]="generando">Descargar informe</button><button type="button" class="btn" (click)="alternarPanel(null)">Cerrar</button><span class="status" [class.ok]="estadoInforme.tipo === 'ok'" [class.err]="estadoInforme.tipo === 'err'" role="status">{{ estadoInforme.texto }}</span></div>

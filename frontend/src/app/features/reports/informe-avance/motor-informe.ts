@@ -83,9 +83,12 @@ const S={year:YEARS[YEARS.length-1],slep:"TOTAL",mes:null,cmp:false,orden:"rank"
 try{Object.assign(S,JSON.parse(localStorage.getItem("avanceSumarios")||"{}"));}catch(e){}
 if(!DATA[S.year])S.year=YEARS[YEARS.length-1];
 S.mes=null;
+// Siempre parte en todos los SLEP (consolidado), salvo que se pida uno (el
+// que se está mirando en la aplicación) o que la persona trabaje con uno solo.
+S.slep="TOTAL";
 if(!CFG.alcanceCompleto)S.slep=0;
 if(CFG.inicial){const ini=CFG.inicial;if(ini.anio&&DATA[ini.anio])S.year=ini.anio;if(ini.mes!=null)S.mesPedido=ini.mes;if(CFG.alcanceCompleto&&ini.slep!=null){const k=FUENTE.sleps.indexOf(ini.slep);if(k>=0)S.slep=k}}
-const save=()=>{try{localStorage.setItem("avanceSumarios",JSON.stringify({slep:S.slep,orden:S.orden,cmp:S.cmp,escala:S.escala,rkDir:S.rkDir}))}catch(e){}};
+const save=()=>{try{localStorage.setItem("avanceSumarios",JSON.stringify({orden:S.orden,cmp:S.cmp,escala:S.escala,rkDir:S.rkDir}))}catch(e){}};
 const Y=()=>DATA[S.year];
 const prevYear=()=>String(+S.year-1);
 const hasPrev=()=>!!DATA[prevYear()];

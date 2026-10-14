@@ -290,7 +290,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // nacional en esta página es siempre el estático (el interactivo nacional
   // es /informe-avance).
   nombreInforme(estatico = this.imprimirAlCargar): string {
-    if (this.tipo === 'general') return 'Informe estático nacional';
+    if (this.tipo === 'general') return this.slep ? 'Informe estático por SLEP' : 'Informe estático nacional';
     return `Informe ${estatico ? 'estático' : 'interactivo'} de errores`;
   }
 

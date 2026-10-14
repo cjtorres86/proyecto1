@@ -59,7 +59,7 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
   private des: Record<string, { slep: string; valor: number }[]> = {};
 
   panel: 'informe' | 'ayuda' | null = null;
-  formato: 'xlsx' | 'pdf' = 'xlsx';
+  formato: 'xlsx' | 'pdf' = 'pdf';
   generando = false;
   estadoInforme: { tipo: '' | 'ok' | 'err'; texto: string } = { tipo: '', texto: '' };
   guardando = false;
