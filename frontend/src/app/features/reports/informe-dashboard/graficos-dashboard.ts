@@ -79,7 +79,7 @@ function grafDona(M: ModeloDashboard): GraficoSvg {
 
 function grafLicencias(r: RankingLic): GraficoSvg {
   const filas = [...r.filas, ...(r.propia ? [r.propia] : [])];
-  const b = barras(filas.map((f) => ({ label: `${f.pos}°  ${f.slep}`, ancho: f.ancho, color: f.propio ? C.navy : f.pos === 1 ? C.azul : '#8FB2F5', valor: r.unidad === '$' ? rem(f.valor) : `${fmt(f.valor)} días`, bold: f.propio })), { etiqueta: 260 });
+  const b = barras(filas.map((f) => ({ label: `${f.pos}°  ${f.slep}`, ancho: f.ancho, color: f.propio ? C.navy : f.pos === 1 ? C.azul : '#8FB2F5', valor: r.unidad === '$' ? rem(f.valor) : `${fmt(f.valor)} días`, bold: f.propio })), { etiqueta: 260, alto: filas.length > 10 ? 22 : 30 });
   return { cap: r.titulo, svg: svg(900, b.H, b.cuerpo), W: 900, H: b.H };
 }
 

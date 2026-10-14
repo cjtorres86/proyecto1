@@ -157,7 +157,7 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
         this.des = { Q21: r.q21, Q22: r.q22 };
         this.totalSleps = r.dash.totalContenedores;
         this.num = numeracion(r.dash.numeros);
-        this.modelo = armarDashboard(r.dash, { slepActivo: this.slep, mes, anio, porSlep: this.porSlep });
+        this.modelo = armarDashboard(r.dash, { slepActivo: this.slep, mes, anio, porSlep: this.porSlep, licenciasCompletas: true });
         this.cargandoDatos = false;
         setTimeout(() => this.alDibujar());
       },
@@ -183,6 +183,9 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
       });
     }
     this.acomodarBarra();
+    // Hojas del PDF listas también para Ctrl+P (de nuevo cuando llegan las fuentes).
+    this.ajustarHojas();
+    document.fonts.ready.then(() => this.ajustarHojas());
     if (!this.vistaRegistrada && !this.imprimir) {
       this.vistaRegistrada = true;
       this.bitacora.registrarEvento('informe_visto', `Vio el ${this.nombre} — ${this.mes} ${this.anio}${this.slep ? ` — ${this.slep}` : ''}.`);
@@ -190,7 +193,10 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     if (this.imprimir && !this.impreso) {
       this.impreso = true;
       this.bitacora.registrarEvento('informe_pdf_descargado', `Descargó el PDF de ${this.nombre} — ${this.mes} ${this.anio}${this.slep ? ` — ${this.slep}` : ''}.`);
-      document.fonts.ready.then(() => requestAnimationFrame(() => requestAnimationFrame(() => window.print())));
+      document.fonts.ready.then(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+        this.ajustarHojas();
+        window.print();
+      })));
     }
   }
 
@@ -294,11 +300,67 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     const M = this.modelo;
     if (!M) return [];
     return [
-      { clave: 'origen', eyebrow: '1 · Origen', titulo: 'Lo que informó Contraloría', notas: M.capsulasOrigen },
-      { clave: 'involucrados', eyebrow: '2 · Involucrados', titulo: 'Situación de los funcionarios involucrados', notas: M.capsulasInvolucrados },
-      { clave: 'licencias', eyebrow: '3 · Licencias', titulo: 'Los SLEP con las licencias más largas y las remuneraciones más altas', notas: M.rankingsLic.map((r) => r.capsula).filter(Boolean) },
-      ...M.desgloses.map((b) => ({ clave: b.clave, eyebrow: b.eyebrow, titulo: b.titulo, notas: b.capsulas })),
+      { clave: 'origen', eyebrow: `${this.numero('origen')} · Origen`, titulo: 'Lo que informó Contraloría', notas: M.capsulasOrigen },
+      { clave: 'involucrados', eyebrow: `${this.numero('involucrados')} · Involucrados`, titulo: 'Situación de los funcionarios involucrados', notas: M.capsulasInvolucrados },
+      ...M.desgloses.map((b) => ({ clave: b.clave, eyebrow: `${this.numero(b.clave)} · ${this.sinNumero(b.eyebrow)}`, titulo: b.titulo, notas: b.capsulas })),
+      { clave: 'licencias', eyebrow: `${this.numero('licencias')} · Licencias`, titulo: 'Los SLEP con las licencias más largas y las remuneraciones más altas', notas: M.rankingsLic.map((r) => r.capsula).filter(Boolean) },
     ].filter((s) => s.notas.length);
+  }
+
+  // Número de cada tarjeta en el informe: Licencias va al final (6, o 7 si
+  // hay Anexo); los números de campo del formulario no cambian.
+  numero(clave: string): number {
+    const orden: Record<string, number> = { origen: 1, involucrados: 2, cic: 3, proc: 4, san: 5, anexo: 6 };
+    return orden[clave] ?? (this.modelo?.anexo.length ? 7 : 6);
+  }
+  sinNumero(eyebrow: string): string {
+    return eyebrow.replace(/^\d+ · /, '');
+  }
+
+  // ---------- Hojas del PDF ----------
+  // Cada hoja mide el área imprimible de una carta vertical (con los márgenes
+  // de @page). Si su contenido no cabe, se reduce entero (zoom uniforme, sin
+  // cortar ninguna tarjeta); si sobra espacio, lo ocupa la nota de relleno.
+  ajustarHojas(): void {
+    document.querySelectorAll<HTMLElement>('.hojas-pdf .hoja-pdf').forEach((hoja) => {
+      const cont = hoja.querySelector<HTMLElement>('.hoja-cont'), nota = hoja.querySelector<HTMLElement>('.nota-relleno');
+      if (!cont) return;
+      const alto = hoja.clientHeight, ancho = hoja.clientWidth;
+      cont.style.zoom = '';
+      cont.style.width = '';
+      // Alto natural del contenido, sin la nota ni el alto mínimo de la hoja.
+      cont.style.minHeight = '0';
+      if (nota) nota.hidden = true;
+      let h = cont.scrollHeight;
+      cont.style.minHeight = '';
+      if (h > alto) {
+        let z = alto / h;
+        cont.style.minHeight = '0';
+        for (let i = 0; i < 3; i++) {
+          cont.style.width = `${ancho / z}px`;
+          cont.style.zoom = String(z);
+          h = cont.scrollHeight;
+          if (h * z <= alto) break;
+          z = Math.min(z, (alto / h) * 0.995);
+        }
+      } else if (hoja.classList.contains('llenar') && h < alto) {
+        // Hoja 1: se agranda (hasta 1,5 veces) hasta ocupar la hoja completa.
+        let z = Math.min(1.5, alto / h);
+        cont.style.minHeight = '0';
+        for (let i = 0; i < 4 && z > 1; i++) {
+          cont.style.width = `${ancho / z}px`;
+          cont.style.zoom = String(z);
+          h = cont.scrollHeight;
+          if (h * z <= alto) break;
+          z = Math.max(1, (alto / h) * 0.995);
+        }
+        // Alto mínimo = la hoja, en la escala agrandada (para la nota, si va).
+        cont.style.minHeight = `${alto / z}px`;
+        if (nota && alto - h * z >= 90) nota.hidden = false;
+      } else if (nota && alto - h >= 90) {
+        nota.hidden = false;
+      }
+    });
   }
   notasDe(clave: string): string[] {
     return this.seccionesNotas.find((s) => s.clave === clave)?.notas ?? [];
@@ -357,6 +419,7 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     window.addEventListener('afterprint', () => (document.title = titulo), { once: true });
     this.bitacora.registrarEvento('informe_pdf_descargado', `Descargó el PDF de ${this.nombre} — ${this.mes} ${this.anio}${this.slep ? ` — ${this.slep}` : ''}.`);
     this.estadoInforme = { tipo: 'ok', texto: 'Se abrió la ventana de impresión: elige «Guardar como PDF».' };
+    this.ajustarHojas();
     requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
   }
 
@@ -383,18 +446,13 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     secs.push({ h: '2 · Involucrados: situación de los funcionarios', sheet: 'Involucrados', p: M.capsulasInvolucrados, charts: g['involucrados'],
       table: { cols: [{ h: 'Campo', t: 'txt', w: 2.6 }, { h: 'Funcionarios', t: 'n' }, { h: '% de los involucrados', t: 'p' }],
         rows: [...M.dona.partes.map((p) => fila([p.label, p.valor, p.pct])), fila(['Total involucrados', M.dona.total, M.dona.total ? 1 : null], { bold: true })] } });
-    for (const r of M.rankingsLic) {
-      secs.push({ h: `3 · Licencias: ${r.titulo}`, sheet: r.id === 'Q21' ? 'Licencias' : 'Remuneraciones', p: r.capsula ? [r.capsula] : [], charts: g[`lic-${r.id}`],
-        table: { cols: [{ h: 'N°', t: 'txt', w: 0.45 }, { h: 'Servicio Local', t: 'txt', w: 2 }, { h: r.unidad === '$' ? 'Remuneración promedio' : 'Días', t: 'txt', w: 1.2 }],
-          rows: [...r.filas, ...(r.propia ? [r.propia] : [])].map((f) => fila([`${f.pos}°`, f.slep, this.valorLic(r, f.valor)], { txtRow: true, bold: f.propio })) } });
-    }
     for (const b of M.desgloses) {
-      secs.push({ h: `${b.eyebrow}: ${b.titulo}`, sheet: b.eyebrow.replace(/^\d+ · /, ''), p: [b.orden, ...b.capsulas], charts: g[`des-${b.clave}`],
+      secs.push({ h: `${this.numero(b.clave)} · ${this.sinNumero(b.eyebrow)}: ${b.titulo}`, sheet: this.sinNumero(b.eyebrow), p: [b.orden, ...b.capsulas], charts: g[`des-${b.clave}`],
         table: { cols: [{ h: 'Campo', t: 'txt', w: 2.8 }, { h: 'Valor', t: 'n' }, { h: `% de ${b.principal.label.toLowerCase()}`.slice(0, 40), t: 'p' }],
           rows: [fila([this.et(b.principal.id, b.principal.label), b.principal.valor, b.principal.valor ? 1 : null], { bold: true }), ...b.filas.map((x) => fila([x.label, x.valor, b.principal.valor ? x.pct : null]))] } });
     }
     if (M.anexo.length) {
-      secs.push({ h: '7 · Anexo: seguimiento adicional', sheet: 'Anexo', p: [],
+      secs.push({ h: `${this.numero('anexo')} · Anexo: seguimiento adicional`, sheet: 'Anexo', p: [],
         table: { cols: [{ h: 'Campo', t: 'txt', w: 2.8 }, { h: 'Valor', t: 'txt', w: 1.2 }], rows: M.anexo.map((c) => fila([c.label, c.id === 'Q62' ? rem(c.valor) : fmt(c.valor)], { txtRow: true })) } });
     }
     if (!this.slep && M.ranking.length) {
@@ -402,7 +460,12 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
         table: { small: true, cols: [{ h: 'N°', t: 'txt', w: 0.45 }, { h: 'Servicio Local', t: 'txt', w: 1.9 }, { h: 'Casos', t: 'n' }, { h: 'Instruidos', t: 'n' }, { h: 'Cerrados', t: 'n' }, { h: '% de avance', t: 'p' }, { h: 'Nivel', t: 'txt', w: 1 }],
           rows: M.ranking.map((f) => fila([f.pos ? `${f.pos}°` : '—', f.slep, f.casos, f.instruidos, f.cerrados, f.av, f.av === null ? 'Sin instruidos' : NIVEL_TXT[f.nivel].replace('Avance ', '')], { over: new Set(f.nivel === 'bajo' ? [5, 6] : []) })) } });
     }
-    secs.push({ h: 'Nota metodológica', p: [`Cada dato lleva su número de campo del Formulario del mes; el consolidado suma los SLEP que informan. El % de avance corresponde a los procesos cerrados (campo ${this.n('Q45')}) divididos por los sumarios instruidos (campo ${this.n('Q37')}); la meta es el 100 %. Nivel de avance: bajo, menos de 25 %; medio, de 25 % a menos de 75 %; alto, 75 % o más. En los bloques 4, 5 y 6 cada valor se expresa como parte del dato principal del bloque. Las observaciones señalan diferencias entre campos que deberían coincidir o resumen lo importante del bloque.`] });
+    for (const r of M.rankingsLic) {
+      secs.push({ h: `${this.numero('licencias')} · Licencias: ${r.titulo}`, sheet: r.id === 'Q21' ? 'Licencias' : 'Remuneraciones', p: r.capsula ? [r.capsula] : [], charts: g[`lic-${r.id}`],
+        table: { cols: [{ h: 'N°', t: 'txt', w: 0.45 }, { h: 'Servicio Local', t: 'txt', w: 2 }, { h: r.unidad === '$' ? 'Remuneración promedio' : 'Días', t: 'txt', w: 1.2 }],
+          rows: [...r.filas, ...(r.propia ? [r.propia] : [])].map((f) => fila([`${f.pos}°`, f.slep, this.valorLic(r, f.valor)], { txtRow: true, bold: f.propio })) } });
+    }
+    secs.push({ h: 'Nota metodológica', p: [`Cada dato lleva su número de campo del Formulario del mes; el consolidado suma los SLEP que informan. El % de avance corresponde a los procesos cerrados (campo ${this.n('Q45')}) divididos por los sumarios instruidos (campo ${this.n('Q37')}); la meta es el 100 %. Nivel de avance: bajo, menos de 25 %; medio, de 25 % a menos de 75 %; alto, 75 % o más. En los bloques 3, 4 y 5 cada valor se expresa como parte del dato principal del bloque. Las observaciones señalan diferencias entre campos que deberían coincidir o resumen lo importante del bloque.`] });
     return {
       title: `Informe de dashboard · ${this.mes} ${this.anio}`,
       scope: this.slep ?? `${this.totalSleps} Servicios Locales de Educación Pública`,

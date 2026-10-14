@@ -78,9 +78,11 @@ function arco(a0: number, a1: number): string {
 // porSlep: el valor de cada SLEP en los campos 17 y 18 (rankings de licencias).
 export function armarDashboard(
   d: DashboardDeMes,
-  ctx: { slepActivo: string | null; mes: string; anio: string; porSlep: Map<string, { slep: string; valor: number }[]> },
+  ctx: { slepActivo: string | null; mes: string; anio: string; porSlep: Map<string, { slep: string; valor: number }[]>; licenciasCompletas?: boolean },
 ): ModeloDashboard {
   const { slepActivo, mes, anio, porSlep } = ctx;
+  // Rankings de licencias: los 6 primeros (Dashboard) o todos los SLEP (informe).
+  const tope = ctx.licenciasCompletas ? Infinity : 6;
   const { n: N, et } = numeracion(d.numeros);
   const c = d.campos ?? {};
   const v = (id: string) => c[id] ?? null;
@@ -99,13 +101,13 @@ export function armarDashboard(
     return ordenar ? porValor : fs;
   };
 
-  // Ranking de 6 SLEP para un campo de licencias. Viendo un SLEP, se destaca
-  // y, si no está entre los 6, se agrega debajo con su posición.
+  // Ranking de un campo de licencias (6 SLEP o todos). Viendo un SLEP, se
+  // destaca y, si no está entre los mostrados, se agrega debajo con su posición.
   const rankingLic = (id: string, titulo: string, unidad: 'd' | '$', consolidado: number | null): RankingLic => {
     const lista = [...(porSlep.get(id) ?? [])].filter((x) => x.valor > 0).sort((a, b) => b.valor - a.valor);
     const max = lista[0]?.valor || 1;
     const todas = lista.map((x, i) => ({ slep: x.slep, valor: x.valor, ancho: x.valor / max, pos: i + 1, propio: x.slep === slepActivo }));
-    const propia = slepActivo ? todas.find((f) => f.propio && f.pos > 6) ?? null : null;
+    const propia = slepActivo ? todas.find((f) => f.propio && f.pos > tope) ?? null : null;
     const val = (x: number | null) => (unidad === '$' ? rem(x) : `${fmt(x)} días`);
     let capsula = '';
     if (slepActivo) {
@@ -116,7 +118,7 @@ export function armarDashboard(
     } else {
       capsula = `Campo ${N(id)}: en el consolidado es el promedio ponderado por funcionarios involucrados (${val(consolidado)}).`;
     }
-    return { id, titulo: et(id, titulo), unidad, filas: todas.slice(0, 6), propia, capsula };
+    return { id, titulo: et(id, titulo), unidad, filas: todas.slice(0, tope), propia, capsula };
   };
 
   // 0 · Consolidado: campos 1 a 3 y el % de avance (32 ÷ 27).

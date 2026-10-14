@@ -76,139 +76,25 @@
       <li><b>Cada dato lleva su número de campo</b> del Formulario del mes; el consolidado suma los SLEP que informan.</li>
       <li><b>% de avance = procesos cerrados (campo {{ n('Q45') }}) / sumarios instruidos (campo {{ n('Q37') }}).</b> La meta es el 100 %.</li>
       <li>Nivel de avance: <b>bajo</b> bajo 25 %, <b>medio</b> de 25 % a menos de 75 %, <b>alto</b> 75 % o más.</li>
-      <li>En los bloques 4, 5 y 6, cada barra es la <b>parte del dato principal</b> que representa ese campo.</li>
-      <li>Licencias (campos {{ n('Q21') }} y {{ n('Q22') }}): los 6 SLEP con los valores más altos. En el consolidado, el {{ n('Q21') }} es la licencia más larga de todas y el {{ n('Q22') }}, el promedio ponderado por funcionarios involucrados.</li>
+      <li>En los bloques 3, 4 y 5, cada barra es la <b>parte del dato principal</b> que representa ese campo.</li>
+      <li>Licencias (campos {{ n('Q21') }} y {{ n('Q22') }}), la última tarjeta: todos los SLEP, de mayor a menor. En el consolidado, el {{ n('Q21') }} es la licencia más larga de todas y el {{ n('Q22') }}, el promedio ponderado por funcionarios involucrados.</li>
       <li>Las <b>observaciones</b> (ⓘ) explican una diferencia entre campos que deberían coincidir o resumen lo importante del bloque.</li>
     </ul>
   </section>
 
   @if (modelo; as M) {
-    <!-- 0 · Consolidado: campos 1 a 3 y el % de avance -->
-    <section class="panel" id="resumen" aria-labelledby="h-res">
-      <div class="panel-head">
-        <div><span class="eyebrow">{{ slep ? 'Servicio Local' : 'Consolidado' }} · {{ mes }} {{ anio }}</span><h2 id="h-res">{{ slep ?? 'Todos los SLEP' }}</h2></div>
-        <span class="pill" [ngClass]="nivel(M.av)">{{ M.av === null ? 'Sin sumarios instruidos' : textoNivel(M.av) + ' · ' + pct(M.av) }}</span>
-      </div>
-      <dl class="ident">
-        @for (i of M.identificacion; track i.n) { <div><dt>{{ i.n }}. {{ i.label }}</dt><dd>{{ i.valor }}</dd></div> }
-      </dl>
-      <div class="avance">
-        <div class="av-cab"><span class="lb">Avance de los sumarios</span><span class="av-num" [ngClass]="nivel(M.av)">{{ M.av === null ? '—' : pct(M.av) }}</span></div>
-        <div class="av-barra" role="img" [attr.aria-label]="'Avance ' + (M.av === null ? 'sin datos' : pct(M.av)) + ', meta 100 %'" [attr.data-tip]="tip('Q45', et('Q45', 'Procesos cerrados'), M.cerrados, et('Q37', 'Sumarios instruidos'), M.instruidos)">
-          @if (M.av !== null) { <i [style.width.%]="(M.av > 1 ? 1 : M.av < 0.01 ? 0.01 : M.av) * 100" [style.background]="colorAvance(M.av)"></i> }
-        </div>
-        <div class="av-escala"><span>0 %</span><span>50 %</span><span>Meta 100 %</span></div>
-        <p class="lede">{{ lineaAvance(M) }}</p>
-      </div>
-    </section>
-
+    <!-- En pantalla: consolidado, 1 y 2, 3 a 5 (y 6 · Anexo), ranking y, al
+         final, Licencias. Cada pieza es una plantilla (más abajo) que también
+         arma las hojas del PDF. -->
+    <ng-container *ngTemplateOutlet="tResumen; context: { $implicit: M, h: false }" />
     <div class="dgrid">
-      <!-- 1 · Origen: campos 4, 5 y 6 -->
-      <section class="panel" aria-labelledby="d-b1">
-        <div class="sec-head"><div><span class="eyebrow">1 · Origen</span><h2 id="d-b1">Lo que informó Contraloría</h2></div><ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'origen' }" /></div>
-        <div class="tiles">
-          @for (c of M.origen; track c.id) {
-            <div class="tile" [attr.data-tip]="tip(c.id, et(c.id, c.label), c.valor)"><span class="nm">{{ et(c.id, c.label) }}</span><span class="val">{{ fmt(c.valor) }}</span><span class="gl">{{ c.nota }}</span></div>
-          }
-        </div>
-      </section>
-
-      <!-- 2 · Involucrados: campos 7 y 8 (dona) -->
-      <section class="panel" aria-labelledby="d-b2">
-        <div class="sec-head"><div><span class="eyebrow">2 · Involucrados</span><h2 id="d-b2">Situación de los funcionarios involucrados</h2></div><ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'involucrados' }" /></div>
-        @if (!M.dona.total) {
-          <p class="muted small">Sin datos de los campos {{ n('Q07') }} y {{ n('YA_NO_ESTAN') }} para este mes.</p>
-        } @else {
-          <div class="dona">
-            <svg viewBox="0 0 120 120" role="img" aria-label="Funcionarios involucrados según si continúan en el servicio">
-              @for (p of M.dona.partes; track p.id; let k = $index) {
-                @if (p.d) { <path [attr.d]="p.d" [attr.fill]="k === 0 ? 'var(--accent)' : 'var(--fg-3)'" [attr.data-tip]="tip(p.id, p.label, p.valor, 'los involucrados', M.dona.total)" /> }
-              }
-              <text x="60" y="58" text-anchor="middle" font-size="18" font-weight="700" fill="currentColor">{{ fmt(M.dona.total) }}</text>
-              <text x="60" y="73" text-anchor="middle" font-size="8.5" fill="var(--fg-3)">involucrados</text>
-            </svg>
-            <div class="dona-ley">
-              @for (p of M.dona.partes; track p.id; let k = $index) {
-                <span [attr.data-tip]="tip(p.id, p.label, p.valor, 'los involucrados', M.dona.total)"><i class="sw" [style.background]="k === 0 ? 'var(--accent)' : 'var(--fg-3)'"></i>{{ p.label }}<b>{{ fmt(p.valor) }}</b><small>{{ pct(p.pct) }}</small></span>
-              }
-            </div>
-          </div>
-        }
-      </section>
-
-      <!-- 3 · Licencias: rankings de los campos 17 y 18 -->
-      <section class="panel ancho" aria-labelledby="d-b3">
-        <div class="sec-head"><div><span class="eyebrow">3 · Licencias</span><h2 id="d-b3">Los SLEP con las licencias más largas y las remuneraciones más altas</h2></div><ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'licencias' }" /></div>
-        <div class="dos">
-          @for (r of M.rankingsLic; track r.id) {
-            <div class="lic">
-              <h3>{{ r.titulo }}</h3>
-              @if (!r.filas.length) { <p class="muted small">Ningún SLEP informa este dato.</p> }
-              @for (f of r.filas; track f.slep) {
-                <div class="fila-rk" [class.propio]="f.propio"><span class="pos">{{ f.pos }}°</span><span class="sn" [title]="f.slep">{{ f.slep }}</span><span class="bar"><i [style.width.%]="f.ancho * 100" [style.background]="f.propio ? 'var(--head)' : f.pos === 1 ? 'var(--accent)' : 'color-mix(in srgb, var(--accent) 45%, var(--surface-2))'"></i></span><span class="num">{{ valorLic(r, f.valor) }}</span></div>
-              }
-              @if (r.propia; as f) {
-                <div class="fila-rk propio sep-rk"><span class="pos">{{ f.pos }}°</span><span class="sn" [title]="f.slep">{{ f.slep }}</span><span class="bar"><i [style.width.%]="f.ancho * 100" style="background:var(--head)"></i></span><span class="num">{{ valorLic(r, f.valor) }}</span></div>
-              }
-            </div>
-          }
-        </div>
-      </section>
-
-      <!-- 4, 5 y 6: un dato principal y su desglose -->
-      @for (b of M.desgloses; track b.clave) {
-        <section class="panel" [attr.aria-labelledby]="'d-' + b.clave">
-          <div class="sec-head"><div><span class="eyebrow">{{ b.eyebrow }}</span><h2 [id]="'d-' + b.clave">{{ b.titulo }}</h2></div><ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: b.clave }" /></div>
-          <div class="tile key" [attr.data-tip]="tip(b.principal.id, et(b.principal.id, b.principal.label), b.principal.valor)"><span class="nm">{{ et(b.principal.id, b.principal.label) }}</span><span class="val">{{ fmt(b.principal.valor) }}</span><span class="gl">{{ b.principal.nota }}</span></div>
-          <p class="muted small">{{ b.orden }}</p>
-          <div class="barras">
-            @for (x of b.filas; track x.id) {
-              <div class="fila-h" [attr.data-tip]="tip(x.id, x.label, x.valor, et(b.principal.id, b.principal.label), b.principal.valor)">
-                <div class="arriba"><span>{{ x.label }}</span><span class="num">{{ fmt(x.valor) }}</span><span class="pc">{{ b.principal.valor ? pct(x.pct) : '' }}</span></div>
-                <span class="bar"><i [style.width.%]="(x.pct > 1 ? 1 : x.pct) * 100" [style.background]="colorBarra(x.rango)"></i></span>
-              </div>
-            }
-          </div>
-        </section>
-      }
-
-      <!-- 7 · Anexo (solo con el formulario de 44 campos) -->
-      @if (M.anexo.length) {
-        <section class="panel" aria-labelledby="d-b7">
-          <div><span class="eyebrow">7 · Anexo</span><h2 id="d-b7">Seguimiento adicional (anexo)</h2></div>
-          <div class="tiles">
-            @for (c of M.anexo; track c.id) {
-              <div class="tile" [attr.data-tip]="tip(c.id, c.label, c.valor)"><span class="nm">{{ c.label }}</span><span class="val">{{ c.id === 'Q62' ? rem(c.valor) : fmt(c.valor) }}</span></div>
-            }
-          </div>
-        </section>
-      }
+      <ng-container *ngTemplateOutlet="tOrigen; context: { $implicit: M, h: false }" />
+      <ng-container *ngTemplateOutlet="tInvolucrados; context: { $implicit: M, h: false }" />
+      @for (b of M.desgloses; track b.clave) { <ng-container *ngTemplateOutlet="tDesglose; context: { $implicit: b, h: false }" /> }
+      @if (M.anexo.length) { <ng-container *ngTemplateOutlet="tAnexo; context: { $implicit: M, h: false }" /> }
     </div>
-
-    <!-- Ranking completo (todos los SLEP) -->
-    @if (!slep && M.ranking.length) {
-      <section class="panel" aria-labelledby="d-rk">
-        <div><span class="eyebrow">Ranking · {{ mes }} {{ anio }}</span><h2 id="d-rk">Avance de los sumarios por SLEP</h2>
-          <span class="muted small">1° = mayor avance; en empate, más procesos cerrados. Se destacan en rojo los servicios con avance bajo.</span></div>
-        <div class="tscroll">
-          <table class="dt rk-d">
-            <caption class="sr-only">Ranking de avance por SLEP</caption>
-            <thead><tr><th>N°</th><th>Servicio Local</th><th>{{ n('Q04') }}. Casos</th><th>{{ n('Q37') }}. Instruidos</th><th>{{ n('Q45') }}. Cerrados</th><th>% de avance</th><th class="izq">Avance (meta 100 %)</th></tr></thead>
-            <tbody>
-              @for (f of M.ranking; track f.slep) {
-                <tr>
-                  <td class="pos" [class.top]="f.pos && f.pos <= 3">{{ f.pos ? f.pos + '°' : '—' }}</td>
-                  <td class="sn">{{ f.slep }}</td>
-                  <td>{{ fmt(f.casos) }}</td><td>{{ fmt(f.instruidos) }}</td><td>{{ fmt(f.cerrados) }}</td>
-                  <td class="ex" [ngClass]="nivel(f.av)">{{ f.av === null ? '—' : pct(f.av) }}</td>
-                  <td class="izq">@if (f.av !== null) { <span class="barra"><i [style.width.%]="(f.av < 0.02 ? 0.02 : f.av > 1 ? 1 : f.av) * 100" [style.background]="'var(--' + nivel(f.av) + ')'"></i></span> } @else { <span class="muted small">Sin instruidos</span> }</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </section>
-    }
+    @if (!slep && M.ranking.length) { <ng-container *ngTemplateOutlet="tRanking; context: { $implicit: M, h: false }" /> }
+    <ng-container *ngTemplateOutlet="tLicencias; context: { $implicit: M, h: false }" />
     <footer>Fuente: Avance de Sumarios, datos informados por los Servicios Locales ({{ mes }} {{ anio }}). % de avance = procesos cerrados ÷ sumarios instruidos. Cada dato lleva su número de campo del Formulario del mes.</footer>
   } @else if (cargandoDatos) {
     <p class="muted" role="status">Cargando {{ mes }} {{ anio }}…</p>
@@ -236,7 +122,204 @@
     </section>
   </div>
 </div>
+
+<!-- Hojas del PDF (carta vertical): fuera de la vista en pantalla; al
+     imprimir es lo único que se ve. Cada hoja mide el área imprimible y
+     ajustarHojas() la acomoda: si el contenido no cabe, se reduce entero
+     (nunca se corta una tarjeta); si sobra espacio, lo llena la nota. -->
+@if (modelo; as M) {
+  <div class="hojas-pdf" aria-hidden="true">
+    <!-- Hoja 1: banner, consolidado, 1 · Origen y 2 · Involucrados; se
+         agranda hasta ocupar la hoja completa (clase "llenar"). -->
+    <div class="hoja-pdf llenar"><div class="hoja-cont">
+      <div class="flag"></div>
+      <header class="band hoja-band"><div class="band-in"><div class="brand"><img [src]="logo" alt="" width="88" height="80">
+        <div class="t"><span class="eyebrow">Seguimiento de sumarios administrativos</span><h1>Dashboard de los Servicios Locales</h1><span class="subt">{{ slep ?? 'Todos los SLEP' }} · {{ mes }} {{ anio }}</span></div></div></div></header>
+      <ng-container *ngTemplateOutlet="tResumen; context: { $implicit: M, h: true }" />
+      <ng-container *ngTemplateOutlet="tOrigen; context: { $implicit: M, h: true }" />
+      <ng-container *ngTemplateOutlet="tInvolucrados; context: { $implicit: M, h: true }" />
+      <ng-container *ngTemplateOutlet="tRelleno" />
+    </div></div>
+    <!-- Hoja 2: 3 · Origen de los casos y 4 · Procedimientos (tarjetas horizontales). -->
+    <div class="hoja-pdf"><div class="hoja-cont">
+      <ng-container *ngTemplateOutlet="tCabHoja" />
+      @for (b of M.desgloses.slice(0, 2); track b.clave) { <ng-container *ngTemplateOutlet="tDesglose; context: { $implicit: b, h: true }" /> }
+      <ng-container *ngTemplateOutlet="tRelleno" />
+    </div></div>
+    <!-- Hoja 3: 5 · Resultado (y 6 · Anexo). -->
+    <div class="hoja-pdf"><div class="hoja-cont">
+      <ng-container *ngTemplateOutlet="tCabHoja" />
+      @for (b of M.desgloses.slice(2); track b.clave) { <ng-container *ngTemplateOutlet="tDesglose; context: { $implicit: b, h: true }" /> }
+      @if (M.anexo.length) { <ng-container *ngTemplateOutlet="tAnexo; context: { $implicit: M, h: true }" /> }
+      <ng-container *ngTemplateOutlet="tRelleno" />
+    </div></div>
+    <!-- Hoja 4: ranking de avance (los 36 SLEP). -->
+    @if (!slep && M.ranking.length) {
+      <div class="hoja-pdf"><div class="hoja-cont">
+        <ng-container *ngTemplateOutlet="tCabHoja" />
+        <ng-container *ngTemplateOutlet="tRanking; context: { $implicit: M, h: true }" />
+        <ng-container *ngTemplateOutlet="tRelleno" />
+      </div></div>
+    }
+    <!-- Hoja 5: Licencias (los dos rankings completos). -->
+    <div class="hoja-pdf"><div class="hoja-cont">
+      <ng-container *ngTemplateOutlet="tCabHoja" />
+      <ng-container *ngTemplateOutlet="tLicencias; context: { $implicit: M, h: true }" />
+      <ng-container *ngTemplateOutlet="tRelleno" />
+      <p class="hoja-fuente">Fuente: Avance de Sumarios, datos informados por los Servicios Locales ({{ mes }} {{ anio }}). % de avance = procesos cerrados ÷ sumarios instruidos. Cada dato lleva su número de campo del Formulario del mes.</p>
+    </div></div>
+  </div>
+}
 </div>
+
+<!-- ================= Piezas del informe (pantalla y hojas del PDF) =================
+     h = true: versión para la hoja (sin ids repetidos ni botón de notas). -->
+
+<!-- Encabezado breve de las hojas 2 en adelante. -->
+<ng-template #tCabHoja>
+  <div class="hoja-cab"><span class="eyebrow">Seguimiento de sumarios administrativos</span><b>Dashboard de los Servicios Locales · {{ slep ?? 'Todos los SLEP' }} · {{ mes }} {{ anio }}</b></div>
+</ng-template>
+
+<!-- Nota que llena el espacio que sobra en una hoja (solo si sobra). -->
+<ng-template #tRelleno>
+  <div class="nota-relleno" hidden>
+    <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 7.2v4M8 4.8v.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    <p><b>¿Necesitas más detalle?</b> El desglose por SLEP, otros meses o años y el detalle de cada dato están en el Informe interactivo de dashboard, en Avance de Sumarios.</p>
+  </div>
+</ng-template>
+
+<!-- 0 · Consolidado: campos 1 a 3 y el % de avance -->
+<ng-template #tResumen let-M let-h="h">
+  <section class="panel resumen" [attr.id]="h ? null : 'resumen'">
+    <div class="panel-head">
+      <div><span class="eyebrow">{{ slep ? 'Servicio Local' : 'Consolidado' }} · {{ mes }} {{ anio }}</span><h2 [attr.id]="h ? null : 'h-res'">{{ slep ?? 'Todos los SLEP' }}</h2></div>
+      <span class="pill" [ngClass]="nivel(M.av)">{{ M.av === null ? 'Sin sumarios instruidos' : textoNivel(M.av) + ' · ' + pct(M.av) }}</span>
+    </div>
+    <dl class="ident">
+      @for (i of M.identificacion; track i.n) { <div><dt>{{ i.n }}. {{ i.label }}</dt><dd>{{ i.valor }}</dd></div> }
+    </dl>
+    <div class="avance">
+      <div class="av-cab"><span class="lb">Avance de los sumarios</span><span class="av-num" [ngClass]="nivel(M.av)">{{ M.av === null ? '—' : pct(M.av) }}</span></div>
+      <div class="av-barra" role="img" [attr.aria-label]="'Avance ' + (M.av === null ? 'sin datos' : pct(M.av)) + ', meta 100 %'" [attr.data-tip]="h ? null : tip('Q45', et('Q45', 'Procesos cerrados'), M.cerrados, et('Q37', 'Sumarios instruidos'), M.instruidos)">
+        @if (M.av !== null) { <i [style.width.%]="(M.av > 1 ? 1 : M.av < 0.01 ? 0.01 : M.av) * 100" [style.background]="colorAvance(M.av)"></i> }
+      </div>
+      <div class="av-escala"><span>0 %</span><span>50 %</span><span>Meta 100 %</span></div>
+      <p class="lede">{{ lineaAvance(M) }}</p>
+    </div>
+  </section>
+</ng-template>
+
+<!-- 1 · Origen: campos 4, 5 y 6 -->
+<ng-template #tOrigen let-M let-h="h">
+  <section class="panel">
+    <div class="sec-head"><div><span class="eyebrow">{{ numero('origen') }} · Origen</span><h2>Lo que informó Contraloría</h2></div>@if (!h) { <ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'origen' }" /> }</div>
+    <div class="tiles">
+      @for (c of M.origen; track c.id) {
+        <div class="tile" [attr.data-tip]="h ? null : tip(c.id, et(c.id, c.label), c.valor)"><span class="nm">{{ et(c.id, c.label) }}</span><span class="val">{{ fmt(c.valor) }}</span><span class="gl">{{ c.nota }}</span></div>
+      }
+    </div>
+  </section>
+</ng-template>
+
+<!-- 2 · Involucrados: campos 7 y 8 (dona) -->
+<ng-template #tInvolucrados let-M let-h="h">
+  <section class="panel">
+    <div class="sec-head"><div><span class="eyebrow">{{ numero('involucrados') }} · Involucrados</span><h2>Situación de los funcionarios involucrados</h2></div>@if (!h) { <ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'involucrados' }" /> }</div>
+    @if (!M.dona.total) {
+      <p class="muted small">Sin datos de los campos {{ n('Q07') }} y {{ n('YA_NO_ESTAN') }} para este mes.</p>
+    } @else {
+      <div class="dona">
+        <svg viewBox="0 0 120 120" role="img" aria-label="Funcionarios involucrados según si continúan en el servicio">
+          @for (p of M.dona.partes; track p.id; let k = $index) {
+            @if (p.d) { <path [attr.d]="p.d" [attr.fill]="k === 0 ? 'var(--accent)' : 'var(--fg-3)'" [attr.data-tip]="h ? null : tip(p.id, p.label, p.valor, 'los involucrados', M.dona.total)" /> }
+          }
+          <text x="60" y="58" text-anchor="middle" font-size="18" font-weight="700" fill="currentColor">{{ fmt(M.dona.total) }}</text>
+          <text x="60" y="73" text-anchor="middle" font-size="8.5" fill="var(--fg-3)">involucrados</text>
+        </svg>
+        <div class="dona-ley">
+          @for (p of M.dona.partes; track p.id; let k = $index) {
+            <span [attr.data-tip]="h ? null : tip(p.id, p.label, p.valor, 'los involucrados', M.dona.total)"><i class="sw" [style.background]="k === 0 ? 'var(--accent)' : 'var(--fg-3)'"></i>{{ p.label }}<b>{{ fmt(p.valor) }}</b><small>{{ pct(p.pct) }}</small></span>
+          }
+        </div>
+      </div>
+    }
+  </section>
+</ng-template>
+
+<!-- 3, 4 y 5: un dato principal y su desglose. En la hoja, horizontal: el
+     dato principal a la izquierda y las barras a la derecha. -->
+<ng-template #tDesglose let-b let-h="h">
+  <section class="panel desglose" [class.horiz]="h">
+    <div class="d-izq">
+      <div class="sec-head"><div><span class="eyebrow">{{ numero(b.clave) }} · {{ sinNumero(b.eyebrow) }}</span><h2>{{ b.titulo }}</h2></div>@if (!h) { <ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: b.clave }" /> }</div>
+      <div class="tile key" [attr.data-tip]="h ? null : tip(b.principal.id, et(b.principal.id, b.principal.label), b.principal.valor)"><span class="nm">{{ et(b.principal.id, b.principal.label) }}</span><span class="val">{{ fmt(b.principal.valor) }}</span><span class="gl">{{ b.principal.nota }}</span></div>
+      <p class="muted small">{{ b.orden }}</p>
+    </div>
+    <div class="barras">
+      @for (x of b.filas; track x.id) {
+        <div class="fila-h" [attr.data-tip]="h ? null : tip(x.id, x.label, x.valor, et(b.principal.id, b.principal.label), b.principal.valor)">
+          <div class="arriba"><span>{{ x.label }}</span><span class="num">{{ fmt(x.valor) }}</span><span class="pc">{{ b.principal.valor ? pct(x.pct) : '' }}</span></div>
+          <span class="bar"><i [style.width.%]="(x.pct > 1 ? 1 : x.pct) * 100" [style.background]="colorBarra(x.rango)"></i></span>
+        </div>
+      }
+    </div>
+  </section>
+</ng-template>
+
+<!-- 6 · Anexo (solo con el formulario de 44 campos) -->
+<ng-template #tAnexo let-M let-h="h">
+  <section class="panel">
+    <div><span class="eyebrow">{{ numero('anexo') }} · Anexo</span><h2>Seguimiento adicional (anexo)</h2></div>
+    <div class="tiles">
+      @for (c of M.anexo; track c.id) {
+        <div class="tile" [attr.data-tip]="h ? null : tip(c.id, c.label, c.valor)"><span class="nm">{{ c.label }}</span><span class="val">{{ c.id === 'Q62' ? rem(c.valor) : fmt(c.valor) }}</span></div>
+      }
+    </div>
+  </section>
+</ng-template>
+
+<!-- Ranking de avance (todos los SLEP) -->
+<ng-template #tRanking let-M let-h="h">
+  <section class="panel">
+    <div><span class="eyebrow">Ranking · {{ mes }} {{ anio }}</span><h2>Avance de los sumarios por SLEP</h2>
+      <span class="muted small">1° = mayor avance; en empate, más procesos cerrados. Se destacan en rojo los servicios con avance bajo.</span></div>
+    <div class="tscroll">
+      <table class="dt rk-d">
+        <caption class="sr-only">Ranking de avance por SLEP</caption>
+        <thead><tr><th>N°</th><th>Servicio Local</th><th>{{ n('Q04') }}. Casos</th><th>{{ n('Q37') }}. Instruidos</th><th>{{ n('Q45') }}. Cerrados</th><th>% de avance</th><th class="izq">Avance (meta 100 %)</th></tr></thead>
+        <tbody>
+          @for (f of M.ranking; track f.slep) {
+            <tr>
+              <td class="pos" [class.top]="f.pos && f.pos <= 3">{{ f.pos ? f.pos + '°' : '—' }}</td>
+              <td class="sn">{{ f.slep }}</td>
+              <td>{{ fmt(f.casos) }}</td><td>{{ fmt(f.instruidos) }}</td><td>{{ fmt(f.cerrados) }}</td>
+              <td class="ex" [ngClass]="nivel(f.av)">{{ f.av === null ? '—' : pct(f.av) }}</td>
+              <td class="izq">@if (f.av !== null) { <span class="barra"><i [style.width.%]="(f.av < 0.02 ? 0.02 : f.av > 1 ? 1 : f.av) * 100" [style.background]="'var(--' + nivel(f.av) + ')'"></i></span> } @else { <span class="muted small">Sin instruidos</span> }</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</ng-template>
+
+<!-- Licencias: rankings completos de los campos 17 y 18 (última tarjeta). -->
+<ng-template #tLicencias let-M let-h="h">
+  <section class="panel licencias">
+    <div class="sec-head"><div><span class="eyebrow">{{ numero('licencias') }} · Licencias</span><h2>Los SLEP con las licencias más largas y las remuneraciones más altas</h2></div>@if (!h) { <ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'licencias' }" /> }</div>
+    <div class="dos">
+      @for (r of M.rankingsLic; track r.id) {
+        <div class="lic">
+          <h3>{{ r.titulo }}</h3>
+          @if (!r.filas.length) { <p class="muted small">Ningún SLEP informa este dato.</p> }
+          @for (f of r.filas; track f.slep) {
+            <div class="fila-rk" [class.propio]="f.propio"><span class="pos">{{ f.pos }}°</span><span class="sn" [title]="f.slep">{{ f.slep }}</span><span class="bar"><i [style.width.%]="f.ancho * 100" [style.background]="f.propio ? 'var(--head)' : f.pos === 1 ? 'var(--accent)' : 'color-mix(in srgb, var(--accent) 45%, var(--surface-2))'"></i></span><span class="num">{{ valorLic(r, f.valor) }}</span></div>
+          }
+        </div>
+      }
+    </div>
+  </section>
+</ng-template>
 
 <!-- Botón «Notas» de una sección (solo si la sección tiene notas). -->
 <ng-template #botonNotas let-clave>
