@@ -11,7 +11,7 @@
           <!-- Sin Inspector: el selector de modos (que vive en el Inspector) se
                muestra igual, para poder ir al Dashboard o al Histórico si el perfil los tiene. -->
           <app-mode-switcher modoActivo="formulario" />
-          <p class="text-xs text-gray-500 mt-3">Tu perfil no incluye el inspector de validaciones.</p>
+          <p class="text-xs text-gray-500 mt-3">Tu perfil no incluye el asistente de formulario.</p>
         }</div>
       } @else if ((modo$ | async) === 'dashboard-ampliado') {
         <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-dashboard /></div>
@@ -26,7 +26,7 @@
           <!-- Sin Inspector: el selector de modos (que vive en el Inspector) se
                muestra igual, para poder ir al Dashboard o al Histórico si el perfil los tiene. -->
           <app-mode-switcher modoActivo="formulario" />
-          <p class="text-xs text-gray-500 mt-3">Tu perfil no incluye el inspector de validaciones.</p>
+          <p class="text-xs text-gray-500 mt-3">Tu perfil no incluye el asistente de formulario.</p>
         }</div>
       } @else if ((modo$ | async) === 'dashboard-ampliado') {
         <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-dashboard /></div>

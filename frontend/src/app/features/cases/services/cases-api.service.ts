@@ -67,6 +67,11 @@ export class CasesApiService {
     return this.http.get<HistoricoSlep>(`${environment.apiUrl}/cases/historico`, { params: { slep, mes, anio } });
   }
 
+  // Meses con datos (los usa "Cargar datos del mes anterior").
+  listarMesesDisponibles(): Observable<{ mes: string; anio: string; cerrado: boolean }[]> {
+    return this.http.get<{ mes: string; anio: string; cerrado: boolean }[]>(`${environment.apiUrl}/cases/meses-disponibles`);
+  }
+
   getTotalGeneral(mes: string, anio: string, slep?: string): Observable<{ totalContenedores: number; campos: CampoConValor[] }> {
     const params: Record<string, string> = { mes, anio };
     if (slep) params['slep'] = slep;

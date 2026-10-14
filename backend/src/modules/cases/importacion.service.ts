@@ -6,6 +6,9 @@ import { Contenedor } from './entities/contenedor.entity';
 import { Pregunta } from '../forms/entities/pregunta.entity';
 import { FormularioPregunta } from '../forms/entities/formulario-pregunta.entity';
 
+// Un problema del archivo, explicado para quien lo carga.
+export interface ProblemaArchivo { titulo: string; detalle: string; solucion: string }
+
 // Equivalente a mapearEncabezadosAlCatalogo()/cargarDatosParaContenedor()
 // del PMV (TDD, sección 7.1/7.10) — mismo algoritmo de reconocimiento de
 // encabezados por texto (nunca por posición de columna), resuelto contra
@@ -44,8 +47,18 @@ export class ImportacionService {
   // cell.text (ExcelJS) entrega el texto visible de la celda: resuelve
   // fórmulas (su resultado), texto enriquecido e hipervínculos — a
   // diferencia de cell.value, que en esos casos es un objeto.
+  // Seguro ante celdas raras: la parte "tapada" de una celda combinada (ExcelJS
+  // falla al leer su texto) y las fórmulas con error (se devuelve el error,
+  // ej. "#DIV/0!", en vez de "[object Object]").
   private textoCelda(cell: ExcelJS.Cell): string {
-    return String(cell.text ?? '').trim();
+    try {
+      const v = cell.value as unknown;
+      const res = v && typeof v === 'object' && 'result' in (v as object) ? (v as { result: unknown }).result : null;
+      if (res && typeof res === 'object' && 'error' in (res as object)) return String((res as { error: string }).error);
+      return String(cell.text ?? '').trim();
+    } catch {
+      return '';
+    }
   }
 
   private resumir(lista: string[], maximo = 5): string {
@@ -72,10 +85,18 @@ export class ImportacionService {
     try {
       await wb.xlsx.load(buffer as any);
     } catch {
-      throw new BadRequestException('El archivo no es un Excel válido (.xlsx).');
+      throw new BadRequestException({
+        statusCode: 400, error: 'Bad Request', message: 'El archivo no es un Excel válido (.xlsx).',
+        problemas: [{ titulo: 'No pudimos abrir el archivo', detalle: 'No es un Excel .xlsx válido (puede ser un .xls antiguo, un .csv o un archivo dañado).', solucion: 'Ábrelo en Excel y usa «Guardar como» → «Libro de Excel (.xlsx)».' }],
+      });
     }
     const ws = wb.worksheets[0];
-    if (!ws) throw new BadRequestException('El archivo Excel no tiene hojas.');
+    if (!ws) {
+      throw new BadRequestException({
+        statusCode: 400, error: 'Bad Request', message: 'El archivo Excel no tiene hojas.',
+        problemas: [{ titulo: 'El archivo no tiene hojas', detalle: 'No encontramos ninguna hoja con datos.', solucion: 'Abre el archivo en Excel, revisa que tenga los datos en la primera hoja y vuelve a guardarlo como .xlsx.' }],
+      });
+    }
 
     // Índice alias -> Pregunta (equivalente a _catalogoIndice() del PMV).
     // Se indexa el catálogo completo, no solo este formulario, para poder
@@ -120,13 +141,55 @@ export class ImportacionService {
       if (tieneDatos) filasDatos.push(fila);
     }
 
-    const errores: string[] = [];
-    if (faltantes.length) errores.push(`Faltan ${faltantes.length} columnas del formulario: ${this.resumir(faltantes)}.`);
-    if (noReconocidas.length) errores.push(`Columnas no reconocidas: ${this.resumir(noReconocidas)}.`);
-    if (deOtroFormulario.length) errores.push(`Columnas que no pertenecen a este formulario: ${this.resumir(deOtroFormulario)}.`);
-    if (repetidas.length) errores.push(`Columnas repetidas: ${this.resumir(repetidas)}.`);
-    if (filasDatos.length === 0) errores.push('No hay una fila de datos bajo los encabezados.');
-    if (filasDatos.length > 1) errores.push(`Debe haber una sola fila de datos y hay ${filasDatos.length}.`);
+    // Cada problema con qué pasó y cómo corregirlo: el navegador los muestra
+    // en una ventana, uno por uno.
+    const problemas: ProblemaArchivo[] = [];
+    if (faltantes.length) problemas.push({ titulo: `Faltan ${faltantes.length} columnas del formulario`, detalle: this.resumir(faltantes), solucion: 'Agrega esas columnas en la fila 1, con el nombre de la pregunta tal como aparece en el formulario.' });
+    if (noReconocidas.length) problemas.push({ titulo: 'Hay columnas que no reconocemos', detalle: this.resumir(noReconocidas), solucion: 'Bórralas o corrige su nombre para que sea igual al de la pregunta del formulario.' });
+    if (deOtroFormulario.length) problemas.push({ titulo: 'Hay columnas de otro formulario', detalle: this.resumir(deOtroFormulario), solucion: 'Quítalas: este mes usa otro formulario. Descarga la plantilla del mes para partir con las columnas correctas.' });
+    if (repetidas.length) problemas.push({ titulo: 'Hay columnas repetidas', detalle: this.resumir(repetidas), solucion: 'Deja una sola columna por pregunta.' });
+    if (filasDatos.length === 0) problemas.push({ titulo: 'No encontramos los datos', detalle: 'Bajo los encabezados (fila 1) no hay ninguna fila con datos.', solucion: 'Escribe los datos de tu SLEP en la fila 2.' });
+    if (filasDatos.length > 1) problemas.push({ titulo: `Hay ${filasDatos.length} filas con datos`, detalle: `Filas ${this.resumir(filasDatos.map((f) => String(f.number)))}.`, solucion: 'Deja solo la fila 2 con los datos de tu SLEP y borra las demás (también las que tengan espacios o notas).' });
+
+    // Lo que "ensucia" una planilla y lleva a cargar datos equivocados.
+    const ultimaColumna = Math.max(ws.actualColumnCount, ...[...columnaPorPregunta.values()]);
+    const filasOcultas: string[] = [];
+    for (let n = 1; n <= ws.rowCount; n++) if (ws.getRow(n).hidden) filasOcultas.push(String(n));
+    const columnasOcultas: string[] = [];
+    for (let c = 1; c <= ultimaColumna; c++) if (ws.getColumn(c).hidden) columnasOcultas.push(ws.getColumn(c).letter);
+    if (filasOcultas.length || columnasOcultas.length) {
+      problemas.push({
+        titulo: 'Hay filas o columnas ocultas',
+        detalle: [filasOcultas.length ? `Filas ${this.resumir(filasOcultas)}` : '', columnasOcultas.length ? `Columnas ${this.resumir(columnasOcultas)}` : ''].filter(Boolean).join(' · ') + '.',
+        solucion: 'Muéstralas (selecciona todo, clic derecho → Mostrar) y borra lo que no corresponda: lo oculto también se lee.',
+      });
+    }
+    const combinadas: string[] = ((ws as unknown as { model?: { merges?: string[] } }).model?.merges ?? []).filter(Boolean);
+    if (combinadas.length) problemas.push({ titulo: 'Hay celdas combinadas', detalle: `Rangos ${this.resumir(combinadas)}.`, solucion: 'Sepáralas (Inicio → Combinar y centrar → Separar celdas): cada pregunta debe tener su propia celda.' });
+    const conError: string[] = [];
+    const noNumericos: string[] = [];
+    const fila2 = filasDatos[0];
+    if (fila2) {
+      const tipoPorPregunta = new Map(receta.map((r) => [r.preguntaId, r.pregunta]));
+      columnaPorPregunta.forEach((col, preguntaId) => {
+        const celda = fila2.getCell(col);
+        const v = celda.value as unknown;
+        const resultado = v && typeof v === 'object' && 'result' in (v as object) ? (v as { result: unknown }).result : v;
+        const pregunta = tipoPorPregunta.get(preguntaId);
+        const nombre = `"${pregunta ? `${pregunta.nombre}`.slice(0, 50) : preguntaId}" (${celda.address})`;
+        if (resultado && typeof resultado === 'object' && 'error' in (resultado as object)) {
+          conError.push(`${nombre}: ${(resultado as { error: string }).error}`);
+          return;
+        }
+        const texto = this.textoCelda(celda);
+        if (texto && pregunta && (pregunta.tipo === 'number' || pregunta.tipo === 'money') && !/^-?\d+([.,]\d+)?$/.test(texto.replace(/\s/g, ''))) {
+          noNumericos.push(`${nombre}: «${texto.slice(0, 20)}»`);
+        }
+      });
+    }
+    if (conError.length) problemas.push({ titulo: 'Hay fórmulas con error', detalle: this.resumir(conError, 4), solucion: 'Corrige la fórmula o reemplázala por su valor (copiar → pegar solo valores).' });
+    if (noNumericos.length) problemas.push({ titulo: 'Hay valores que no son números', detalle: this.resumir(noNumericos, 4), solucion: 'Escribe solo el número, sin puntos de miles, signos ($) ni palabras. Por ejemplo, 1500 en vez de «1.500 casos».' });
+    const errores = problemas.map((p) => `${p.titulo}: ${p.detalle}`);
 
     // El SLEP del archivo (campo 3) YA NO se exige que coincida (mejora
     // post-v2.23): se devuelve tal cual, y el navegador le muestra a quien
@@ -139,8 +202,15 @@ export class ImportacionService {
     // "message" — el frontend terminaba recibiendo un objeto donde
     // esperaba texto, y como nunca usaba el arreglo "errores" (ya venía
     // todo junto y legible en el mensaje), no hacía falta mandarlo aparte.
+    // "message" sigue siendo texto (lo leen las versiones anteriores del
+    // navegador); "problemas" trae el detalle para la ventana explicativa.
     if (errores.length) {
-      throw new BadRequestException(`El archivo no tiene el formato del formulario, no se cargó ningún dato. ${errores.join(' ')}`);
+      throw new BadRequestException({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: `El archivo no tiene el formato del formulario, no se cargó ningún dato. ${errores.join('. ')}.`,
+        problemas,
+      });
     }
 
     const fila = filasDatos[0];

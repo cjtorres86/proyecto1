@@ -34,7 +34,8 @@ export class ModeSwitcherComponent {
   @Input({ required: true }) modoActivo!: ModoWorkspace;
 
   private readonly todas: { modo: ModoWorkspace; etiqueta: string; permiso?: string }[] = [
-    { modo: 'formulario', etiqueta: 'Formulario' },
+    // "Asistente": muestra el panel Asistente de formulario (antes "Formulario").
+    { modo: 'formulario', etiqueta: 'Asistente' },
     { modo: 'dashboard-ampliado', etiqueta: 'Dashboard', permiso: 'dashboard' },
     { modo: 'historico', etiqueta: 'Histórico', permiso: 'historico' },
   ];

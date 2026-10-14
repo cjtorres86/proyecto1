@@ -7,23 +7,19 @@
          ambos quedan desactivados (salvo superadmin). -->
     @if (puedeEditar && !esTotalGeneral && contenedor) {
       <div class="flex gap-1">
-        <!-- Es un <label> para abrir el selector de archivo sin JavaScript;
-             tabindex/keydown lo dejan usable con teclado. Solo .xlsx: es el
-             formato que lee ExcelJS. -->
+        <!-- Cargar datos: abre la ventana con dos opciones (mes anterior o
+             archivo Excel). Se activa o desactiva por perfil en el portal
+             (permiso "importar_excel", «Cargar datos»). -->
         @if (puedeImportarExcel) {
-        <label
-          class="text-xs rounded px-2 py-1 border border-blue-800 text-blue-800 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-800"
-          [class.opacity-40]="mesCerrado || cargandoArchivo"
-          [class.pointer-events-none]="mesCerrado || cargandoArchivo"
-          [attr.aria-disabled]="mesCerrado"
-          [attr.tabindex]="mesCerrado ? -1 : 0"
-          (keydown.enter)="selectorArchivo.click()"
-          (keydown.space)="$event.preventDefault(); selectorArchivo.click()"
-          [title]="mesCerrado ? 'El mes está cerrado' : 'El Excel debe tener las preguntas del formulario como columnas y una sola fila con los datos de tu SLEP'"
+        <button
+          type="button"
+          class="text-xs rounded px-2 py-1 border border-blue-800 text-blue-800 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          [disabled]="mesCerrado || cargandoArchivo"
+          [title]="mesCerrado ? 'El mes está cerrado' : 'Trae los datos del mes anterior o de un archivo Excel'"
+          (click)="abrirCargarDatos()"
         >
           {{ cargandoArchivo ? 'Cargando…' : 'Cargar datos' }}
-          <input #selectorArchivo type="file" accept=".xlsx" class="hidden" [disabled]="mesCerrado" (change)="onArchivoSeleccionado($event)" />
-        </label>
+        </button>
         }
         <button
           class="text-xs rounded px-2 py-1 border border-blue-800 disabled:opacity-40 disabled:cursor-not-allowed"

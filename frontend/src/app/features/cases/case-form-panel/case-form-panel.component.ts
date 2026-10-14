@@ -1,7 +1,12 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription, fromEvent, filter } from 'rxjs';
+import { Subscription, fromEvent, filter, firstValueFrom } from 'rxjs';
+import { CasesApiService } from '../services/cases-api.service';
+import {
+  CargarDatosData, CargarDatosDialogComponent, CargarDatosResultado, ConfirmarGuardarData, ConfirmarGuardarDialogComponent,
+  OPCIONES_VIDRIO, ProblemasArchivoData, ProblemasArchivoDialogComponent,
+} from '../dialogos/dialogos-datos';
 import { CaseStateService } from '../../../core/services/case-state.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -59,6 +64,7 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
     private readonly notification: NotificationService,
     private readonly mensajes: MensajesService,
     private readonly dialog: MatDialog,
+    private readonly casesApi: CasesApiService,
   ) {}
 
   ngOnInit(): void {
@@ -153,14 +159,28 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
     this.valoresEditados[campo.preguntaId] = valor;
   }
 
+  // Guardar: primero una ventana amable con el resumen (SLEP, mes y cuántos
+  // campos cambian); se guarda solo con «Sí, guardar».
   guardar(): void {
+    if (!this.contenedor || !this.puedeGuardar) return;
+    const c = this.contenedor;
+    this.dialog
+      .open<ConfirmarGuardarDialogComponent, ConfirmarGuardarData, boolean>(ConfirmarGuardarDialogComponent, {
+        ...OPCIONES_VIDRIO, width: '480px',
+        data: { slep: c.slep, mes: c.mesConsolidado, anio: c.anioConsolidado, cambios: Object.keys(this.valoresEditados).length },
+      })
+      .afterClosed()
+      .subscribe((si) => { if (si) this.guardarAhora(); });
+  }
+
+  private guardarAhora(): void {
     if (!this.contenedor) return;
     this.guardando = true;
     this.caseState.guardarValores(this.contenedor.id, this.valoresEditados).subscribe({
       // El formulario actualizado llega solo, por el flujo compartido.
       next: () => {
         this.guardando = false;
-        this.notification.mostrar(`Datos guardados para ${this.contenedor?.slep ?? ''}.`);
+        this.notification.mostrar(`¡Listo! Los datos de ${this.contenedor?.slep ?? ''} quedaron guardados.`);
       },
       error: (err) => {
         this.guardando = false;
@@ -176,12 +196,50 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
   // los revise; quedan registrados recién al presionar "Guardar". Si el
   // archivo no cumple el formato, el mensaje del backend dice exactamente
   // qué falló y el formulario no cambia.
-  onArchivoSeleccionado(event: Event): void {
+  // Cargar datos: busca el mes anterior con datos de este SLEP y abre la
+  // ventana con las dos opciones (mes anterior o archivo Excel).
+  abrirCargarDatos(): void {
+    const c = this.contenedor;
+    if (!c || this.mesCerrado || this.cargandoArchivo) return;
+    this.cargandoArchivo = true;
+    this.buscarMesAnterior(c).then((r) => {
+      this.cargandoArchivo = false;
+      this.dialog
+        .open<CargarDatosDialogComponent, CargarDatosData, CargarDatosResultado>(CargarDatosDialogComponent, {
+          ...OPCIONES_VIDRIO, width: '600px',
+          data: { slep: c.slep, anterior: r.anterior ? { mes: r.anterior.mes, anio: r.anterior.anio, campos: Object.keys(r.valores).length } : null, motivo: r.motivo },
+        })
+        .afterClosed()
+        .subscribe((elegido) => {
+          if (elegido?.tipo === 'anterior' && r.anterior) this.aplicarValores(r.valores, `${r.anterior.mes} ${r.anterior.anio}`, 'mes');
+          if (elegido?.tipo === 'archivo') this.cargarArchivo(elegido.archivo);
+        });
+    });
+  }
+
+  // El mes anterior (el último mes con datos antes de este) y lo que ese
+  // SLEP guardó ahí. Solo los campos que se pueden editar en este formulario.
+  private async buscarMesAnterior(c: Contenedor): Promise<{ anterior: { mes: string; anio: string } | null; valores: Record<string, string>; motivo: string }> {
+    const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const clave = (m: { mes: string; anio: string }) => +m.anio * 12 + MESES.indexOf(m.mes);
+    try {
+      const meses = await firstValueFrom(this.casesApi.listarMesesDisponibles());
+      const actual = clave({ mes: c.mesConsolidado, anio: c.anioConsolidado });
+      const anterior = meses.filter((m) => MESES.includes(m.mes) && clave(m) < actual).sort((a, b) => clave(b) - clave(a))[0];
+      if (!anterior) return { anterior: null, valores: {}, motivo: 'Este es el primer mes registrado: todavía no hay un mes anterior.' };
+      const r = await firstValueFrom(this.casesApi.getTotalGeneral(anterior.mes, anterior.anio, c.slep));
+      const editables = new Set(this.campos.filter((x) => this.esEditable(x)).map((x) => x.preguntaId));
+      const valores: Record<string, string> = {};
+      for (const campo of r.campos) if (editables.has(campo.preguntaId) && campo.valor !== '' && campo.valor != null) valores[campo.preguntaId] = String(campo.valor);
+      if (!r.totalContenedores || !Object.keys(valores).length) return { anterior: null, valores: {}, motivo: `${c.slep} no tiene datos guardados en ${anterior.mes.toLowerCase()} ${anterior.anio}.` };
+      return { anterior, valores, motivo: '' };
+    } catch {
+      return { anterior: null, valores: {}, motivo: 'No pudimos consultar el mes anterior. Inténtalo de nuevo en un momento.' };
+    }
+  }
+
+  private cargarArchivo(archivo: File): void {
     if (!this.contenedor || this.mesCerrado) return;
-    const input = event.target as HTMLInputElement;
-    const archivo = input.files?.[0];
-    input.value = '';
-    if (!archivo) return;
     this.cargandoArchivo = true;
     this.caseState.importarArchivo(this.contenedor.id, archivo).subscribe({
       next: ({ valores, slepEnArchivo, nombreArchivo, slep }) => {
@@ -210,11 +268,19 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
               this.notification.mostrar('Carga cancelada: el formulario no cambió.');
               return;
             }
-            this.aplicarValoresDelArchivo(valores, archivo.name);
+            this.aplicarValores(valores, archivo.name, 'archivo');
           });
       },
       error: (err) => {
         this.cargandoArchivo = false;
+        // Los problemas del archivo, explicados uno por uno (con cómo resolverlos).
+        const problemas: ProblemasArchivoData['problemas'] | undefined = err.error?.problemas;
+        if (problemas?.length) {
+          this.dialog.open<ProblemasArchivoDialogComponent, ProblemasArchivoData>(ProblemasArchivoDialogComponent, {
+            ...OPCIONES_VIDRIO, width: '620px', data: { nombreArchivo: archivo.name, problemas },
+          });
+          return;
+        }
         this.notification.mostrar(err.error?.message ?? 'No se pudo leer el archivo.', 15000);
       },
     });
@@ -226,9 +292,9 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
     return n(a) === n(b);
   }
 
-  // Vuelca los valores del Excel al formulario como cambios pendientes
-  // (en naranjo): se registran recién al presionar "Guardar".
-  private aplicarValoresDelArchivo(valores: Record<string, string>, nombreArchivo: string): void {
+  // Vuelca los valores (del Excel o del mes anterior) al formulario como
+  // cambios pendientes (en naranjo): se registran recién al presionar "Guardar".
+  private aplicarValores(valores: Record<string, string>, origen: string, tipo: 'archivo' | 'mes'): void {
     let aplicados = 0;
     for (const campo of this.campos) {
       const nuevo = valores[campo.preguntaId];
@@ -237,11 +303,12 @@ export class CaseFormPanelComponent implements OnInit, OnDestroy {
       this.valoresEditados[campo.preguntaId] = nuevo;
       aplicados++;
     }
+    const de = tipo === 'mes' ? `de ${origen}` : `de "${origen}"`;
     this.notification.mostrar(
       aplicados
-        ? `Datos de "${nombreArchivo}" cargados en el formulario (${aplicados} campos). Revísalos y presiona Guardar para registrarlos.`
-        : `"${nombreArchivo}" tiene los mismos datos que ya están guardados: no hay cambios.`,
-      7000,
+        ? `¡Listo! Cargamos ${aplicados} ${aplicados === 1 ? 'campo' : 'campos'} ${de}. Ajusta lo que haya cambiado y presiona Guardar cuando quieras.`
+        : `Los datos ${de} son iguales a los que ya están en el formulario: no hay nada nuevo que cargar.`,
+      8000,
     );
   }
 }

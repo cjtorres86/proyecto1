@@ -265,8 +265,9 @@ export class CasesController {
     const contenedor = await this.casesService.obtenerContenedor(id);
     this.verificarAlcance(contenedor.slep, usuario);
     this.verificarPuedeCargarDatos(usuario);
-    // Cargar un Excel exige además el permiso "importar_excel" del perfil.
-    if (!tienePermiso(usuario, 'importar_excel')) throw new ForbiddenException('Tu perfil no permite cargar archivos Excel.');
+    // "Cargar datos" (mes anterior o archivo): permiso "importar_excel" del
+    // perfil, que se activa o desactiva en Configuración → Perfiles del portal.
+    if (!tienePermiso(usuario, 'importar_excel')) throw new ForbiddenException('Tu perfil no tiene activada la opción «Cargar datos».');
     this.verificarMesAbierto(contenedor, usuario);
     // El navegador manda el nombre del archivo en UTF-8, pero la librería
     // que recibe archivos lo lee como latin1: sin esto, "Educación" llegaría
