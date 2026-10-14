@@ -305,11 +305,11 @@ function reportModel(tipo){
   const scope=CFG.alcanceCompleto?`${d.sleps.length} Servicios Locales de Educación Pública`:d.sleps[0].nombre;
   const destaca=(R,cols)=>new Set(R&&R.av!=null&&nivel(R.av)==="bajo"?cols:[]);
   const tabRanking=mm=>{const rk=ranking(y,mm);
-    const rows=rk.L.map(x=>{const rp=metr(x.s.m[mm-1]),mv=movimiento(y,mm,x.s.cod);
-      return {c:[`${rk.pos.get(x.s.cod)}°`,x.s.nombre,x.r.ins,x.r.cerr,x.r.pend,x.r.av,rp&&rp.av!=null?x.r.av-rp.av:null,mv?sinFlecha(mv.txt):"",NIVEL_TXT[nivel(x.r.av)].replace("Avance ","")],over:destaca(x.r,[5,8])}});
+    const rows=rk.L.map(x=>{const mv=movimiento(y,mm,x.s.cod);
+      return {c:[`${rk.pos.get(x.s.cod)}°`,x.s.nombre,x.r.ins,x.r.cerr,x.r.pend,x.r.av,mv?sinFlecha(mv.txt):"",NIVEL_TXT[nivel(x.r.av)].replace("Avance ","")],over:destaca(x.r,[5,7])}});
     if(CFG.alcanceCompleto)d.sleps.filter(s=>!rk.pos.get(s.cod)).sort((a,b)=>a.nombre.localeCompare(b.nombre,"es")).forEach(s=>{const r=metr(s.m[mm]);
-      rows.push({c:["—",s.nombre,r?r.ins:null,r?r.cerr:null,r?r.pend:null,null,null,"",r?"Sin instruidos":"Sin información"],over:new Set()})});
-    return {small:true,cols:[{h:"N°",t:"txt",w:.45},{h:"Servicio Local",t:"txt",w:1.9},{h:"Instruidos",t:"n"},{h:"Cerrados",t:"n"},{h:"Por cerrar",t:"n"},{h:"% de avance",t:"p"},{h:"Var. (pp)",t:"pp"},{h:"Cambio de posición",t:"txt",w:1.05},{h:"Nivel",t:"txt",w:.95}],rows}};
+      rows.push({c:["—",s.nombre,r?r.ins:null,r?r.cerr:null,r?r.pend:null,null,"",r?"Sin instruidos":"Sin información"],over:new Set()})});
+    return {small:true,cols:[{h:"N°",t:"txt",w:.45},{h:"Servicio Local",t:"txt",w:1.9},{h:"Instruidos",t:"n"},{h:"Cerrados",t:"n"},{h:"Por cerrar",t:"n"},{h:"% de avance",t:"p"},{h:"Cambio de posición",t:"txt",w:1.05},{h:"Nivel",t:"txt",w:.95}],rows}};
   const sintesis=mm=>{const rk=ranking(y,mm),R=rec(y,"TOTAL",mm),Rp=rec(y,"TOTAL",mm-1),c=nv=>rk.L.filter(x=>nivel(x.r.av)===nv).length;
     if(!CFG.alcanceCompleto){const s=d.sleps[0],r=metr(s.m[mm]),p=rk.pos.get(s.cod),mv=movimiento(y,mm,s.cod);
       return !r||r.av==null?`${s.nombre} no tiene posición en el ranking de ${MESES_L[mm]} de ${y}.`:`En ${MESES_L[mm]} de ${y}, ${s.nombre} ocupa el lugar ${p}° de ${rk.n} en el ranking de avance, con ${fmt(r.cerr)} de ${fmt(r.ins)} sumarios instruidos con proceso cerrado (${pct(r.av)}).${mv&&mv.d!=null?` ${mv.largo}.`:""}`}

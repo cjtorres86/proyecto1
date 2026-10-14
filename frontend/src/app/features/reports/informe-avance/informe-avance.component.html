@@ -123,8 +123,13 @@
       </div>
     </div>
     <div class="chartbox" id="cb-line"><svg id="line" role="img"></svg><div class="tip" id="tip" hidden></div></div>
-    <div class="panel-head"><div><h3>Variación mensual del avance</h3><span class="muted small">Cuánto avanzó (+) o retrocedió (−) el % de avance respecto del mes anterior, en puntos porcentuales.</span></div></div>
-    <div class="chartbox" id="cb-diff"><svg id="diff" role="img"></svg><div class="tip" id="tip2" hidden></div></div>
+    <!-- Variación mensual: desplegable, siempre cerrado al abrir el informe o
+         al cambiar de mes o de servicio (igual que la tabla mensual). -->
+    <details class="tbl" id="det-diff">
+      <summary>Ver variación mensual del avance</summary>
+      <p class="muted small" style="margin:8px 0 0">Cuánto avanzó (+) o retrocedió (−) el % de avance respecto del mes anterior, en puntos porcentuales.</p>
+      <div class="chartbox" id="cb-diff"><svg id="diff" role="img"></svg><div class="tip" id="tip2" hidden></div></div>
+    </details>
 
     <details class="tbl">
       <summary>Ver tabla mensual del servicio</summary>

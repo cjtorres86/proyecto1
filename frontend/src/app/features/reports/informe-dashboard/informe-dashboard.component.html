@@ -125,14 +125,14 @@
           <div class="dona">
             <svg viewBox="0 0 120 120" role="img" aria-label="Funcionarios involucrados según si continúan en el servicio">
               @for (p of M.dona.partes; track p.id; let k = $index) {
-                @if (p.d) { <path [attr.d]="p.d" [attr.fill]="k === 0 ? 'var(--accent)' : 'var(--prev)'" [attr.data-tip]="tip(p.id, p.label, p.valor, 'los involucrados', M.dona.total)" /> }
+                @if (p.d) { <path [attr.d]="p.d" [attr.fill]="k === 0 ? 'var(--accent)' : 'var(--fg-3)'" [attr.data-tip]="tip(p.id, p.label, p.valor, 'los involucrados', M.dona.total)" /> }
               }
               <text x="60" y="58" text-anchor="middle" font-size="18" font-weight="700" fill="currentColor">{{ fmt(M.dona.total) }}</text>
               <text x="60" y="73" text-anchor="middle" font-size="8.5" fill="var(--fg-3)">involucrados</text>
             </svg>
             <div class="dona-ley">
               @for (p of M.dona.partes; track p.id; let k = $index) {
-                <span [attr.data-tip]="tip(p.id, p.label, p.valor, 'los involucrados', M.dona.total)"><i class="sw" [style.background]="k === 0 ? 'var(--accent)' : 'var(--prev)'"></i>{{ p.label }}<b>{{ fmt(p.valor) }}</b><small>{{ pct(p.pct) }}</small></span>
+                <span [attr.data-tip]="tip(p.id, p.label, p.valor, 'los involucrados', M.dona.total)"><i class="sw" [style.background]="k === 0 ? 'var(--accent)' : 'var(--fg-3)'"></i>{{ p.label }}<b>{{ fmt(p.valor) }}</b><small>{{ pct(p.pct) }}</small></span>
               }
             </div>
           </div>

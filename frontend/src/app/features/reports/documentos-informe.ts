@@ -62,6 +62,12 @@ async function toXlsx(M, L) {
     T.cols.forEach((c,j)=>ws.getColumn(j+1).width=c.t==="txt"?Math.max(8,Math.round((c.w||1)*14)):14);
     ws.autoFilter={from:{row:4,column:1},to:{row:4+T.rows.length,column:T.cols.length}};
     ws.views=[{state:"frozen",ySplit:4}];
+    // Gráficos del apartado (si los trae): bajo la tabla, como imagen.
+    let fila=ws.rowCount+2;
+    (s.charts||[]).forEach(c=>{if(!c.img)return;const w=640,h=Math.round(w*c.img.H/c.img.W);
+      ws.getCell(fila,1).value=c.cap;ws.getCell(fila,1).font={bold:true,color:{argb:"FF1B4673"}};
+      ws.addImage(wb.addImage({base64:c.img.jpg,extension:"jpeg"}),{tl:{col:0,row:fila},ext:{width:w,height:h}});
+      fila+=Math.ceil(h/20)+3});
   });
   return new Blob([await wb.xlsx.writeBuffer()],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
 }
@@ -124,6 +130,18 @@ async function toDocx(M, LB, LOGO) {
       footers:{default:new Footer({children:[new Paragraph({children:[new TextRun({text:M.fuente+"  ·  Página ",font:FONT,size:15,color:"7A8392"}),new TextRun({children:[PageNumber.CURRENT],font:FONT,size:15,color:"7A8392"})]})]})},
       children:ch}]});
   return await Packer.toBlob(doc);
+}
+
+// Un gráfico SVG (texto) → imagen para Word, Excel y PDF: PNG (bytes) y JPEG
+// (data URL), a doble resolución para que se vea nítido al imprimir.
+export async function svgAImagen(svg: string, W: number, H: number): Promise<{ bytes: Uint8Array; jpg: string; W: number; H: number }> {
+  const img = new Image();
+  await new Promise((ok, ko) => { img.onload = ok; img.onerror = () => ko(new Error('No fue posible generar el gráfico.')); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
+  const cv = document.createElement('canvas'); cv.width = W * 2; cv.height = H * 2;
+  const ctx = cv.getContext('2d'); ctx.scale(2, 2); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); ctx.drawImage(img, 0, 0, W, H);
+  const png = cv.toDataURL('image/png'), b = atob(png.split(',')[1]), bytes = new Uint8Array(b.length);
+  for (let i = 0; i < b.length; i++) bytes[i] = b.charCodeAt(i);
+  return { bytes, jpg: cv.toDataURL('image/jpeg', 0.92), W, H };
 }
 
 // Genera el archivo del modelo y lo descarga con el nombre M.file.

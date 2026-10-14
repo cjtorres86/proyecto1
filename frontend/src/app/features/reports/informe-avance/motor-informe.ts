@@ -111,6 +111,7 @@ function buildSelects(){
   $("mes").value=S.mes;
 }
 
+let vistaDiff=null;
 function render(){
   save();
   const d=Y(),m=S.mes,key=S.slep,R=rec(S.year,key,m),Rp=rec(S.year,key,m-1),rk=ranking(S.year,m);
@@ -134,6 +135,8 @@ function render(){
   $("lg-prev").hidden=!cmpOn();$("lg-prev-t").textContent=`% de avance ${prevYear()}`;
   [...$("escala").children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.e===S.escala));
   [...$("years").children].forEach(b=>b.setAttribute("aria-pressed",b.dataset.y===S.year));
+  // La variación mensual vuelve a cerrarse al cambiar de año, mes o servicio.
+  const vista=`${S.year}|${S.mes}|${S.slep}`;if(vista!==vistaDiff){vistaDiff=vista;$("det-diff").open=false}
   drawLine();drawDiff();drawTable();drawHeat();drawRanking();drawObs();syncReportForm();
   $("foot").textContent=`Fuente: Avance de Sumarios, datos informados por los Servicios Locales (${S.year}, ${d.rango}). % de avance = procesos cerrados ÷ sumarios instruidos. Los meses sin información aparecen vacíos.`;
 }
@@ -404,19 +407,18 @@ function reportModel(tipo,alcance){
   let title,scope,file;
   if(alcance==="todos"){
     scope=`${d.sleps.length} Servicios Locales de Educación Pública`;
-    const tabRanking=(mm)=>{const rk=ranking(y,mm),rows=rk.L.map(x=>{const rp=metr(x.s.m[mm-1]);return {c:[`${rk.pos.get(x.s.cod)}°`,x.s.nombre,...indRow(x.r),x.r.av,rp&&rp.av!=null?x.r.av-rp.av:null,NIVEL_TXT[nivel(x.r.av)].replace("Avance ","")],over:destaca(x.r,[7,9])}});
-      d.sleps.filter(s=>!rk.pos.get(s.cod)).sort((a,b)=>a.nombre.localeCompare(b.nombre,"es")).forEach(s=>{const r=metr(s.m[mm]);rows.push({c:["—",s.nombre,...indRow(r),null,null,r?"Sin instruidos":"Sin información"],over:new Set()})});
-      return {small:true,cols:[{h:"N°",t:"txt",w:.45},{h:"Servicio Local",t:"txt",w:1.9},{h:"Involucrados",t:"n"},{h:"Instruidos",t:"n"},{h:"En curso",t:"n"},{h:"Cerrados",t:"n"},{h:"Sanciones",t:"n"},{h:"% de avance",t:"p"},{h:"Var. (pp)",t:"pp"},{h:"Nivel",t:"txt",w:.95}],rows}};
+    const tabRanking=(mm)=>{const rk=ranking(y,mm),rows=rk.L.map(x=>({c:[`${rk.pos.get(x.s.cod)}°`,x.s.nombre,...indRow(x.r),x.r.av,NIVEL_TXT[nivel(x.r.av)].replace("Avance ","")],over:destaca(x.r,[7,8])}));
+      d.sleps.filter(s=>!rk.pos.get(s.cod)).sort((a,b)=>a.nombre.localeCompare(b.nombre,"es")).forEach(s=>{const r=metr(s.m[mm]);rows.push({c:["—",s.nombre,...indRow(r),null,r?"Sin instruidos":"Sin información"],over:new Set()})});
+      return {small:true,cols:[{h:"N°",t:"txt",w:.45},{h:"Servicio Local",t:"txt",w:1.9},{h:"Involucrados",t:"n"},{h:"Instruidos",t:"n"},{h:"En curso",t:"n"},{h:"Cerrados",t:"n"},{h:"Sanciones",t:"n"},{h:"% de avance",t:"p"},{h:"Nivel",t:"txt",w:.95}],rows}};
     if(tipo==="mensual"){
       title=`Informe mensual de avance de sumarios · ${mesTxt}`;file=`Informe_mensual_avance_sumarios_${y}_${String(m+1).padStart(2,"0")}`;
       const R=rec(y,"TOTAL",m),Rp=rec(y,"TOTAL",m-1),rk=ranking(y,m),cuenta=nv=>rk.L.filter(x=>nivel(x.r.av)===nv).length;
       secs.push({h:"1. Síntesis",sheet:"Resumen",p:[
         `En ${MESES_L[m]} de ${y}, los ${R.n} SLEP que informan suman ${fmt(R.cerr)} procesos cerrados de ${fmt(R.ins)} sumarios instruidos: un avance consolidado de ${pct(R.av)}${Rp&&Rp.av!=null?` (${pp(R.av-Rp.av)} respecto de ${MESES_L[m-1]})`:""}. Quedan ${fmt(R.pend)} procesos por cerrar para alcanzar la meta.`,
         `De ${rk.n} servicios con sumarios instruidos, ${cuenta("alto")} tienen avance alto, ${cuenta("medio")} medio y ${cuenta("bajo")} bajo.${rk.L.length?` Mayor avance: ${rk.L[0].s.nombre} (${pct(rk.L[0].r.av)}).`:""}`],
-        table:{cols:[{h:"Indicador",t:"txt",w:2.4},{h:mesTxt,t:"n"},{h:`${cap1(MESES_L[m-1]||"")}`,t:"n"},{h:"Variación",t:"s"}],rows:[
-          ...IND.map(e=>({c:[e.n,R[e.k],Rp?Rp[e.k]:null,Rp?R[e.k]-Rp[e.k]:null],over:new Set()})),
-          {c:["% de avance",null,null,null],avance:[R.av,Rp?Rp.av:null],bold:true,over:new Set()}]}});
-      const ultFila=secs[0].table.rows[secs[0].table.rows.length-1];ultFila.c=["% de avance",pct(R.av),Rp?pct(Rp.av):"—",Rp&&Rp.av!=null?pp(R.av-Rp.av):"—"];ultFila.txtRow=true;
+        table:{cols:[{h:"Indicador",t:"txt",w:2.4},{h:mesTxt,t:"n"},{h:`${cap1(MESES_L[m-1]||"")}`,t:"n"}],rows:[
+          ...IND.map(e=>({c:[e.n,R[e.k],Rp?Rp[e.k]:null],over:new Set()})),
+          {c:["% de avance",pct(R.av),Rp?pct(Rp.av):"—"],txtRow:true,bold:true,over:new Set()}]}});
       secs.push({h:"2. Evolución del avance consolidado",sheet:null,p:[],charts:[{key:"TOTAL",cap:`% de avance consolidado, ${y}`,mes:m}]});
       secs.push({h:"3. Ranking de avance por SLEP",sheet:"Ranking",p:[`Servicios ordenados por % de avance en ${MESES_L[m]} de ${y} (1° = mayor avance). Se destacan en rojo los servicios con avance bajo.`],table:tabRanking(m)});
     }else{
@@ -424,7 +426,7 @@ function reportModel(tipo,alcance){
       const RL=rec(y,"TOTAL",last),RF=rec(y,"TOTAL",rangeM[0]);
       secs.push({h:"1. Evolución consolidada",sheet:"Consolidado",p:[`Entre ${MESES_L[rangeM[0]]} y ${MESES_L[last]} de ${y}, el avance consolidado pasa de ${pct(RF.av)} a ${pct(RL.av)} (${pp(RL.av-RF.av)}). En ${MESES_L[last]}, ${fmt(RL.cerr)} de ${fmt(RL.ins)} sumarios instruidos tienen su proceso cerrado.`],
         charts:[{key:"TOTAL",cap:`% de avance consolidado, ${y}`,mes:null,range:[rangeM[0],last]}],
-        table:{cols:[{h:"Mes",t:"txt",w:1.3},...colsInd,{h:"% de avance",t:"p"},{h:"Var. (pp)",t:"pp"}],rows:rangeM.map(i=>{const R=rec(y,"TOTAL",i),Rp=rec(y,"TOTAL",i-1);return {c:[cap1(MESES_L[i]),...indRow(R),R?R.av:null,R&&Rp&&R.av!=null&&Rp.av!=null?R.av-Rp.av:null],over:destaca(R,[6])}})}});
+        table:{cols:[{h:"Mes",t:"txt",w:1.3},...colsInd,{h:"% de avance",t:"p"}],rows:rangeM.map(i=>{const R=rec(y,"TOTAL",i);return {c:[cap1(MESES_L[i]),...indRow(R),R?R.av:null],over:destaca(R,[6])}})}});
       const rk=ranking(y,last);const ord=[...rk.L.map(x=>x.s),...d.sleps.filter(s=>!rk.pos.get(s.cod)).sort((a,b)=>a.nombre.localeCompare(b.nombre,"es"))];
       secs.push({h:"2. % de avance por SLEP y mes",sheet:"Avance por SLEP",p:[`Servicios ordenados por su posición en el ranking de ${MESES_L[last]} (1° = mayor avance). Se destacan en rojo los meses con avance bajo.`],
         table:{small:true,cols:[{h:"N°",t:"txt",w:.45},{h:"Servicio Local",t:"txt",w:1.8},...rangeM.map(i=>({h:MESES[i],t:"p"}))],rows:ord.map(s=>{const ov=new Set();const vs=rangeM.map((i,j)=>{const r=metr(s.m[i]);if(r&&r.av!=null&&nivel(r.av)==="bajo")ov.add(j+2);return r?r.av:null});return {c:[rk.pos.get(s.cod)?`${rk.pos.get(s.cod)}°`:"—",s.nombre,...vs],over:ov}})}});
@@ -432,14 +434,14 @@ function reportModel(tipo,alcance){
     }
   }else{
     const s=d.sleps[S.slep];scope=`${s.nombre}`;
-    const filasMes=(meses)=>meses.map(i=>{const R=metr(s.m[i]),Rp=metr(s.m[i-1]);return {c:[cap1(MESES_L[i]),...indRow(R),R?R.av:null,R&&Rp&&R.av!=null&&Rp.av!=null?R.av-Rp.av:null,R?NIVEL_TXT[nivel(R.av)].replace("Avance ",""):"Sin información"],over:destaca(R,[6,8])}});
-    const colsMes=[{h:"Mes",t:"txt",w:1.2},...colsInd,{h:"% de avance",t:"p"},{h:"Var. (pp)",t:"pp"},{h:"Nivel",t:"txt",w:1}];
+    const filasMes=(meses)=>meses.map(i=>{const R=metr(s.m[i]);return {c:[cap1(MESES_L[i]),...indRow(R),R?R.av:null,R?NIVEL_TXT[nivel(R.av)].replace("Avance ",""):"Sin información"],over:destaca(R,[6,7])}});
+    const colsMes=[{h:"Mes",t:"txt",w:1.2},...colsInd,{h:"% de avance",t:"p"},{h:"Nivel",t:"txt",w:1}];
     if(tipo==="mensual"){
       title=`Informe mensual de avance de sumarios · ${s.nombre} · ${mesTxt}`;file=`Informe_mensual_${slug(s.nombre)}_${y}_${String(m+1).padStart(2,"0")}`;
       const R=metr(s.m[m]),Rp=metr(s.m[m-1]),rk=ranking(y,m),p=rk.pos.get(s.cod),RT=rec(y,"TOTAL",m);
       secs.push({h:"1. Situación del mes",sheet:"Resumen",p:[!R?`${s.nombre} no registra información en ${MESES_L[m]} de ${y}.`:R.av==null?`${s.nombre} no registra sumarios instruidos en ${MESES_L[m]} de ${y}.`:
         `En ${MESES_L[m]} de ${y}, ${s.nombre} tiene ${fmt(R.cerr)} de ${fmt(R.ins)} sumarios instruidos con proceso cerrado: un avance de ${pct(R.av)} (${NIVEL_TXT[nivel(R.av)].toLowerCase()})${Rp&&Rp.av!=null?`, ${pp(R.av-Rp.av)} respecto de ${MESES_L[m-1]}`:""}. Ocupa el lugar ${p}° de ${rk.n} en el ranking del mes; el avance consolidado de los SLEP es ${pct(RT.av)}. Quedan ${fmt(R.pend)} procesos por cerrar.`],
-        table:R?{cols:[{h:"Indicador",t:"txt",w:2.4},{h:mesTxt,t:"n"},{h:cap1(MESES_L[m-1]||""),t:"n"},{h:"Variación",t:"s"}],rows:IND.map(e=>({c:[e.n,R[e.k],Rp?Rp[e.k]:null,Rp?R[e.k]-Rp[e.k]:null],over:new Set()}))}:null});
+        table:R?{cols:[{h:"Indicador",t:"txt",w:2.4},{h:mesTxt,t:"n"},{h:cap1(MESES_L[m-1]||""),t:"n"}],rows:IND.map(e=>({c:[e.n,R[e.k],Rp?Rp[e.k]:null],over:new Set()}))}:null});
       secs.push({h:"2. Evolución del avance en el año",sheet:null,p:[],charts:[{key:s.cod,cap:`% de avance · ${s.nombre}, ${y}`,mes:m}]});
       secs.push({h:"3. Detalle mensual",sheet:"Detalle mensual",p:[],table:{small:true,cols:colsMes,rows:filasMes([...Array(m+1).keys()].filter(i=>i>=d.primero))}});
     }else{
@@ -524,6 +526,8 @@ function init(){
     tb.classList.remove("compacta","apilada");const baja=()=>acc.offsetTop>=ref.offsetTop+ref.offsetHeight-1;
     if(!baja())return;tb.classList.add("compacta");if(baja()){tb.classList.remove("compacta");tb.classList.add("apilada")}};
   escuchar(window,"resize",acomodarBarra);acomodarBarra();if(document.fonts)document.fonts.ready.then(acomodarBarra);
+  // Cerrado, el gráfico de variación no tiene ancho: se dibuja al abrirlo.
+  $("det-diff").addEventListener("toggle",()=>{if($("det-diff").open)drawDiff()});
   $("r-go").onclick=generateReport;
   $("r-trim").addEventListener("change",()=>{document.querySelector('input[name="r-tipo"][value="trimestral"]').checked=true});
   escuchar(document,"click",e=>{const b=e.target.closest("[data-copy]");if(b)copyTable(b.dataset.copy)});

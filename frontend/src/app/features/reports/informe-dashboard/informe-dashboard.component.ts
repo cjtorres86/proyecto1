@@ -12,7 +12,10 @@ import { ThemeToggleComponent } from '../../../shared/theme-toggle/theme-toggle.
 import { BitacoraApiService } from '../../bitacora/services/bitacora-api.service';
 import { DashboardApiService } from '../../dashboard/services/dashboard-api.service';
 import { ModeloDashboard, RankingLic, armarDashboard, nivelDe, numeracion, rem } from '../../dashboard/modelo-dashboard';
-import { generarDocumento } from '../documentos-informe';
+import { generarDocumento, svgAImagen } from '../documentos-informe';
+import { graficosDashboard } from './graficos-dashboard';
+
+type Grafico = { cap: string; img: Awaited<ReturnType<typeof svgAImagen>> };
 import { OCULTOS_AL_GUARDAR } from '../informe-guardado';
 import { activarTipsDashboard } from './tips-dashboard';
 
@@ -231,11 +234,10 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
   valorLic(r: RankingLic, v: number): string {
     return r.unidad === '$' ? rem(v) : `${fmt(v)} d`;
   }
-  // % de avance: de rojo (0 %) a azul (100 %), como en el Dashboard; en
-  // oscuro neón usa los mismos colores del informe (rosado a cian).
+  // % de avance, del color de su nivel: alto azul, medio celeste y solo el
+  // bajo en rojo (en oscuro neón: cian, azul y rosado).
   colorAvance(a: number): string {
-    const t = Math.min(Math.abs(a - 0.5) / 0.5, 1) * 85 + 15;
-    return `color-mix(in oklab, ${a < 0.5 ? 'var(--bajo)' : 'var(--alto)'} ${t.toFixed(0)}%, var(--mid))`;
+    return `var(--${nivelDe(a)})`;
   }
   // Barras de los desgloses: la mayor, en el color más intenso.
   colorBarra(rango: number): string {
@@ -280,7 +282,13 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     this.generando = true;
     this.estadoInforme = { tipo: '', texto: 'Preparando el informe…' };
     try {
-      const nombre = await generarDocumento(this.modeloDocumento(this.modelo), this.formato, this.logo);
+      // Gráficos de cada bloque como imagen (azules y grises; rojo solo si el avance es bajo).
+      const G = graficosDashboard(this.modelo, { ambito: this.slep ?? 'todos los SLEP', consolidado: !this.slep, et: (id, l) => this.et(id, l) });
+      const imagenes: Record<string, Grafico[]> = {};
+      for (const [clave, lista] of Object.entries(G)) {
+        imagenes[clave] = await Promise.all(lista.map(async (g) => ({ cap: g.cap, img: await svgAImagen(g.svg, g.W, g.H) })));
+      }
+      const nombre = await generarDocumento(this.modeloDocumento(this.modelo, imagenes), this.formato, this.logo);
       this.estadoInforme = { tipo: 'ok', texto: `Informe generado: ${nombre}` };
     } catch (e) {
       this.estadoInforme = { tipo: 'err', texto: `No fue posible generar el informe: ${(e as Error).message}` };
@@ -290,14 +298,15 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
   }
 
   // El dashboard como modelo de documento (documentos-informe.ts): un
-  // apartado por bloque, con su tabla y sus observaciones.
-  private modeloDocumento(M: ModeloDashboard) {
+  // apartado por bloque, en el orden de la pantalla, con su gráfico, su tabla
+  // y sus observaciones.
+  private modeloDocumento(M: ModeloDashboard, g: Record<string, Grafico[]>) {
     const sinMarca = () => new Set<number>();
     const fila = (c: unknown[], o: { bold?: boolean; txtRow?: boolean; over?: Set<number> } = {}) => ({ c, over: o.over ?? sinMarca(), bold: o.bold, txtRow: o.txtRow });
     const hoy = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const mm = String(MESES.indexOf(this.mes) + 1).padStart(2, '0');
     const secs: unknown[] = [];
-    secs.push({ h: 'Avance de los sumarios', sheet: 'Resumen', p: [M.frase, ...M.capsulasAvance],
+    secs.push({ h: 'Avance de los sumarios', sheet: 'Resumen', p: M.capsulasAvance, charts: g['avance'],
       table: { cols: [{ h: 'Dato', t: 'txt', w: 2.6 }, { h: 'Valor', t: 'txt', w: 1.4 }], rows: [
         ...M.identificacion.map((i) => fila([`${i.n}. ${i.label}`, i.valor], { txtRow: true })),
         fila([this.et('Q37', 'Sumarios instruidos'), fmt(M.instruidos)], { txtRow: true }),
@@ -305,19 +314,19 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
         fila(['Por cerrar para la meta (100 %)', fmt(Math.max(M.instruidos - M.cerrados, 0))], { txtRow: true }),
         fila(['% de avance', M.av === null ? 'Sin sumarios instruidos' : `${pct(M.av)} · ${this.textoNivel(M.av).toLowerCase()}`], { txtRow: true, bold: true }),
       ] } });
-    secs.push({ h: '1 · Origen: lo que informó Contraloría', sheet: 'Origen', p: M.capsulasOrigen,
+    secs.push({ h: '1 · Origen: lo que informó Contraloría', sheet: 'Origen', p: M.capsulasOrigen, charts: g['origen'],
       table: { cols: [{ h: 'Campo', t: 'txt', w: 2.4 }, { h: 'Valor', t: 'n' }, { h: 'Nota', t: 'txt', w: 1.6 }],
         rows: M.origen.map((c) => fila([this.et(c.id, c.label), c.valor, c.nota])) } });
-    secs.push({ h: '2 · Involucrados: situación de los funcionarios', sheet: 'Involucrados', p: M.capsulasInvolucrados,
+    secs.push({ h: '2 · Involucrados: situación de los funcionarios', sheet: 'Involucrados', p: M.capsulasInvolucrados, charts: g['involucrados'],
       table: { cols: [{ h: 'Campo', t: 'txt', w: 2.6 }, { h: 'Funcionarios', t: 'n' }, { h: '% de los involucrados', t: 'p' }],
         rows: [...M.dona.partes.map((p) => fila([p.label, p.valor, p.pct])), fila(['Total involucrados', M.dona.total, M.dona.total ? 1 : null], { bold: true })] } });
     for (const r of M.rankingsLic) {
-      secs.push({ h: `3 · Licencias: ${r.titulo}`, sheet: r.id === 'Q21' ? 'Licencias' : 'Remuneraciones', p: r.capsula ? [r.capsula] : [],
+      secs.push({ h: `3 · Licencias: ${r.titulo}`, sheet: r.id === 'Q21' ? 'Licencias' : 'Remuneraciones', p: r.capsula ? [r.capsula] : [], charts: g[`lic-${r.id}`],
         table: { cols: [{ h: 'N°', t: 'txt', w: 0.45 }, { h: 'Servicio Local', t: 'txt', w: 2 }, { h: r.unidad === '$' ? 'Remuneración promedio' : 'Días', t: 'txt', w: 1.2 }],
           rows: [...r.filas, ...(r.propia ? [r.propia] : [])].map((f) => fila([`${f.pos}°`, f.slep, this.valorLic(r, f.valor)], { txtRow: true, bold: f.propio })) } });
     }
     for (const b of M.desgloses) {
-      secs.push({ h: `${b.eyebrow}: ${b.titulo}`, sheet: b.eyebrow.replace(/^\d+ · /, ''), p: [b.orden, ...b.capsulas],
+      secs.push({ h: `${b.eyebrow}: ${b.titulo}`, sheet: b.eyebrow.replace(/^\d+ · /, ''), p: [b.orden, ...b.capsulas], charts: g[`des-${b.clave}`],
         table: { cols: [{ h: 'Campo', t: 'txt', w: 2.8 }, { h: 'Valor', t: 'n' }, { h: `% de ${b.principal.label.toLowerCase()}`.slice(0, 40), t: 'p' }],
           rows: [fila([this.et(b.principal.id, b.principal.label), b.principal.valor, b.principal.valor ? 1 : null], { bold: true }), ...b.filas.map((x) => fila([x.label, x.valor, b.principal.valor ? x.pct : null]))] } });
     }
@@ -326,7 +335,7 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
         table: { cols: [{ h: 'Campo', t: 'txt', w: 2.8 }, { h: 'Valor', t: 'txt', w: 1.2 }], rows: M.anexo.map((c) => fila([c.label, c.id === 'Q62' ? rem(c.valor) : fmt(c.valor)], { txtRow: true })) } });
     }
     if (!this.slep && M.ranking.length) {
-      secs.push({ h: `Ranking de avance por SLEP · ${this.mes} ${this.anio}`, sheet: 'Ranking', p: ['1° = mayor avance; en empate, más procesos cerrados. Se destacan en rojo los servicios con avance bajo.'],
+      secs.push({ h: `Ranking de avance por SLEP · ${this.mes} ${this.anio}`, sheet: 'Ranking', p: ['1° = mayor avance; en empate, más procesos cerrados. Se destacan en rojo los servicios con avance bajo.'], charts: g['ranking'],
         table: { small: true, cols: [{ h: 'N°', t: 'txt', w: 0.45 }, { h: 'Servicio Local', t: 'txt', w: 1.9 }, { h: 'Casos', t: 'n' }, { h: 'Instruidos', t: 'n' }, { h: 'Cerrados', t: 'n' }, { h: '% de avance', t: 'p' }, { h: 'Nivel', t: 'txt', w: 1 }],
           rows: M.ranking.map((f) => fila([f.pos ? `${f.pos}°` : '—', f.slep, f.casos, f.instruidos, f.cerrados, f.av, f.av === null ? 'Sin instruidos' : NIVEL_TXT[f.nivel].replace('Avance ', '')], { over: new Set(f.nivel === 'bajo' ? [5, 6] : []) })) } });
     }
