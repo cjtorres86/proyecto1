@@ -6,7 +6,7 @@ import { DashboardApiService } from '../services/dashboard-api.service';
 import { DashboardDeMes } from '../../../core/models/dashboard.model';
 import { ModeSwitcherComponent } from '../../../shared/mode-switcher/mode-switcher.component';
 import { escaparHtml, fmt, pct } from '../../../core/utils/avance';
-import { Cifra, Desglose, FilaRankingAvance, NIVEL_DASH, ParteDona, RankingLic, armarDashboard, numeracion, rem } from '../modelo-dashboard';
+import { Cifra, Desglose, FilaRankingAvance, LicenciasSlep, NIVEL_DASH, ParteDona, RankingLic, armarDashboard, dias, numeracion, posLicencia, rem } from '../modelo-dashboard';
 
 export { NIVEL_DASH, PALETA } from '../modelo-dashboard';
 
@@ -43,8 +43,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // 2 · Involucrados (dona)
   dona: { partes: ParteDona[]; total: number } = { partes: [], total: 0 };
   capsulasInvolucrados: string[] = [];
-  // 3 · Licencias
+  // 3 · Licencias (consolidado: rankings; un solo SLEP: sus datos, campos 15 a 18)
   rankingsLic: RankingLic[] = [];
+  licenciasSlep: LicenciasSlep | null = null;
   // 4, 5 y 6
   desgloses: Desglose[] = [];
   // 7 · Anexo (solo con el formulario de 44 campos)
@@ -113,6 +114,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   colorTextoAvance(a: number | null): string {
     return a == null ? '#76839a' : a < 0.5 ? '#c23434' : '#0f69b4';
   }
+
+  readonly posLic = posLicencia;
+  readonly dias = dias;
 
   valorLic(r: RankingLic, v: number): string {
     return r.unidad === '$' ? rem(v) : `${fmt(v)} d`;

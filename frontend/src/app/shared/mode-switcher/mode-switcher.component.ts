@@ -34,15 +34,21 @@ export class ModeSwitcherComponent {
   @Input({ required: true }) modoActivo!: ModoWorkspace;
 
   private readonly todas: { modo: ModoWorkspace; etiqueta: string; permiso?: string }[] = [
-    // "Asistente": muestra el panel Asistente de formulario (antes "Formulario").
-    { modo: 'formulario', etiqueta: 'Asistente' },
+    { modo: 'formulario', etiqueta: 'Formulario' },
     { modo: 'dashboard-ampliado', etiqueta: 'Dashboard', permiso: 'dashboard' },
     { modo: 'historico', etiqueta: 'Histórico', permiso: 'historico' },
   ];
 
-  // Solo los modos que el perfil permite (Panel de avance, Histórico).
+  // Solo los modos que el perfil permite (Panel de avance, Histórico). Quien
+  // trabaja con un solo SLEP (sin columna SLEP) ve aquí solo el Asistente de
+  // formulario: el botón se llama "Asistente". Con columna SLEP muestra el
+  // formulario y su asistente juntos: se llama "Formulario".
   get opciones() {
-    return this.todas.filter((o) => !o.permiso || this.authService.can(o.permiso));
+    const u = this.authService.usuarioActual();
+    const unSlep = !!u && u.alcance !== 'todos';
+    return this.todas
+      .filter((o) => !o.permiso || this.authService.can(o.permiso))
+      .map((o) => (o.modo === 'formulario' && unSlep ? { ...o, etiqueta: 'Asistente' } : o));
   }
 
   constructor(

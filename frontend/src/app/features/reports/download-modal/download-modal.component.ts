@@ -86,9 +86,19 @@ export class DownloadModalComponent {
   // Solo lo que la persona puede abrir: el permiso de su perfil, el alcance
   // que exige el informe y que esté disponible.
   private armarColumnas(informes: InformeCatalogo[]): void {
+    // Quien trabaja con un solo SLEP solo ve lo suyo, y lo "nacional" es su
+    // SLEP ("Informe interactivo Valdivia"), igual que en el portal.
+    const u = this.authService.usuarioActual();
+    const suSlep = !this.alcanceEsTodos && u ? u.alcance : null;
+    const textos = (i: InformeCatalogo): InformeCatalogo => !suSlep ? i : {
+      ...i,
+      nombre: i.nombre.replace(/\bnacional\b/i, suSlep),
+      descripcion: i.descripcion.replace(/\bdel país\b/i, `de ${suSlep}`).replace(/\bde todos los SLEP\b/i, `de ${suSlep}`),
+    };
     const permitidos = informes
       .filter((i) => i.estado === 'activa' && this.acciones[i.id])
       .filter((i) => this.authService.can(i.permiso) && (!i.requiereAlcanceTodos || this.alcanceEsTodos))
+      .map(textos)
       .sort((a, b) => a.orden - b.orden);
     this.columnas = COLUMNAS.map((c) => ({ ...c, informes: permitidos.filter((i) => i.categoria === c.categoria) }));
     this.cargando = false;

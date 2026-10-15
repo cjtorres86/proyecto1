@@ -27,7 +27,8 @@ export interface ConfirmDialogData {
     <mat-dialog-content>
       <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{{ data.mensaje }}</p>
       @if (data.detalles?.length) {
-        <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm rounded border border-gray-200 bg-gray-50 px-3 py-2.5">
+        <!-- Panel de vidrio dentro del vidrio, como las columnas de Descargas. -->
+        <dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm rounded-xl border border-white/75 bg-white/50 px-3 py-2.5 dark:border-white/10 dark:bg-white/5">
           @for (d of data.detalles; track d.etiqueta) {
             <dt class="text-gray-500">{{ d.etiqueta }}</dt>
             <dd class="font-semibold break-all" [class.text-amber-700]="d.advertencia" [class.text-gray-800]="!d.advertencia">{{ d.valor }}</dd>

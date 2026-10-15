@@ -1,10 +1,10 @@
 import { Component, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
-// Ventanas del formulario (Guardar y Cargar datos), con vidrio extremo:
-// abrir con panelClass "dialogo-extremo" y backdropClass
-// "fondo-dialogo-extremo" (estilos en styles.scss, sección .ve).
-export const OPCIONES_VIDRIO = { panelClass: 'dialogo-extremo', backdropClass: 'fondo-dialogo-extremo', maxWidth: '94vw', autoFocus: 'first-tabbable' as const };
+// Ventanas del formulario (Guardar y Cargar datos), con el lenguaje de
+// "Descargas de informes": el vidrio semiblanco llega por defecto a todas las
+// ventanas (app.config.ts) y el contenido usa la sección .ve de styles.scss.
+export const OPCIONES_VIDRIO = { maxWidth: '94vw', autoFocus: 'first-tabbable' as const };
 
 // ---------- 1. Antes de guardar ----------
 export interface ConfirmarGuardarData { slep: string; mes: string; anio: string; cambios: number }
@@ -70,12 +70,12 @@ export type CargarDatosResultado = { tipo: 'anterior' } | { tipo: 'archivo'; arc
         </button>
         <!-- Archivo: el selector de archivos se abre desde la misma ventana. -->
         <label class="ve-opcion" tabindex="0" (keydown.enter)="selector.click()" (keydown.space)="$event.preventDefault(); selector.click()">
-          <span class="ve-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v4h4M9.5 12l5 5M14.5 12l-5 5" /></svg></span>
+          <span class="ve-ico verde" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v4h4M9.5 12l5 5M14.5 12l-5 5" /></svg></span>
           <span>
             <b>Cargar archivo con datos (Excel)</b>
             <p>Para que la carga salga a la primera, revisa que tu Excel esté limpio:</p>
             <ul class="ve-lista">
-              <li>Solo archivos <b style="display:inline;font-size:inherit">.xlsx</b>, con los datos en la primera hoja.</li>
+              <li>Solo archivos .xlsx, con los datos en la primera hoja.</li>
               <li>Fila 1: las preguntas del formulario, sin columnas extra ni repetidas.</li>
               <li>Fila 2: los datos de tu SLEP (una sola fila).</li>
               <li>Sin filas ni columnas ocultas, sin celdas combinadas y sin filtros.</li>

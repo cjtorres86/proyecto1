@@ -1,5 +1,5 @@
 import { fmt, pct } from '../../../core/utils/avance';
-import { Desglose, ModeloDashboard, Nivel, RankingLic, nivelDe, rem } from '../../dashboard/modelo-dashboard';
+import { Desglose, LicenciasSlep, ModeloDashboard, Nivel, RankingLic, dias, nivelDe, rem } from '../../dashboard/modelo-dashboard';
 
 // Gráficos del Informe de dashboard para Excel y PDF (imágenes): el lenguaje
 // visual de los informes, con predominio de azules y grises. El rojo aparece
@@ -100,6 +100,28 @@ function grafRanking(M: ModeloDashboard): GraficoSvg {
   return { cap: 'Avance de los sumarios por SLEP (1° = mayor avance)', svg: svg(900, H, ley + `<g transform="translate(0,34)">${b.cuerpo}</g>`), W: 900, H };
 }
 
+// Licencias de un solo SLEP: la línea de duración (mínima → promedio → máxima)
+// y la remuneración promedio destacada. Azul y gris.
+function grafLicenciasSlep(L: LicenciasSlep, et: (id: string, l: string) => string): GraficoSvg {
+  const W = 900, H = 170, X0 = 40, AN = 560, max = L.maxima.valor || 1;
+  const x = (v: number | null) => X0 + (v == null ? 0 : Math.min(1, v / max)) * AN;
+  let c = txt(X0 - 10, 26, 'DURACIÓN DE LAS LICENCIAS (DÍAS)', { size: 12, bold: true, color: C.texto2 });
+  c += `<rect x="${X0}" y="58" width="${AN}" height="6" rx="3" fill="${C.pista}"/>`;
+  c += `<rect x="${x(L.minima.valor)}" y="57" width="${x(L.maxima.valor) - x(L.minima.valor)}" height="8" rx="4" fill="#8FB2F5"/>`;
+  [L.minima, L.promedio, L.maxima].forEach((p, k) => {
+    const cx = x(p.valor), prom = k === 1;
+    c += `<circle cx="${cx}" cy="61" r="${prom ? 11 : 8}" fill="${prom ? C.azul : '#fff'}" stroke="${prom ? '#fff' : C.azul}" stroke-width="${prom ? 3 : 4}"/>`;
+    const anchor = k === 0 ? 'start' : k === 2 ? 'end' : 'middle', tx = k === 0 ? X0 - 8 : k === 2 ? X0 + AN + 8 : cx;
+    c += txt(tx, 104, et(p.id, p.label), { size: 12, color: C.texto3, anchor });
+    c += txt(tx, 126, dias(p.valor), { size: 17, bold: true, color: prom ? C.azul : C.texto, anchor });
+  });
+  c += `<rect x="660" y="30" width="220" height="110" rx="10" fill="#EEF4FB" stroke="${C.azul}" stroke-width="1.5"/>`;
+  c += txt(676, 58, corta(et(L.remuneracion.id, L.remuneracion.label), 30).toUpperCase(), { size: 11, bold: true, color: C.texto2 });
+  c += txt(676, 96, rem(L.remuneracion.valor), { size: 26, bold: true, color: C.navy });
+  c += txt(676, 122, L.remuneracion.nota, { size: 11, color: C.texto3 });
+  return { cap: 'Duración de las licencias y remuneración promedio', svg: svg(W, H, c), W, H };
+}
+
 // Los gráficos de cada apartado del documento, por clave del apartado.
 export function graficosDashboard(M: ModeloDashboard, o: { ambito: string; consolidado: boolean; et: (id: string, l: string) => string }): Record<string, GraficoSvg[]> {
   const g: Record<string, GraficoSvg[]> = {
@@ -107,7 +129,8 @@ export function graficosDashboard(M: ModeloDashboard, o: { ambito: string; conso
     origen: [grafOrigen(M, o.et)],
     involucrados: M.dona.total ? [grafDona(M)] : [],
   };
-  for (const r of M.rankingsLic) g[`lic-${r.id}`] = r.filas.length ? [grafLicencias(r)] : [];
+  if (M.licenciasSlep) g['lic-slep'] = [grafLicenciasSlep(M.licenciasSlep, o.et)];
+  else for (const r of M.rankingsLic) g[`lic-${r.id}`] = r.filas.length ? [grafLicencias(r)] : [];
   for (const d of M.desgloses) g[`des-${d.clave}`] = [grafDesglose(d, o.et)];
   g['ranking'] = o.consolidado && M.ranking.some((f) => f.av !== null) ? [grafRanking(M)] : [];
   return g;

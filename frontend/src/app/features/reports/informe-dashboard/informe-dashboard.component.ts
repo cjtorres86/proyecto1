@@ -11,7 +11,7 @@ import { INTERRUPTOR_TEMA, descargarHtml, documentoAutonomo, estilosDeLaPagina, 
 import { ThemeToggleComponent } from '../../../shared/theme-toggle/theme-toggle.component';
 import { BitacoraApiService } from '../../bitacora/services/bitacora-api.service';
 import { DashboardApiService } from '../../dashboard/services/dashboard-api.service';
-import { ModeloDashboard, RankingLic, armarDashboard, nivelDe, numeracion, rem } from '../../dashboard/modelo-dashboard';
+import { ModeloDashboard, RankingLic, armarDashboard, dias, nivelDe, numeracion, posLicencia, rem } from '../../dashboard/modelo-dashboard';
 import { generarDocumento, svgAImagen } from '../documentos-informe';
 import { graficosDashboard } from './graficos-dashboard';
 
@@ -68,6 +68,8 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
   readonly fmt = fmt;
   readonly pct = pct;
   readonly rem = rem;
+  readonly posLic = posLicencia;
+  readonly dias = dias;
   @ViewChild('barra') private barra?: ElementRef<HTMLElement>;
   private quitarTips?: () => void;
   private quitarClaroAlImprimir?: () => void;
@@ -303,7 +305,9 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
       { clave: 'origen', eyebrow: `${this.numero('origen')} · Origen`, titulo: 'Lo que informó Contraloría', notas: M.capsulasOrigen },
       { clave: 'involucrados', eyebrow: `${this.numero('involucrados')} · Involucrados`, titulo: 'Situación de los funcionarios involucrados', notas: M.capsulasInvolucrados },
       ...M.desgloses.map((b) => ({ clave: b.clave, eyebrow: `${this.numero(b.clave)} · ${this.sinNumero(b.eyebrow)}`, titulo: b.titulo, notas: b.capsulas })),
-      { clave: 'licencias', eyebrow: `${this.numero('licencias')} · Licencias`, titulo: 'Los SLEP con las licencias más largas y las remuneraciones más altas', notas: M.rankingsLic.map((r) => r.capsula).filter(Boolean) },
+      M.licenciasSlep
+        ? { clave: 'licencias', eyebrow: `${this.numero('licencias')} · Licencias`, titulo: 'Duración de las licencias y remuneración promedio', notas: [M.licenciasSlep.nota] }
+        : { clave: 'licencias', eyebrow: `${this.numero('licencias')} · Licencias`, titulo: 'Los SLEP con las licencias más largas y las remuneraciones más altas', notas: M.rankingsLic.map((r) => r.capsula).filter(Boolean) },
     ].filter((s) => s.notas.length);
   }
 
@@ -460,7 +464,15 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
         table: { small: true, cols: [{ h: 'N°', t: 'txt', w: 0.45 }, { h: 'Servicio Local', t: 'txt', w: 1.9 }, { h: 'Casos', t: 'n' }, { h: 'Instruidos', t: 'n' }, { h: 'Cerrados', t: 'n' }, { h: '% de avance', t: 'p' }, { h: 'Nivel', t: 'txt', w: 1 }],
           rows: M.ranking.map((f) => fila([f.pos ? `${f.pos}°` : '—', f.slep, f.casos, f.instruidos, f.cerrados, f.av, f.av === null ? 'Sin instruidos' : NIVEL_TXT[f.nivel].replace('Avance ', '')], { over: new Set(f.nivel === 'bajo' ? [5, 6] : []) })) } });
     }
-    for (const r of M.rankingsLic) {
+    // Licencias de un solo SLEP: sus datos (campos 15 a 18), sin rankings.
+    if (M.licenciasSlep) {
+      const L = M.licenciasSlep;
+      secs.push({ h: `${this.numero('licencias')} · Licencias: duración y remuneración promedio`, sheet: 'Licencias', p: [L.nota], charts: g['lic-slep'],
+        table: { cols: [{ h: 'Campo', t: 'txt', w: 2.6 }, { h: 'Valor', t: 'txt', w: 1.2 }],
+          rows: [L.minima, L.promedio, L.maxima].map((c) => fila([this.et(c.id, c.label), dias(c.valor)], { txtRow: true }))
+            .concat([fila([this.et(L.remuneracion.id, L.remuneracion.label), rem(L.remuneracion.valor)], { txtRow: true, bold: true })]) } });
+    }
+    for (const r of M.licenciasSlep ? [] : M.rankingsLic) {
       secs.push({ h: `${this.numero('licencias')} · Licencias: ${r.titulo}`, sheet: r.id === 'Q21' ? 'Licencias' : 'Remuneraciones', p: r.capsula ? [r.capsula] : [], charts: g[`lic-${r.id}`],
         table: { cols: [{ h: 'N°', t: 'txt', w: 0.45 }, { h: 'Servicio Local', t: 'txt', w: 2 }, { h: r.unidad === '$' ? 'Remuneración promedio' : 'Días', t: 'txt', w: 1.2 }],
           rows: [...r.filas, ...(r.propia ? [r.propia] : [])].map((f) => fila([`${f.pos}°`, f.slep, this.valorLic(r, f.valor)], { txtRow: true, bold: f.propio })) } });

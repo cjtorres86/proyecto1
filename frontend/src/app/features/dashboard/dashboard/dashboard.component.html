@@ -79,6 +79,31 @@
 
       <!-- 3 · Licencias: rankings de los campos 17 y 18 -->
       <section class="blq lic" aria-labelledby="d-b3">
+        @if (licenciasSlep; as L) {
+          <!-- Un solo SLEP: sus propios datos (campos 15 a 18), sin rankings. -->
+          <div><p class="eyebrow">3 · Licencias</p><h4 class="tit" id="d-b3">Duración de las licencias y remuneración promedio</h4></div>
+          <div class="lic-slep">
+            <div class="lic-rango">
+              <div class="lb">Duración de las licencias (días)</div>
+              <div class="rango" role="img" [attr.aria-label]="'Mínima ' + fmt(L.minima.valor) + ', promedio ' + fmt(L.promedio.valor) + ', máxima ' + fmt(L.maxima.valor) + ' días'">
+                <span class="pista"></span>
+                <span class="tramo" [style.left.%]="posLic(L.minima.valor, L.maxima.valor)" [style.right.%]="0"></span>
+                @for (c of [L.minima, L.promedio, L.maxima]; track c.id; let k = $index) {
+                  <span class="punto" [class.prom]="k === 1" [style.left.%]="posLic(c.valor, L.maxima.valor)" (mouseenter)="verTip($event, c.id, et(c.id, c.label), c.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()"></span>
+                }
+              </div>
+              <div class="rango-et">
+                @for (c of [L.minima, L.promedio, L.maxima]; track c.id; let k = $index) {
+                  <div [class.prom]="k === 1"><span>{{ et(c.id, c.label) }}</span><b>{{ dias(c.valor) }}</b></div>
+                }
+              </div>
+            </div>
+            <div class="cifra clave" (mouseenter)="verTip($event, L.remuneracion.id, et(L.remuneracion.id, L.remuneracion.label), L.remuneracion.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
+              <div class="lb">{{ et(L.remuneracion.id, L.remuneracion.label) }}</div><div class="vl">{{ rem(L.remuneracion.valor) }}</div><div class="nt">{{ L.remuneracion.nota }}</div>
+            </div>
+          </div>
+          <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ L.nota }}</p>
+        } @else {
         <div><p class="eyebrow">3 · Licencias</p><h4 class="tit" id="d-b3">Los SLEP con las licencias más largas y las remuneraciones más altas</h4></div>
         <div class="dos">
           @for (r of rankingsLic; track r.id) {
@@ -107,6 +132,7 @@
             </div>
           }
         </div>
+        }
       </section>
 
       <!-- 4, 5 y 6: un dato principal y su desglose (mismo lenguaje visual) -->

@@ -8,6 +8,7 @@ import { CasesApiService } from '../../cases/services/cases-api.service';
 import { ReportsApiService, ErrorFila, RankingDetalleFila } from '../services/reports-api.service';
 import { BitacoraApiService } from '../../bitacora/services/bitacora-api.service';
 import { ThemeService } from '../../../core/services/theme.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { DashboardDeMes } from '../../../core/models/dashboard.model';
 import { textoAutoria } from '../../../core/utils/autoria';
 import { CampoConValor } from '../../../core/models/case.model';
@@ -143,6 +144,7 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
     private readonly location: Location,
     private readonly reportsApi: ReportsApiService,
     private readonly bitacoraApi: BitacoraApiService,
+    private readonly authService: AuthService,
   ) {}
 
   // Todo lo que hace falta según el tipo de informe ya llegó — recién
@@ -290,7 +292,12 @@ export class InformeComponent implements OnInit, AfterViewInit, OnDestroy {
   // nacional en esta página es siempre el estático (el interactivo nacional
   // es /informe-avance).
   nombreInforme(estatico = this.imprimirAlCargar): string {
-    if (this.tipo === 'general') return this.slep ? 'Informe estático por SLEP' : 'Informe estático nacional';
+    if (this.tipo === 'general') {
+      // Quien trabaja con un solo SLEP: "Informe estático <su SLEP>".
+      const u = this.authService.usuarioActual();
+      if (u && !u.esSuperadmin && u.alcance !== 'todos') return `Informe estático ${u.alcance}`;
+      return this.slep ? 'Informe estático por SLEP' : 'Informe estático nacional';
+    }
     return `Informe ${estatico ? 'estático' : 'interactivo'} de errores`;
   }
 

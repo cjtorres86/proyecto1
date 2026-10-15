@@ -37,6 +37,9 @@ export interface Desglose { clave: string; eyebrow: string; titulo: string; prin
 export interface FilaRanking { slep: string; valor: number; ancho: number; pos: number; propio: boolean }
 export interface RankingLic { id: string; titulo: string; unidad: 'd' | '$'; filas: FilaRanking[]; propia: FilaRanking | null; capsula: string }
 export interface ParteDona { id: string; label: string; valor: number; color: string; pct: number; d: string }
+// Licencias de un SLEP: duración mínima, promedio y máxima (días) y la
+// remuneración promedio; "nota" resume lo importante para la ventana Notas.
+export interface LicenciasSlep { minima: Cifra; promedio: Cifra; maxima: Cifra; remuneracion: Cifra; nota: string }
 export interface FilaRankingAvance { pos: number | null; slep: string; casos: number; instruidos: number; cerrados: number; av: number | null; nivel: Nivel }
 
 export interface ModeloDashboard {
@@ -51,6 +54,9 @@ export interface ModeloDashboard {
   dona: { partes: ParteDona[]; total: number };
   capsulasInvolucrados: string[];
   rankingsLic: RankingLic[];
+  // Viendo un solo SLEP: sus propios datos de licencias (campos 15 a 18), sin
+  // rankings (no hay con quién comparar). null en el consolidado.
+  licenciasSlep: LicenciasSlep | null;
   desgloses: Desglose[];
   anexo: { id: string; label: string; valor: number | null }[];
   ranking: FilaRankingAvance[];
@@ -67,6 +73,14 @@ export function numeracion(numeros: Record<string, number> | undefined) {
 }
 
 export const rem = (v: number | null): string => (v == null ? '—' : '$' + fmt(v));
+
+// "1 día", "30 días" (o "—" sin dato).
+export const dias = (v: number | null): string => (v == null ? '—' : `${fmt(v)} ${v === 1 ? 'día' : 'días'}`);
+
+// Posición (0 a 100 %) de una duración en la línea de licencias de un SLEP,
+// que va de 0 a la duración máxima.
+export const posLicencia = (valor: number | null, maxima: number | null): number =>
+  valor == null || !maxima ? 0 : Math.min(100, Math.max(0, (valor / maxima) * 100));
 
 // Arco de la dona (anillo) entre dos ángulos, en un lienzo de 120 × 120.
 function arco(a0: number, a1: number): string {
@@ -178,6 +192,17 @@ export function armarDashboard(
     rankingLic('Q22', 'Remuneraciones promedio más altas', '$', v('Q22')),
   ];
 
+  // Licencias de un solo SLEP (campos 15 a 18): sus propios datos, ordenados.
+  const licenciasSlep: LicenciasSlep | null = slepActivo ? {
+    minima: { id: 'Q20', label: 'Duración mínima', valor: v('Q20'), nota: 'días' },
+    promedio: { id: 'Q19', label: 'Duración promedio', valor: v('Q19'), nota: 'días' },
+    maxima: { id: 'Q21', label: 'Duración máxima', valor: v('Q21'), nota: 'días' },
+    remuneracion: { id: 'Q22', label: 'Remuneración promedio', valor: v('Q22'), nota: 'de los funcionarios involucrados' },
+    nota: v('Q21') != null && v('Q19') != null
+      ? `En ${slepActivo}, las licencias duran en promedio ${fmt(v('Q19'))} días (campo ${N('Q19')}); la más larga, ${fmt(v('Q21'))} días (campo ${N('Q21')}).`
+      : `${slepActivo} no informa la duración de las licencias (campos ${N('Q19')} a ${N('Q21')}).`,
+  } : null;
+
   // 4 · Origen de los casos: 19 y sus CIC (20 a 26), de mayor a menor
   const CIC: [string, string][] = [['CIC_9', 'CIC N° 9 · salidas del país'], ['CIC_10', 'CIC N° 10 · partos'], ['CIC_13', 'CIC N° 13 · médicos en investigación penal'], ['CIC_14', 'CIC N° 14 · FFAA salidas del país'], ['CIC_15', 'CIC N° 15 · casinos de juego'], ['CIC_16', 'CIC N° 16 · salidas del país (regional)'], ['CIC_21', 'CIC N° 21 · trabajo con otros empleadores']];
   const aInv = n('Q23');
@@ -232,5 +257,5 @@ export function armarDashboard(
   ];
   if (!slepActivo && sin.length) capsulasAvance.push(`${sin.length} SLEP no registran sumarios instruidos: no entran en el % de avance.`);
 
-  return { identificacion, av, instruidos, cerrados, frase, capsulasAvance, origen, capsulasOrigen, dona, capsulasInvolucrados, rankingsLic, desgloses, anexo, ranking };
+  return { identificacion, av, instruidos, cerrados, frase, capsulasAvance, origen, capsulasOrigen, dona, capsulasInvolucrados, rankingsLic, licenciasSlep, desgloses, anexo, ranking };
 }

@@ -13,7 +13,9 @@ import { ThemeService } from '../../../core/services/theme.service';
 import { ThemeToggleComponent } from '../../../shared/theme-toggle/theme-toggle.component';
 
 // Nombre formal del informe (catálogo único): título de la pestaña y del archivo guardado.
-const NOMBRE_INFORME = 'Informe interactivo nacional';
+// Nombre formal (catálogo único). Quien trabaja con un solo SLEP ve el de su
+// SLEP: "Informe interactivo Valdivia".
+const NOMBRE_NACIONAL = 'Informe interactivo nacional';
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
@@ -50,8 +52,15 @@ export class InformeAvanceComponent implements OnInit, OnDestroy {
     this.quitarClaroAlImprimir = this.theme.claroAlImprimir();
   }
 
+  // "Informe interactivo nacional" o, para quien trabaja con un solo SLEP,
+  // "Informe interactivo <su SLEP>".
+  get nombreInforme(): string {
+    const u = this.auth.usuarioActual();
+    return u && !u.esSuperadmin && u.alcance !== 'todos' ? `Informe interactivo ${u.alcance}` : NOMBRE_NACIONAL;
+  }
+
   async ngOnInit(): Promise<void> {
-    document.title = `${NOMBRE_INFORME} · Avance de Sumarios`;
+    document.title = `${this.nombreInforme} · Avance de Sumarios`;
     if (!this.auth.can('exportar_informe')) {
       this.estado = 'sin-permiso';
       return;
@@ -124,16 +133,16 @@ export class InformeAvanceComponent implements OnInit, OnDestroy {
 document.addEventListener('DOMContentLoaded',function(){(${iniciarMotor.toString()})(CFG);});
 ${INTERRUPTOR_TEMA.script}`;
     const hoy = new Date().toLocaleDateString('es-CL');
-    const aviso = `<p style="margin:0;padding:6px 76px 6px 16px;background:#eef4fb;color:#25306B;font:12px Roboto,Arial,sans-serif">${NOMBRE_INFORME} · guardado el ${hoy} desde Avance de Sumarios. Los datos son los de ese momento.</p>`;
-    descargarHtml(NOMBRE_INFORME, documentoAutonomo({
-      titulo: NOMBRE_INFORME,
+    const aviso = `<p style="margin:0;padding:6px 76px 6px 16px;background:#eef4fb;color:#25306B;font:12px Roboto,Arial,sans-serif">${this.nombreInforme} · guardado el ${hoy} desde Avance de Sumarios. Los datos son los de ese momento.</p>`;
+    descargarHtml(this.nombreInforme, documentoAutonomo({
+      titulo: this.nombreInforme,
       estilos,
       cuerpo: INTERRUPTOR_TEMA.cuerpo + aviso + this.plantilla,
       script,
       // El archivo parte en el mismo tema con que se guardó.
       claseHtml: this.theme.esOscuro ? 'dark' : undefined,
     }));
-    return `${NOMBRE_INFORME}.html`;
+    return `${this.nombreInforme}.html`;
   }
 
   private async logoComoDataUrl(): Promise<string> {

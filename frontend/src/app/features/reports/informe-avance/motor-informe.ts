@@ -487,6 +487,13 @@ async function generateReport(){
   }catch(e){st.className="status err";st.textContent="No fue posible generar el informe: "+e.message}
   finally{btn.disabled=false}
 }
+async function generarPdfDirecto(){
+  const b=$("r-open"),tx=b.querySelector(".tx"),antes="Generar informe";
+  b.disabled=true;tx.textContent="Generando PDF…";
+  try{let M=reportModel("mensual","slep");M=await withCharts(M);await CFG.documento(M,"pdf");tx.textContent=antes}
+  catch(e){tx.textContent="No se pudo generar";setTimeout(()=>{tx.textContent=antes},4000)}
+  finally{b.disabled=false}
+}
 function syncReportForm(){
   const single=S.slep!=="TOTAL",d=Y();
   if(!CFG.alcanceCompleto){$("r-alc-todos").disabled=true;$("r-alc-slep").checked=true}
@@ -516,7 +523,10 @@ function init(){
   escuchar(document,"keydown",e=>{if(e.key!=="Escape")return;if(!$("drawer").hidden)openRk(false);else cerrarPops(true)});
   $("rk-body").addEventListener("click",e=>{const b=e.target.closest("button[data-c]");if(!b)return;S.slep=+b.dataset.c;$("slep").value=S.slep;openRk(false);render();$("ficha").scrollIntoView({behavior:"smooth",block:"start"})});
   // Bloques del informe: uno a la vez; se cierran con su botón, con ✕ o con Esc.
-  $("r-open").onclick=()=>alternarPop("rpanel","r-open");
+  // Quien trabaja con un solo SLEP no tiene el menú: «Generar informe»
+  // descarga directo el PDF mensual de su SLEP (mes de referencia elegido).
+  if(CFG.alcanceCompleto)$("r-open").onclick=()=>alternarPop("rpanel","r-open");
+  else{const b=$("r-open");b.removeAttribute("aria-expanded");b.removeAttribute("aria-controls");b.title=`Descarga el informe PDF de ${FUENTE.sleps[0]} del mes de referencia`;b.onclick=generarPdfDirecto}
   $("h-open").onclick=()=>alternarPop("hpanel","h-open");
   $("r-close").onclick=()=>cerrarPops(true);
   document.querySelectorAll(".bloque [data-cerrar]").forEach(b=>b.onclick=()=>cerrarPops(true));

@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
+import { MAT_DIALOG_DEFAULT_OPTIONS } from '@angular/material/dialog';
 import { firstValueFrom, of, catchError, tap } from 'rxjs';
 import Aura from '@primeng/themes/aura';
 
@@ -60,6 +61,12 @@ export const appConfig: ApplicationConfig = {
     // (Material, PrimeNG, Tailwind) reaccionan a la MISMA clase, nunca
     // cada uno por su cuenta, así que ese problema no puede repetirse.
     providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: '.dark' } } }),
+    // Todas las ventanas con el lenguaje de "Descargas de informes": vidrio
+    // semiblanco (ver .dialogo-vidrio en styles.scss).
+    {
+      provide: MAT_DIALOG_DEFAULT_OPTIONS,
+      useValue: { hasBackdrop: true, maxWidth: '94vw', autoFocus: 'first-tabbable', restoreFocus: true, panelClass: 'dialogo-vidrio', backdropClass: 'fondo-dialogo-vidrio' },
+    },
     { provide: APP_INITIALIZER, useFactory: restaurarSesion, multi: true },
   ],
 };
