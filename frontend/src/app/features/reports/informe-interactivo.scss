@@ -323,6 +323,14 @@
 .id .dona-ley span{display:flex;align-items:center;gap:8px;border-radius:6px;padding:4px 6px}
 .id .dona-ley b{margin-left:auto;font-variant-numeric:tabular-nums}
 .id .dona-ley small{width:52px;text-align:right;color:var(--fg-3)}
+// En pantalla, Involucrados ocupa el alto de su fila: dona grande y centrada,
+// con la leyenda abajo.
+.id .wrap .inv{display:flex;flex-direction:column}
+.id .wrap .inv .dona{flex:1;flex-direction:column;justify-content:center;gap:20px}
+.id .wrap .inv .dona svg{width:min(300px,80%)}
+.id .wrap .inv .dona-ley{flex:none;width:100%;max-width:440px;min-width:0;font-size:.95rem}
+// El dato principal de cada tarjeta (pantalla y PDF), del tamaño del % de avance.
+.id .tile.key .val{font-size:2.1rem;font-weight:700;line-height:1}
 .id .dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px 28px}
 .id .lic{display:flex;flex-direction:column;gap:5px;min-width:0}
 .id .lic h3{margin-bottom:2px}
@@ -401,8 +409,7 @@
 // Hoja 1: la línea del avance en una sola línea (ajustarHojas achica la letra
 // si hace falta), para dar espacio a las cifras grandes.
 .ia .hojas-pdf .resumen .lede{white-space:nowrap;font-size:.86rem;max-width:none}
-// Hoja 2: el dato principal de cada tarjeta, del tamaño del % de avance.
-.ia .hojas-pdf .tile.key .val{font-size:2.1rem;font-weight:700;line-height:1}
+
 .ia .hojas-pdf table.rk-d th,.ia .hojas-pdf table.rk-d td{padding:3px 6px}
 // Nota de relleno: ocupa el espacio que sobra en la hoja.
 .ia .nota-relleno{flex:1;min-height:80px;display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 28px;border:1px dashed color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:10px;background:color-mix(in srgb,var(--accent-soft) 45%,var(--surface));color:var(--fg-2);text-align:left}

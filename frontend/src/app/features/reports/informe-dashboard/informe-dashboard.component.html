@@ -191,7 +191,7 @@
 
 <!-- 2 · Involucrados: campos 7 y 8 (dona) -->
 <ng-template #tInvolucrados let-M let-h="h">
-  <section class="panel">
+  <section class="panel inv">
     <div class="sec-head"><div><span class="eyebrow">{{ numero('involucrados') }} · Involucrados</span><h2>Situación de los funcionarios involucrados</h2></div>@if (!h) { <ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'involucrados' }" /> }</div>
     @if (!M.dona.total) {
       <p class="muted small">Sin datos de los campos {{ n('Q07') }} y {{ n('YA_NO_ESTAN') }} para este mes.</p>
