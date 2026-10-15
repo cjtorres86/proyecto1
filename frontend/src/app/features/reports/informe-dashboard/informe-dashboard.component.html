@@ -59,7 +59,7 @@
   <!-- Ventana: generar informe (acción) -->
   <section class="panel bloque accion" id="rpanel" aria-labelledby="h-rep" [hidden]="panel !== 'informe'">
     <div class="bloque-h"><div class="tit"><span class="ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4 1.5h5.5L13 5v9.5H4zM9.5 1.5V5H13M6.5 8.5h4M6.5 11h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span><div><span class="eyebrow">Informes</span><h2 id="h-rep">Generar informe del dashboard</h2>
-      <span class="muted small">El informe toma el mes de referencia y el servicio seleccionados arriba ({{ slep ?? 'todos los SLEP' }} · {{ mes }} {{ anio }}). Hojas verticales, con cada bloque del dashboard, sus observaciones, el ranking y el banner institucional.</span></div></div><button type="button" class="x" data-cerrar aria-label="Cerrar" (click)="alternarPanel(null)">✕</button></div>
+      <span class="muted small">El informe toma el mes de referencia y el servicio seleccionados arriba ({{ slep ?? 'todos los SLEP' }} · {{ mes }} {{ anio }}). Hojas verticales, con cada bloque del dashboard, sus observaciones y el banner institucional.</span></div></div><button type="button" class="x" data-cerrar aria-label="Cerrar" (click)="alternarPanel(null)">✕</button></div>
     <div class="rgrid">
       <fieldset><legend>Formato</legend>
         <label class="opt"><input type="radio" name="r-fmt" value="pdf" [checked]="formato === 'pdf'" (change)="formato = 'pdf'"><span>PDF<small>El mismo diseño del informe estático · se abre la ventana de impresión: elige «Guardar como PDF»</small></span></label>
@@ -83,17 +83,15 @@
   </section>
 
   @if (modelo; as M) {
-    <!-- En pantalla: consolidado, 1 y 2, 3 a 5 (y 6 · Anexo), ranking y, al
-         final, Licencias. Cada pieza es una plantilla (más abajo) que también
+    <!-- En pantalla: 1 · consolidado, 2, 3 a 5 (y 6 · Anexo) y, al final,
+         Licencias. Cada pieza es una plantilla (más abajo) que también
          arma las hojas del PDF. -->
     <ng-container *ngTemplateOutlet="tResumen; context: { $implicit: M, h: false }" />
     <div class="dgrid">
-      <ng-container *ngTemplateOutlet="tOrigen; context: { $implicit: M, h: false }" />
       <ng-container *ngTemplateOutlet="tInvolucrados; context: { $implicit: M, h: false }" />
       @for (b of M.desgloses; track b.clave) { <ng-container *ngTemplateOutlet="tDesglose; context: { $implicit: b, h: false }" /> }
       @if (M.anexo.length) { <ng-container *ngTemplateOutlet="tAnexo; context: { $implicit: M, h: false }" /> }
     </div>
-    @if (!slep && M.ranking.length) { <ng-container *ngTemplateOutlet="tRanking; context: { $implicit: M, h: false }" /> }
     <ng-container *ngTemplateOutlet="tLicencias; context: { $implicit: M, h: false }" />
     <footer>Fuente: Avance de Sumarios, datos informados por los Servicios Locales ({{ mes }} {{ anio }}). % de avance = procesos cerrados ÷ sumarios instruidos. Cada dato lleva su número de campo del Formulario del mes.</footer>
   } @else if (cargandoDatos) {
@@ -129,41 +127,25 @@
      (nunca se corta una tarjeta); si sobra espacio, lo llena la nota. -->
 @if (modelo; as M) {
   <div class="hojas-pdf" aria-hidden="true">
-    <!-- Hoja 1: banner, consolidado, 1 · Origen y 2 · Involucrados; se
-         agranda hasta ocupar la hoja completa (clase "llenar"). -->
+    <!-- Hoja 1: banner, 1 · consolidado y 2 · Involucrados; se agranda hasta
+         ocupar la hoja completa (clase "llenar"). -->
     <div class="hoja-pdf llenar"><div class="hoja-cont">
       <div class="flag"></div>
       <header class="band hoja-band"><div class="band-in"><div class="brand"><img [src]="logo" alt="" width="88" height="80">
         <div class="t"><span class="eyebrow">Seguimiento de sumarios administrativos</span><h1>Dashboard de los Servicios Locales</h1><span class="subt">{{ slep ?? 'Todos los SLEP' }} · {{ mes }} {{ anio }}</span></div></div></div></header>
       <ng-container *ngTemplateOutlet="tResumen; context: { $implicit: M, h: true }" />
-      <ng-container *ngTemplateOutlet="tOrigen; context: { $implicit: M, h: true }" />
       <ng-container *ngTemplateOutlet="tInvolucrados; context: { $implicit: M, h: true }" />
       <ng-container *ngTemplateOutlet="tRelleno" />
     </div></div>
-    <!-- Hoja 2: 3 · Origen de los casos y 4 · Procedimientos (tarjetas horizontales). -->
+    <!-- Hoja 2: 3 · Origen de los casos, 4 · Procedimientos y 5 · Resultado
+         (tarjetas horizontales). -->
     <div class="hoja-pdf"><div class="hoja-cont">
-      <ng-container *ngTemplateOutlet="tCabHoja" />
-      @for (b of M.desgloses.slice(0, 2); track b.clave) { <ng-container *ngTemplateOutlet="tDesglose; context: { $implicit: b, h: true }" /> }
+      @for (b of M.desgloses; track b.clave) { <ng-container *ngTemplateOutlet="tDesglose; context: { $implicit: b, h: true }" /> }
       <ng-container *ngTemplateOutlet="tRelleno" />
     </div></div>
-    <!-- Hoja 3: 5 · Resultado (y 6 · Anexo). -->
+    <!-- Hoja 3: (6 · Anexo y) Licencias. -->
     <div class="hoja-pdf"><div class="hoja-cont">
-      <ng-container *ngTemplateOutlet="tCabHoja" />
-      @for (b of M.desgloses.slice(2); track b.clave) { <ng-container *ngTemplateOutlet="tDesglose; context: { $implicit: b, h: true }" /> }
       @if (M.anexo.length) { <ng-container *ngTemplateOutlet="tAnexo; context: { $implicit: M, h: true }" /> }
-      <ng-container *ngTemplateOutlet="tRelleno" />
-    </div></div>
-    <!-- Hoja 4: ranking de avance (los 36 SLEP). -->
-    @if (!slep && M.ranking.length) {
-      <div class="hoja-pdf"><div class="hoja-cont">
-        <ng-container *ngTemplateOutlet="tCabHoja" />
-        <ng-container *ngTemplateOutlet="tRanking; context: { $implicit: M, h: true }" />
-        <ng-container *ngTemplateOutlet="tRelleno" />
-      </div></div>
-    }
-    <!-- Hoja 5: Licencias (los dos rankings completos). -->
-    <div class="hoja-pdf"><div class="hoja-cont">
-      <ng-container *ngTemplateOutlet="tCabHoja" />
       <ng-container *ngTemplateOutlet="tLicencias; context: { $implicit: M, h: true }" />
       <ng-container *ngTemplateOutlet="tRelleno" />
       <p class="hoja-fuente">Fuente: Avance de Sumarios, datos informados por los Servicios Locales ({{ mes }} {{ anio }}). % de avance = procesos cerrados ÷ sumarios instruidos. Cada dato lleva su número de campo del Formulario del mes.</p>
@@ -175,11 +157,6 @@
 <!-- ================= Piezas del informe (pantalla y hojas del PDF) =================
      h = true: versión para la hoja (sin ids repetidos ni botón de notas). -->
 
-<!-- Encabezado breve de las hojas 2 en adelante. -->
-<ng-template #tCabHoja>
-  <div class="hoja-cab"><span class="eyebrow">Seguimiento de sumarios administrativos</span><b>Dashboard de los Servicios Locales · {{ slep ?? 'Todos los SLEP' }} · {{ mes }} {{ anio }}</b></div>
-</ng-template>
-
 <!-- Nota que llena el espacio que sobra en una hoja (solo si sobra). -->
 <ng-template #tRelleno>
   <div class="nota-relleno" hidden>
@@ -188,16 +165,16 @@
   </div>
 </ng-template>
 
-<!-- 0 · Consolidado: campos 1 a 3 y el % de avance -->
+<!-- 1 · Consolidado: el % de avance y, bajo la línea, los campos 4 y 5. -->
 <ng-template #tResumen let-M let-h="h">
   <section class="panel resumen" [attr.id]="h ? null : 'resumen'">
     <div class="panel-head">
-      <div><span class="eyebrow">{{ slep ? 'Servicio Local' : 'Consolidado' }} · {{ mes }} {{ anio }}</span><h2 [attr.id]="h ? null : 'h-res'">{{ slep ?? 'Todos los SLEP' }}</h2></div>
-      <span class="pill" [ngClass]="nivel(M.av)">{{ M.av === null ? 'Sin sumarios instruidos' : textoNivel(M.av) + ' · ' + pct(M.av) }}</span>
+      <div><span class="eyebrow">{{ numero('resumen') }} · {{ slep ? 'Servicio Local' : 'Consolidado' }} · {{ mes }} {{ anio }}</span><h2 [attr.id]="h ? null : 'h-res'">{{ slep ?? 'Todos los SLEP' }}</h2></div>
+      <div class="ph-der">
+        <span class="pill" [ngClass]="nivel(M.av)">{{ M.av === null ? 'Sin sumarios instruidos' : textoNivel(M.av) + ' · ' + pct(M.av) }}</span>
+        @if (!h) { <ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'resumen' }" /> }
+      </div>
     </div>
-    <dl class="ident">
-      @for (i of M.identificacion; track i.n) { <div><dt>{{ i.n }}. {{ i.label }}</dt><dd>{{ i.valor }}</dd></div> }
-    </dl>
     <div class="avance">
       <div class="av-cab"><span class="lb">Avance de los sumarios</span><span class="av-num" [ngClass]="nivel(M.av)">{{ M.av === null ? '—' : pct(M.av) }}</span></div>
       <div class="av-barra" role="img" [attr.aria-label]="'Avance ' + (M.av === null ? 'sin datos' : pct(M.av)) + ', meta 100 %'" [attr.data-tip]="h ? null : tip('Q45', et('Q45', 'Procesos cerrados'), M.cerrados, et('Q37', 'Sumarios instruidos'), M.instruidos)">
@@ -206,18 +183,9 @@
       <div class="av-escala"><span>0 %</span><span>50 %</span><span>Meta 100 %</span></div>
       <p class="lede">{{ lineaAvance(M) }}</p>
     </div>
-  </section>
-</ng-template>
-
-<!-- 1 · Origen: campos 4, 5 y 6 -->
-<ng-template #tOrigen let-M let-h="h">
-  <section class="panel">
-    <div class="sec-head"><div><span class="eyebrow">{{ numero('origen') }} · Origen</span><h2>Lo que informó Contraloría</h2></div>@if (!h) { <ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'origen' }" /> }</div>
-    <div class="tiles">
-      @for (c of M.origen; track c.id) {
-        <div class="tile" [attr.data-tip]="h ? null : tip(c.id, et(c.id, c.label), c.valor)"><span class="nm">{{ et(c.id, c.label) }}</span><span class="val">{{ fmt(c.valor) }}</span><span class="gl">{{ c.nota }}</span></div>
-      }
-    </div>
+    <dl class="ident">
+      @for (c of puntosResumen(M); track c.id) { <div [attr.data-tip]="h ? null : tip(c.id, et(c.id, c.label), c.valor)"><dt>{{ et(c.id, c.label) }}</dt><dd>{{ fmt(c.valor) }}</dd></div> }
+    </dl>
   </section>
 </ng-template>
 
@@ -274,31 +242,6 @@
       @for (c of M.anexo; track c.id) {
         <div class="tile" [attr.data-tip]="h ? null : tip(c.id, c.label, c.valor)"><span class="nm">{{ c.label }}</span><span class="val">{{ c.id === 'Q62' ? rem(c.valor) : fmt(c.valor) }}</span></div>
       }
-    </div>
-  </section>
-</ng-template>
-
-<!-- Ranking de avance (todos los SLEP) -->
-<ng-template #tRanking let-M let-h="h">
-  <section class="panel">
-    <div><span class="eyebrow">Ranking · {{ mes }} {{ anio }}</span><h2>Avance de los sumarios por SLEP</h2>
-      <span class="muted small">1° = mayor avance; en empate, más procesos cerrados. Se destacan en rojo los servicios con avance bajo.</span></div>
-    <div class="tscroll">
-      <table class="dt rk-d">
-        <caption class="sr-only">Ranking de avance por SLEP</caption>
-        <thead><tr><th>N°</th><th>Servicio Local</th><th>{{ n('Q04') }}. Casos</th><th>{{ n('Q37') }}. Instruidos</th><th>{{ n('Q45') }}. Cerrados</th><th>% de avance</th><th class="izq">Avance (meta 100 %)</th></tr></thead>
-        <tbody>
-          @for (f of M.ranking; track f.slep) {
-            <tr>
-              <td class="pos" [class.top]="f.pos && f.pos <= 3">{{ f.pos ? f.pos + '°' : '—' }}</td>
-              <td class="sn">{{ f.slep }}</td>
-              <td>{{ fmt(f.casos) }}</td><td>{{ fmt(f.instruidos) }}</td><td>{{ fmt(f.cerrados) }}</td>
-              <td class="ex" [ngClass]="nivel(f.av)">{{ f.av === null ? '—' : pct(f.av) }}</td>
-              <td class="izq">@if (f.av !== null) { <span class="barra"><i [style.width.%]="(f.av < 0.02 ? 0.02 : f.av > 1 ? 1 : f.av) * 100" [style.background]="'var(--' + nivel(f.av) + ')'"></i></span> } @else { <span class="muted small">Sin instruidos</span> }</td>
-            </tr>
-          }
-        </tbody>
-      </table>
     </div>
   </section>
 </ng-template>

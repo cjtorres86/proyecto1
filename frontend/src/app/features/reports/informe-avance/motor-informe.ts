@@ -510,8 +510,8 @@ function syncReportForm(){
 /* ===== Inicio ===== */
 function init(){
   $("logo").src=LOGO;
-  // Quien ve un solo SLEP no tiene consolidado ni orden entre varios SLEP.
-  if(!CFG.alcanceCompleto){$("orden").closest(".field").hidden=true}
+  // Quien ve un solo SLEP no tiene consolidado, orden ni ranking entre varios SLEP.
+  if(!CFG.alcanceCompleto){$("orden").closest(".field").hidden=true;$("rk-open").style.display="none"}
   $("years").onclick=e=>{const b=e.target.closest("button");if(!b)return;S.year=b.dataset.y;S.mes=null;buildSelects();render()};
   $("slep").onchange=e=>{S.slep=e.target.value==="TOTAL"?"TOTAL":+e.target.value;render()};
   $("mes").onchange=e=>{S.mes=+e.target.value;render()};

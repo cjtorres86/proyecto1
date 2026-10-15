@@ -3,7 +3,7 @@ import { Desglose, LicenciasSlep, ModeloDashboard, Nivel, RankingLic, dias, nive
 
 // Gráficos del Informe de dashboard para Excel y PDF (imágenes): el lenguaje
 // visual de los informes, con predominio de azules y grises. El rojo aparece
-// solo cuando el avance de los sumarios es bajo (barra de avance y ranking).
+// solo cuando el avance de los sumarios es bajo (barra de avance).
 const C = {
   navy: '#25306B', azul: '#1E4FA0', azul2: '#006BB9', celeste: '#3ABFF0', gris: '#94A3B8', pista: '#ECEFF4',
   texto: '#111827', texto2: '#46536A', texto3: '#76839A', linea: '#E3E7EE', rojo: '#D03B3B',
@@ -47,12 +47,6 @@ function grafAvance(M: ModeloDashboard, ambito: string): GraficoSvg {
   return { cap: '% de avance de los sumarios (meta 100 %)', svg: svg(W, H, c), W, H };
 }
 
-function grafOrigen(M: ModeloDashboard, et: (id: string, l: string) => string): GraficoSvg {
-  const max = Math.max(1, ...M.origen.map((c) => c.valor ?? 0));
-  const b = barras(M.origen.map((c, i) => ({ label: et(c.id, c.label), ancho: (c.valor ?? 0) / max, color: [C.navy, C.azul2, C.celeste][i] ?? C.gris, valor: fmt(c.valor), extra: c.nota })), { etiqueta: 280 });
-  return { cap: 'Lo que informó Contraloría', svg: svg(900, b.H, b.cuerpo), W: 900, H: b.H };
-}
-
 // Dona: continúan en el servicio (azul) y ya no están (gris).
 function grafDona(M: ModeloDashboard): GraficoSvg {
   const W = 900, H = 240, cx = 130, cy = 120, R = 100, r = 62, colores = [C.azul, C.gris];
@@ -90,16 +84,6 @@ function grafDesglose(d: Desglose, et: (id: string, l: string) => string): Grafi
   return { cap: d.titulo, svg: svg(900, H, cab + `<g transform="translate(0,36)">${b.cuerpo}</g>`), W: 900, H };
 }
 
-// Ranking: una barra por SLEP, del color de su nivel (rojo solo si es bajo).
-function grafRanking(M: ModeloDashboard): GraficoSvg {
-  const filas = M.ranking.filter((f) => f.av !== null);
-  const b = barras(filas.map((f) => ({ label: `${f.pos}°  ${f.slep}`, ancho: Math.max(0.01, f.av ?? 0), color: COLOR_NIVEL[f.nivel], valor: pct(f.av), extra: `${fmt(f.cerrados)} de ${fmt(f.instruidos)}` })), { etiqueta: 230, alto: 22 });
-  const ley = [['Alto (75 % o más)', COLOR_NIVEL.alto], ['Medio (25 % a 74,9 %)', COLOR_NIVEL.medio], ['Bajo (menos de 25 %)', COLOR_NIVEL.bajo]]
-    .map(([t, col], i) => `<rect x="${20 + i * 230}" y="10" width="14" height="14" rx="2" fill="${col}"/>` + txt(40 + i * 230, 22, t, { size: 12, color: C.texto2 })).join('');
-  const H = b.H + 34;
-  return { cap: 'Avance de los sumarios por SLEP (1° = mayor avance)', svg: svg(900, H, ley + `<g transform="translate(0,34)">${b.cuerpo}</g>`), W: 900, H };
-}
-
 // Licencias de un solo SLEP: la línea de duración (mínima → promedio → máxima)
 // y la remuneración promedio destacada. Azul y gris.
 function grafLicenciasSlep(L: LicenciasSlep, et: (id: string, l: string) => string): GraficoSvg {
@@ -126,12 +110,10 @@ function grafLicenciasSlep(L: LicenciasSlep, et: (id: string, l: string) => stri
 export function graficosDashboard(M: ModeloDashboard, o: { ambito: string; consolidado: boolean; et: (id: string, l: string) => string }): Record<string, GraficoSvg[]> {
   const g: Record<string, GraficoSvg[]> = {
     avance: [grafAvance(M, o.ambito)],
-    origen: [grafOrigen(M, o.et)],
     involucrados: M.dona.total ? [grafDona(M)] : [],
   };
   if (M.licenciasSlep) g['lic-slep'] = [grafLicenciasSlep(M.licenciasSlep, o.et)];
   else for (const r of M.rankingsLic) g[`lic-${r.id}`] = r.filas.length ? [grafLicencias(r)] : [];
   for (const d of M.desgloses) g[`des-${d.clave}`] = [grafDesglose(d, o.et)];
-  g['ranking'] = o.consolidado && M.ranking.some((f) => f.av !== null) ? [grafRanking(M)] : [];
   return g;
 }

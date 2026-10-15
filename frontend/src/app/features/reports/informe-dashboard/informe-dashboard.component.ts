@@ -11,7 +11,7 @@ import { INTERRUPTOR_TEMA, descargarHtml, documentoAutonomo, estilosDeLaPagina, 
 import { ThemeToggleComponent } from '../../../shared/theme-toggle/theme-toggle.component';
 import { BitacoraApiService } from '../../bitacora/services/bitacora-api.service';
 import { DashboardApiService } from '../../dashboard/services/dashboard-api.service';
-import { ModeloDashboard, RankingLic, armarDashboard, dias, nivelDe, numeracion, posLicencia, rem } from '../../dashboard/modelo-dashboard';
+import { Cifra, ModeloDashboard, RankingLic, armarDashboard, dias, nivelDe, numeracion, posLicencia, rem } from '../../dashboard/modelo-dashboard';
 import { generarDocumento, svgAImagen } from '../documentos-informe';
 import { graficosDashboard } from './graficos-dashboard';
 
@@ -294,6 +294,12 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     return `${M.frase.replace(/\.$/, '')}; ${faltan ? `faltan ${fmt(faltan)} para la meta del 100 %` : 'meta cumplida: todos tienen su proceso cerrado'}.`;
   }
 
+  // Bajo el avance, en la tarjeta 1: casos informados y licencias médicas
+  // (campos 4 y 5); los funcionarios involucrados están en la dona.
+  puntosResumen(M: ModeloDashboard): Cifra[] {
+    return M.origen.filter((c) => c.id === 'Q04' || c.id === 'Q05');
+  }
+
   // ---------- Notas (ⓘ) por sección ----------
   // No se muestran a la vista: cada sección con notas tiene su botón «Notas»
   // que abre la ventana con todas, ordenadas por sección.
@@ -302,7 +308,7 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     const M = this.modelo;
     if (!M) return [];
     return [
-      { clave: 'origen', eyebrow: `${this.numero('origen')} · Origen`, titulo: 'Lo que informó Contraloría', notas: M.capsulasOrigen },
+      { clave: 'resumen', eyebrow: `${this.numero('resumen')} · ${this.slep ? 'Servicio Local' : 'Consolidado'}`, titulo: this.slep ?? 'Todos los SLEP', notas: M.capsulasOrigen },
       { clave: 'involucrados', eyebrow: `${this.numero('involucrados')} · Involucrados`, titulo: 'Situación de los funcionarios involucrados', notas: M.capsulasInvolucrados },
       ...M.desgloses.map((b) => ({ clave: b.clave, eyebrow: `${this.numero(b.clave)} · ${this.sinNumero(b.eyebrow)}`, titulo: b.titulo, notas: b.capsulas })),
       M.licenciasSlep
@@ -314,7 +320,7 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
   // Número de cada tarjeta en el informe: Licencias va al final (6, o 7 si
   // hay Anexo); los números de campo del formulario no cambian.
   numero(clave: string): number {
-    const orden: Record<string, number> = { origen: 1, involucrados: 2, cic: 3, proc: 4, san: 5, anexo: 6 };
+    const orden: Record<string, number> = { resumen: 1, involucrados: 2, cic: 3, proc: 4, san: 5, anexo: 6 };
     return orden[clave] ?? (this.modelo?.anexo.length ? 7 : 6);
   }
   sinNumero(eyebrow: string): string {
@@ -436,18 +442,15 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     const hoy = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const mm = String(MESES.indexOf(this.mes) + 1).padStart(2, '0');
     const secs: unknown[] = [];
-    secs.push({ h: 'Avance de los sumarios', sheet: 'Resumen', p: [this.lineaAvance(M)], charts: g['avance'],
+    secs.push({ h: `${this.numero('resumen')} · Avance de los sumarios`, sheet: 'Resumen', p: [this.lineaAvance(M), ...M.capsulasOrigen], charts: g['avance'],
       table: { cols: [{ h: 'Dato', t: 'txt', w: 2.6 }, { h: 'Valor', t: 'txt', w: 1.4 }], rows: [
-        ...M.identificacion.map((i) => fila([`${i.n}. ${i.label}`, i.valor], { txtRow: true })),
         fila([this.et('Q37', 'Sumarios instruidos'), fmt(M.instruidos)], { txtRow: true }),
         fila([this.et('Q45', 'Procesos cerrados'), fmt(M.cerrados)], { txtRow: true }),
         fila(['Por cerrar para la meta (100 %)', fmt(Math.max(M.instruidos - M.cerrados, 0))], { txtRow: true }),
         fila(['% de avance', M.av === null ? 'Sin sumarios instruidos' : `${pct(M.av)} · ${this.textoNivel(M.av).toLowerCase()}`], { txtRow: true, bold: true }),
+        ...this.puntosResumen(M).map((c) => fila([this.et(c.id, c.label), fmt(c.valor)], { txtRow: true })),
       ] } });
-    secs.push({ h: '1 · Origen: lo que informó Contraloría', sheet: 'Origen', p: M.capsulasOrigen, charts: g['origen'],
-      table: { cols: [{ h: 'Campo', t: 'txt', w: 2.4 }, { h: 'Valor', t: 'n' }, { h: 'Nota', t: 'txt', w: 1.6 }],
-        rows: M.origen.map((c) => fila([this.et(c.id, c.label), c.valor, c.nota])) } });
-    secs.push({ h: '2 · Involucrados: situación de los funcionarios', sheet: 'Involucrados', p: M.capsulasInvolucrados, charts: g['involucrados'],
+    secs.push({ h: `${this.numero('involucrados')} · Involucrados: situación de los funcionarios`, sheet: 'Involucrados', p: M.capsulasInvolucrados, charts: g['involucrados'],
       table: { cols: [{ h: 'Campo', t: 'txt', w: 2.6 }, { h: 'Funcionarios', t: 'n' }, { h: '% de los involucrados', t: 'p' }],
         rows: [...M.dona.partes.map((p) => fila([p.label, p.valor, p.pct])), fila(['Total involucrados', M.dona.total, M.dona.total ? 1 : null], { bold: true })] } });
     for (const b of M.desgloses) {
@@ -458,11 +461,6 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
     if (M.anexo.length) {
       secs.push({ h: `${this.numero('anexo')} · Anexo: seguimiento adicional`, sheet: 'Anexo', p: [],
         table: { cols: [{ h: 'Campo', t: 'txt', w: 2.8 }, { h: 'Valor', t: 'txt', w: 1.2 }], rows: M.anexo.map((c) => fila([c.label, c.id === 'Q62' ? rem(c.valor) : fmt(c.valor)], { txtRow: true })) } });
-    }
-    if (!this.slep && M.ranking.length) {
-      secs.push({ h: `Ranking de avance por SLEP · ${this.mes} ${this.anio}`, sheet: 'Ranking', p: ['1° = mayor avance; en empate, más procesos cerrados. Se destacan en rojo los servicios con avance bajo.'], charts: g['ranking'],
-        table: { small: true, cols: [{ h: 'N°', t: 'txt', w: 0.45 }, { h: 'Servicio Local', t: 'txt', w: 1.9 }, { h: 'Casos', t: 'n' }, { h: 'Instruidos', t: 'n' }, { h: 'Cerrados', t: 'n' }, { h: '% de avance', t: 'p' }, { h: 'Nivel', t: 'txt', w: 1 }],
-          rows: M.ranking.map((f) => fila([f.pos ? `${f.pos}°` : '—', f.slep, f.casos, f.instruidos, f.cerrados, f.av, f.av === null ? 'Sin instruidos' : NIVEL_TXT[f.nivel].replace('Avance ', '')], { over: new Set(f.nivel === 'bajo' ? [5, 6] : []) })) } });
     }
     // Licencias de un solo SLEP: sus datos (campos 15 a 18), sin rankings.
     if (M.licenciasSlep) {
