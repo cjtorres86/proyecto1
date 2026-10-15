@@ -214,10 +214,11 @@
   </section>
 </ng-template>
 
-<!-- 3, 4 y 5: un dato principal y su desglose. En la hoja, horizontal: el
-     dato principal a la izquierda y las barras a la derecha. -->
+<!-- 3, 4 y 5: un dato principal y su desglose, horizontal (pantalla y hoja,
+     igual que en el Dashboard): el dato principal a la izquierda y, a la
+     derecha, cada campo en una línea (nombre, barra, número y %). -->
 <ng-template #tDesglose let-b let-h="h">
-  <section class="panel desglose" [class.horiz]="h" [class.ultimo]="!h && b.clave === 'san' && !modelo?.anexo?.length">
+  <section class="panel desglose horiz">
     <div class="d-izq">
       <div class="sec-head"><div><span class="eyebrow">{{ numero(b.clave) }} · {{ sinNumero(b.eyebrow) }}</span><h2>{{ b.titulo }}</h2></div>@if (!h) { <ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: b.clave }" /> }</div>
       <div class="tile key" [attr.data-tip]="h ? null : tip(b.principal.id, et(b.principal.id, b.principal.label), b.principal.valor)"><span class="nm">{{ et(b.principal.id, b.principal.label) }}</span><span class="val">{{ fmt(b.principal.valor) }}</span><span class="gl">{{ b.principal.nota }}</span></div>
@@ -226,8 +227,9 @@
     <div class="barras">
       @for (x of b.filas; track x.id) {
         <div class="fila-h" [attr.data-tip]="h ? null : tip(x.id, x.label, x.valor, et(b.principal.id, b.principal.label), b.principal.valor)">
-          <div class="arriba"><span>{{ x.label }}</span><span class="num">{{ fmt(x.valor) }}</span><span class="pc">{{ b.principal.valor ? pct(x.pct) : '' }}</span></div>
+          <span>{{ x.label }}</span>
           <span class="bar"><i [style.width.%]="(x.pct > 1 ? 1 : x.pct) * 100" [style.background]="colorBarra(x.rango)"></i></span>
+          <span class="num">{{ fmt(x.valor) }}</span><span class="pc">{{ b.principal.valor ? pct(x.pct) : '' }}</span>
         </div>
       }
     </div>

@@ -66,32 +66,39 @@
         @for (cp of capsulasInvolucrados; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
       </section>
 
-      <!-- 3, 4 y 5: un dato principal y su desglose (mismo lenguaje visual) -->
+      <!-- 3, 4 y 5: un dato principal y su desglose, horizontal y a todo el
+           ancho (como en los informes): el dato principal a la izquierda y, a
+           la derecha, cada campo en una línea (nombre, barra, número y %). -->
       @for (b of desgloses; track b.clave) {
-        <section class="blq" [class.ultimo]="b.clave === 'san' && !anexo.length" [attr.aria-labelledby]="'d-' + b.clave">
-          <div><p class="eyebrow">{{ numero(b.clave) }} · {{ sinNumero(b.eyebrow) }}</p><h4 class="tit" [id]="'d-' + b.clave">{{ b.titulo }}</h4></div>
-          <div class="cifra clave" (mouseenter)="verTip($event, b.principal.id, et(b.principal.id, b.principal.label), b.principal.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
-            <div class="lb">{{ et(b.principal.id, b.principal.label) }}</div>
-            <div class="flex items-baseline justify-between gap-2 flex-wrap"><span class="vl">{{ fmt(b.principal.valor) }}</span><span class="nt">{{ b.principal.nota }}</span></div>
+        <section class="blq ancho desg" [attr.aria-labelledby]="'d-' + b.clave">
+          <div class="d-izq">
+            <div><p class="eyebrow">{{ numero(b.clave) }} · {{ sinNumero(b.eyebrow) }}</p><h4 class="tit" [id]="'d-' + b.clave">{{ b.titulo }}</h4></div>
+            <div class="cifra clave" (mouseenter)="verTip($event, b.principal.id, et(b.principal.id, b.principal.label), b.principal.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
+              <div class="lb">{{ et(b.principal.id, b.principal.label) }}</div>
+              <div class="vl">{{ fmt(b.principal.valor) }}</div>
+              <div class="nt">{{ b.principal.nota }}</div>
+            </div>
+            <p class="sub">{{ b.orden }}</p>
           </div>
-          <p class="sub">{{ b.orden }}</p>
-          @for (x of b.filas; track x.id) {
-            <div class="fila-h" (mouseenter)="verTip($event, x.id, x.label, x.valor, et(b.principal.id, b.principal.label), b.principal.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
-              <div class="arriba">
+          <div class="d-der">
+            @for (x of b.filas; track x.id) {
+              <div class="fila-h" (mouseenter)="verTip($event, x.id, x.label, x.valor, et(b.principal.id, b.principal.label), b.principal.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
                 <span class="text-gray-700 dark:text-gray-200">{{ x.label }}</span>
+                <span class="bar"><i [style.width.%]="(x.pct > 1 ? 1 : x.pct) * 100" [style.background]="x.color"></i></span>
                 <span class="num">{{ fmt(x.valor) }}</span>
                 <span class="pc">{{ b.principal.valor ? pct(x.pct) : '' }}</span>
               </div>
-              <span class="bar"><i [style.width.%]="(x.pct > 1 ? 1 : x.pct) * 100" [style.background]="x.color"></i></span>
-            </div>
+            }
+          </div>
+          @if (b.capsulas.length) {
+            <div class="d-notas">@for (cp of b.capsulas; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }</div>
           }
-          @for (cp of b.capsulas; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
         </section>
       }
 
       <!-- 6 · Anexo (solo con el formulario de 44 campos) -->
       @if (anexo.length) {
-        <section class="blq" aria-labelledby="d-b7">
+        <section class="blq ancho" aria-labelledby="d-b7">
           <div><p class="eyebrow">{{ numero('anexo') }} · Anexo</p><h4 class="tit" id="d-b7">Seguimiento adicional (anexo)</h4></div>
           <div class="cifras">
             @for (c of anexo; track c.id) {
