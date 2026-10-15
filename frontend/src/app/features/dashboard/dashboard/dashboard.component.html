@@ -13,17 +13,13 @@
 } @else {
   <div class="flex flex-col gap-3.5">
 
-    <!-- 0 · Consolidado: campos 1 a 3 y el % de avance (rojo a azul) -->
+    <!-- 1 · Consolidado: el % de avance y, bajo la línea, los campos 4 y 5
+         (los funcionarios involucrados están en la dona). -->
     <section class="blq" aria-labelledby="d-b0">
       <div>
-        <p class="eyebrow">{{ slepActivo ? 'Servicio Local' : 'Consolidado' }} · {{ mes }} {{ anio }}</p>
+        <p class="eyebrow">1 · {{ slepActivo ? 'Servicio Local' : 'Consolidado' }} · {{ mes }} {{ anio }}</p>
         <h4 class="tit" id="d-b0">{{ slepActivo ?? 'Todos los SLEP' }}</h4>
       </div>
-      <dl class="ident">
-        @for (i of identificacion; track i.n) {
-          <div><dt>{{ i.n }}. {{ i.label }}</dt><dd>{{ i.valor }}</dd></div>
-        }
-      </dl>
       <div class="avance">
         <div class="flex items-baseline justify-between gap-3 flex-wrap">
           <span class="lb">Avance de los sumarios</span>
@@ -36,23 +32,16 @@
         <div class="av-escala"><span>0 %</span><span>50 %</span><span>Meta 100 %</span></div>
         <p class="text-[12.5px] m-0 text-gray-700 dark:text-gray-200">{{ frase }}</p>
       </div>
+      <dl class="ident">
+        @for (c of puntos; track c.id) {
+          <div (mouseenter)="verTip($event, c.id, et(c.id, c.label), c.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()"><dt>{{ et(c.id, c.label) }}</dt><dd>{{ fmt(c.valor) }}</dd></div>
+        }
+      </dl>
       @for (cp of capsulasAvance; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
+      @for (cp of capsulasOrigen; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
     </section>
 
     <div class="grilla">
-      <!-- 1 · Origen: campos 4, 5 y 6 -->
-      <section class="blq" aria-labelledby="d-b1">
-        <div><p class="eyebrow">1 · Origen</p><h4 class="tit" id="d-b1">Lo que informó Contraloría</h4></div>
-        <div class="cifras">
-          @for (c of origen; track c.id) {
-            <div class="cifra" (mouseenter)="verTip($event, c.id, et(c.id, c.label), c.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
-              <div class="lb">{{ et(c.id, c.label) }}</div><div class="vl">{{ fmt(c.valor) }}</div><div class="nt">{{ c.nota }}</div>
-            </div>
-          }
-        </div>
-        @for (cp of capsulasOrigen; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
-      </section>
-
       <!-- 2 · Involucrados: campos 7 y 8 (dona) -->
       <section class="blq" aria-labelledby="d-b2">
         <div><p class="eyebrow">2 · Involucrados</p><h4 class="tit" id="d-b2">Situación de los funcionarios involucrados</h4></div>
@@ -173,30 +162,6 @@
       }
     </div>
 
-    <!-- Ranking completo (todos los SLEP) -->
-    @if (!slepActivo && ranking.length) {
-      <section class="blq" aria-labelledby="d-rk">
-        <div><p class="eyebrow">Ranking · {{ mes }} {{ anio }}</p><h4 class="tit" id="d-rk">Avance de los sumarios por SLEP</h4>
-          <p class="sub">1° = mayor avance. Barra: <span [style.color]="NIVEL_DASH.alto">■</span> alto · <span [style.color]="NIVEL_DASH.medio">■</span> medio · <span [style.color]="NIVEL_DASH.bajo">■</span> bajo.</p></div>
-        <div class="overflow-x-auto">
-          <table class="rk">
-            <caption class="sr-only">Ranking de avance por SLEP</caption>
-            <thead><tr><th>N°</th><th>SLEP</th><th>{{ n('Q04') }}. Casos</th><th>{{ n('Q37') }}. Instruidos</th><th>{{ n('Q45') }}. Cerrados</th><th>% avance</th><th style="text-align:left">Avance</th></tr></thead>
-            <tbody>
-              @for (f of ranking; track f.slep) {
-                <tr>
-                  <td class="font-bold" [style.color]="f.pos && f.pos <= 3 ? '#1E4FA0' : '#76839a'">{{ f.pos ? f.pos + '°' : '—' }}</td>
-                  <td class="font-medium whitespace-nowrap text-gray-800 dark:text-gray-200">{{ f.slep }}</td>
-                  <td>{{ fmt(f.casos) }}</td><td>{{ fmt(f.instruidos) }}</td><td>{{ fmt(f.cerrados) }}</td>
-                  <td class="font-bold" [style.color]="NIVEL_DASH[f.nivel]">{{ f.av === null ? '—' : pct(f.av) }}</td>
-                  <td>@if (f.av !== null) { <div class="barra"><i [style.width.%]="(f.av < 0.02 ? 0.02 : f.av > 1 ? 1 : f.av) * 100" [style.background]="NIVEL_DASH[f.nivel]"></i></div> } @else { <span class="text-[10.5px] text-gray-400">Sin instruidos</span> }</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </section>
-    }
   </div>
 }
 </div>

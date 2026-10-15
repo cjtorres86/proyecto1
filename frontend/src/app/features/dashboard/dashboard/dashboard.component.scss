@@ -25,12 +25,12 @@
 .aviso{font-size:11px;color:#25306B;background:#EEF4FB;border:1px solid #c9d8ee;border-radius:6px;padding:5px 8px;display:flex;gap:6px;align-items:flex-start}
 :host-context(.dark) .aviso{color:#A9C8EE;background:#1c3352;border-color:#2c4a73}
 // 0 · Consolidado
-.ident{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px 14px;margin:0}
+.ident{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px 14px;margin:0;border-top:1px solid #eef1f6;padding-top:10px}
+:host-context(.dark) .ident{border-top-color:#243147}
 .ident dt{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#76839a}
-.ident dd{margin:0;font-size:12.5px;font-weight:600;color:#1f2937}
+.ident dd{margin:0;font-size:30px;font-weight:800;line-height:1.05;color:#25306B;font-variant-numeric:tabular-nums}
 :host-context(.dark) .ident dd{color:#e8edf5}
-.avance{display:flex;flex-direction:column;gap:6px;border-top:1px solid #eef1f6;padding-top:10px}
-:host-context(.dark) .avance{border-top-color:#243147}
+.avance{display:flex;flex-direction:column;gap:6px}
 .avance .lb{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#46536a}
 :host-context(.dark) .avance .lb{color:#b3bfd2}
 .av-num{font-size:30px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}

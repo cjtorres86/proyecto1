@@ -6,7 +6,7 @@ import { DashboardApiService } from '../services/dashboard-api.service';
 import { DashboardDeMes } from '../../../core/models/dashboard.model';
 import { ModeSwitcherComponent } from '../../../shared/mode-switcher/mode-switcher.component';
 import { escaparHtml, fmt, pct } from '../../../core/utils/avance';
-import { Cifra, Desglose, FilaRankingAvance, LicenciasSlep, NIVEL_DASH, ParteDona, RankingLic, armarDashboard, dias, numeracion, posLicencia, rem } from '../modelo-dashboard';
+import { Cifra, Desglose, LicenciasSlep, ParteDona, RankingLic, armarDashboard, dias, numeracion, posLicencia, rem } from '../modelo-dashboard';
 
 export { NIVEL_DASH, PALETA } from '../modelo-dashboard';
 
@@ -28,16 +28,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly fmt = fmt;
   readonly pct = pct;
   readonly rem = rem;
-  readonly NIVEL_DASH = NIVEL_DASH;
 
-  // 0 · Consolidado
-  identificacion: { n: number; label: string; valor: string }[] = [];
+  // 1 · Consolidado (campos 4 y 5 bajo el avance)
   av: number | null = null;
   instruidos = 0;
   cerrados = 0;
   frase = '';
   capsulasAvance: string[] = [];
-  // 1 · Origen
   origen: Cifra[] = [];
   capsulasOrigen: string[] = [];
   // 2 · Involucrados (dona)
@@ -50,7 +47,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   desgloses: Desglose[] = [];
   // 7 · Anexo (solo con el formulario de 44 campos)
   anexo: { id: string; label: string; valor: number | null }[] = [];
-  ranking: FilaRankingAvance[] = [];
+
+  // Casos informados y licencias médicas (campos 4 y 5), bajo el avance.
+  get puntos(): Cifra[] {
+    return this.origen.filter((c) => c.id === 'Q04' || c.id === 'Q05');
+  }
 
   @ViewChild('tip', { static: true }) private tip!: ElementRef<HTMLDivElement>;
   private sub?: Subscription;

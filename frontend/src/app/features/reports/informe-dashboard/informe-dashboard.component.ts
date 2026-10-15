@@ -370,6 +370,12 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
       } else if (nota && alto - h >= 90) {
         nota.hidden = false;
       }
+      // La línea del avance cabe en una sola línea: se achica su letra si no.
+      hoja.querySelectorAll<HTMLElement>('.resumen .lede').forEach((l) => {
+        l.style.fontSize = '';
+        let px = parseFloat(getComputedStyle(l).fontSize);
+        while (l.scrollWidth > l.clientWidth + 1 && px > 8) l.style.fontSize = `${(px -= 0.5)}px`;
+      });
     });
   }
   notasDe(clave: string): string[] {

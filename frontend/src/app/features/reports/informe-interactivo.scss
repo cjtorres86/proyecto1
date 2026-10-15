@@ -293,6 +293,8 @@
 .dark .id{--alto:#00f0ff;--alto-soft:#062a35;--medio:#5b8cff;--medio-soft:#101d3d}
 .id .ident{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 18px;margin:0;border-top:1px solid var(--grid);padding-top:12px}
 .id .resumen .ph-der{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+// Campos 4 y 5 de la tarjeta 1: cifras del tamaño del % de avance.
+.id .resumen .ident dd{font-family:var(--f-display);font-size:2.1rem;font-weight:700;line-height:1.05;color:var(--head);font-variant-numeric:tabular-nums}
 .id .ident dt{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-3)}
 .id .ident dd{margin:0;font-weight:600}
 .id .avance{display:flex;flex-direction:column;gap:6px}
@@ -396,6 +398,11 @@
 .ia .hojas-pdf .fila-rk{font-size:.74rem;padding:0 2px;gap:6px}
 .ia .hojas-pdf .fila-rk .bar{height:8px}
 .ia .hojas-pdf table.rk-d{min-width:0;font-size:.74rem}
+// Hoja 1: la línea del avance en una sola línea (ajustarHojas achica la letra
+// si hace falta), para dar espacio a las cifras grandes.
+.ia .hojas-pdf .resumen .lede{white-space:nowrap;font-size:.86rem;max-width:none}
+// Hoja 2: el dato principal de cada tarjeta, del tamaño del % de avance.
+.ia .hojas-pdf .tile.key .val{font-size:2.1rem;font-weight:700;line-height:1}
 .ia .hojas-pdf table.rk-d th,.ia .hojas-pdf table.rk-d td{padding:3px 6px}
 // Nota de relleno: ocupa el espacio que sobra en la hoja.
 .ia .nota-relleno{flex:1;min-height:80px;display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 28px;border:1px dashed color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:10px;background:color-mix(in srgb,var(--accent-soft) 45%,var(--surface));color:var(--fg-2);text-align:left}
