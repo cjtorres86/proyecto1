@@ -16,10 +16,9 @@ interface FilaRanking {
 
 // Ranking de avance (botón «Ranking» de la línea de botones, junto a
 // Formulario, Dashboard e Histórico): por SLEP, en el mes elegido — N°, SLEP,
-// % de avance con su barra de color (bajo / medio / alto) y luego los casos
-// informados y los 5 indicadores del informe (si el panel es angosto, estos
-// se ven desplazando la tabla). Clic en un SLEP: lo destaca en el Histórico y
-// abre el Histórico.
+// funcionarios involucrados, sumarios instruidos, procesos en curso, procesos
+// cerrados, sanciones aplicadas, la barra de avance (bajo / medio / alto) y el
+// % de avance. Clic en un SLEP: lo destaca en el Histórico y abre el Histórico.
 @Component({
   selector: 'app-ranking-panel',
   standalone: true,
@@ -48,26 +47,29 @@ interface FilaRanking {
         <table class="w-full text-xs border-collapse">
           <caption class="sr-only">Ranking de avance por SLEP</caption>
           <thead class="sticky top-0 bg-[#F1F3F6] dark:bg-[#1F2B3E] z-10">
-            <tr class="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              <th class="px-2 py-2 text-left">N°</th>
-              <th class="px-2 py-2 text-left">SLEP</th>
-              <th class="px-2 py-2 text-right">% de avance</th>
-              <th class="px-2 py-2 text-left min-w-[90px] w-[14%]">Avance</th>
-              <th class="px-2 py-2 text-right">Casos informados</th>
-              <th class="px-2 py-2 text-right">Funcionarios involucrados</th>
-              <th class="px-2 py-2 text-right">Sumarios instruidos</th>
-              <th class="px-2 py-2 text-right">Procesos en curso</th>
-              <th class="px-2 py-2 text-right">Procesos cerrados</th>
-              <th class="px-2 py-2 text-right">Sanciones aplicadas</th>
+            <tr class="text-[10px] uppercase tracking-normal text-gray-500 dark:text-gray-400">
+              <th class="px-1.5 py-2 text-left">N°</th>
+              <th class="px-1.5 py-2 text-left">SLEP</th>
+              <th class="px-1.5 py-2 text-right">Funcionarios involucrados</th>
+              <th class="px-1.5 py-2 text-right">Sumarios instruidos</th>
+              <th class="px-1.5 py-2 text-right">Procesos en curso</th>
+              <th class="px-1.5 py-2 text-right">Procesos cerrados</th>
+              <th class="px-1.5 py-2 text-right">Sanciones aplicadas</th>
+              <th class="px-1.5 py-2 text-left min-w-[44px] w-[14%]">Avance</th>
+              <th class="px-1.5 py-2 text-right">% de avance</th>
             </tr>
           </thead>
           <tbody>
             @for (f of filas; track f.slep) {
               <tr class="border-t border-gray-100 dark:border-[#243147] hover:bg-[#F6F8FB] dark:hover:bg-[#1F2B3E] cursor-pointer" (click)="verEnHistorico(f.slep)" [title]="'Ver ' + f.slep + ' en el Histórico'">
-                <td class="px-2 py-1.5 font-bold" [ngClass]="{ 'text-[#0F69B4]': f.pos && f.pos <= 3, 'text-gray-400': !f.pos || f.pos > 3 }">{{ f.pos ? f.pos + '°' : '—' }}</td>
-                <td class="px-2 py-1.5 font-medium whitespace-nowrap">{{ f.slep }}</td>
-                <td class="px-2 py-1.5 text-right tabular-nums font-bold whitespace-nowrap" [style.color]="color(f.nivel)">{{ f.m ? pct(f.m.av) : '—' }}</td>
-                <td class="px-2 py-1.5">
+                <td class="px-1.5 py-1.5 font-bold" [ngClass]="{ 'text-[#0F69B4]': f.pos && f.pos <= 3, 'text-gray-400': !f.pos || f.pos > 3 }">{{ f.pos ? f.pos + '°' : '—' }}</td>
+                <td class="px-1.5 py-1.5 font-medium whitespace-nowrap">{{ f.slep }}</td>
+                <td class="px-1.5 py-1.5 text-right tabular-nums">{{ fmt(f.m?.inv) }}</td>
+                <td class="px-1.5 py-1.5 text-right tabular-nums">{{ fmt(f.m?.ins) }}</td>
+                <td class="px-1.5 py-1.5 text-right tabular-nums">{{ fmt(f.m?.curso) }}</td>
+                <td class="px-1.5 py-1.5 text-right tabular-nums">{{ fmt(f.m?.cerr) }}</td>
+                <td class="px-1.5 py-1.5 text-right tabular-nums">{{ fmt(f.m?.san) }}</td>
+                <td class="px-1.5 py-1.5">
                   @if (f.m && f.m.av !== null) {
                     <div class="h-2.5 w-full bg-[#ECEFF4] dark:bg-[#1F2B3E] rounded overflow-hidden" [title]="NIVEL_TXT[f.nivel]">
                       <div class="h-full rounded" [style.width.%]="ancho(f.m.av)" [style.background]="color(f.nivel)"></div>
@@ -76,12 +78,7 @@ interface FilaRanking {
                     <span class="text-[10.5px] text-gray-400">{{ f.m ? 'Sin sumarios instruidos' : 'Sin información' }}</span>
                   }
                 </td>
-                <td class="px-2 py-1.5 text-right tabular-nums">{{ fmt(f.m?.casos) }}</td>
-                <td class="px-2 py-1.5 text-right tabular-nums">{{ fmt(f.m?.inv) }}</td>
-                <td class="px-2 py-1.5 text-right tabular-nums">{{ fmt(f.m?.ins) }}</td>
-                <td class="px-2 py-1.5 text-right tabular-nums">{{ fmt(f.m?.curso) }}</td>
-                <td class="px-2 py-1.5 text-right tabular-nums">{{ fmt(f.m?.cerr) }}</td>
-                <td class="px-2 py-1.5 text-right tabular-nums">{{ fmt(f.m?.san) }}</td>
+                <td class="px-1.5 py-1.5 text-right tabular-nums font-bold whitespace-nowrap" [style.color]="color(f.nivel)">{{ f.m ? pct(f.m.av) : '—' }}</td>
               </tr>
             }
           </tbody>
