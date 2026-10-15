@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { Usuario } from '../models/user.model';
 
-export type ModoWorkspace = 'formulario' | 'dashboard-ampliado' | 'historico';
+export type ModoWorkspace = 'formulario' | 'dashboard-ampliado' | 'historico' | 'ranking';
 
 // Alternar vista (TDD, sección 7.8) — un servicio de estado más, mismo
 // patrón que CaseStateService: nadie llama a un _renderX(), los

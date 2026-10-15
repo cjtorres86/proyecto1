@@ -12,6 +12,7 @@ import { CaseFormPanelComponent } from '../case-form-panel/case-form-panel.compo
 import { FieldInspectorComponent } from '../field-inspector/field-inspector.component';
 import { DashboardComponent } from '../../dashboard/dashboard/dashboard.component';
 import { HistoricoPanelComponent } from '../historico-panel/historico-panel.component';
+import { RankingPanelComponent } from '../ranking-panel/ranking-panel.component';
 
 // Workspace principal (TDD, sección 7.8): Meses siempre visible; los
 // paneles de la derecha alternan entre 3 modos (Formulario+Inspector,
@@ -35,7 +36,7 @@ import { HistoricoPanelComponent } from '../historico-panel/historico-panel.comp
   imports: [ModeSwitcherComponent, 
     CommonModule,
     MonthsPanelComponent, SlepPanelComponent, CaseFormPanelComponent, FieldInspectorComponent, DashboardComponent,
-    HistoricoPanelComponent,
+    HistoricoPanelComponent, RankingPanelComponent,
   ],
   templateUrl: './cases.component.html',
 })

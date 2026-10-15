@@ -1,11 +1,13 @@
 <div class="flex flex-col h-full">
   <!-- Botones en la esquina superior derecha, mismo estilo que el resto de
-       los paneles. Cerrar y Eliminar actúan sobre el mes elegido. -->
-  <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+       los paneles. Cerrar y Eliminar actúan sobre el mes elegido (cada uno
+       lo explica al pasar el mouse); textos cortos para que quepan en una
+       línea junto al título. -->
+  <div class="cab-panel">
     <h3 class="font-bold text-sm uppercase text-gray-500">Meses</h3>
-    <div class="flex flex-wrap justify-end gap-1">
+    <div>
       @if (authService.can('crear_mes')) {
-        <button class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer" (click)="abrirAgregarMes()">+ Agregar Mes</button>
+        <button class="text-xs border border-blue-800 text-blue-800 rounded px-2 py-1 cursor-pointer" title="Agregar un mes" (click)="abrirAgregarMes()">+ Agregar</button>
       }
       <!-- El botón se transforma según el estado del mes elegido: "Cerrar
            mes" en uno abierto (Admin/Validador/superadmin), "Abrir mes" en
@@ -18,7 +20,7 @@
           [title]="!mesActivo ? 'Selecciona un mes primero' : 'Cerrar el mes para todos'"
           (click)="cerrarMesActivo()"
         >
-          Cerrar mes
+          Cerrar
         </button>
       }
       @if (mesActivoCerrado && authService.can('reabrir_mes')) {
@@ -27,7 +29,7 @@
           title="Reabrir el mes para todos"
           (click)="abrirMesActivo()"
         >
-          Abrir mes
+          Abrir
         </button>
       }
       @if (authService.can('eliminar_mes')) {
@@ -37,7 +39,7 @@
           [title]="!mesActivo ? 'Selecciona un mes primero' : 'Eliminar el mes de la vista (los datos se conservan)'"
           (click)="eliminarMesActivo()"
         >
-          Eliminar mes
+          Eliminar
         </button>
       }
     </div>

@@ -375,3 +375,22 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   .border-amber-500 { border-color: #B45309; }
 }
 
+
+// Encabezado de cada panel (Meses, SLEP, Formulario, Asistente, Dashboard,
+// Histórico, Ranking): misma altura y en una sola línea, para que los botones
+// de todos los paneles queden alineados y no suban ni bajen al cambiar de
+// vista. Si falta espacio, se acorta el título, nunca los botones.
+.cab-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 28px;
+  margin-bottom: 8px;
+  flex: none;
+  flex-wrap: nowrap;
+  > h3 { margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  > div { flex: none; display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
+  // Todos los botones del encabezado, del mismo tamaño.
+  button { font-size: 11.5px; line-height: 16px; padding: 3px 7px; white-space: nowrap; }
+}

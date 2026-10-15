@@ -1,6 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatDialog } from '@angular/material/dialog';
 import { Subscription, combineLatest, forkJoin, of, switchMap, tap } from 'rxjs';
 import { CaseStateService } from '../../../core/services/case-state.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -9,14 +8,13 @@ import { HistoricoSlep } from '../../../core/models/case.model';
 import { ModeSwitcherComponent } from '../../../shared/mode-switcher/mode-switcher.component';
 import { HistoricoChartComponent, SerieComparacion, SeriePrincipal } from '../historico-chart/historico-chart.component';
 import { HistoricoTablaAvanceComponent } from '../historico-tabla-avance/historico-tabla-avance.component';
-import { RankingAvanceDialogComponent } from '../ranking-avance-dialog/ranking-avance-dialog.component';
 import { HistoricoDetalle, MESES_CORTOS, MetricasAvance, escaparHtml, metricas, pct, ranking, sumar, tooltipMes } from '../../../core/utils/avance';
 
-// Histórico con el modelo del informe de avance (gráfico, tabla de avance por
-// SLEP y ranking). Mantiene lo propio del Histórico: la línea General, los
-// SLEP marcados en el panel SLEP (en gris), el destacado (el último marcado,
-// en color y con su planilla detallada de 37 campos) y, para quien ve un solo
-// SLEP, solo su información.
+// Histórico con el modelo del informe de avance (gráfico y tabla de avance
+// por SLEP; el ranking tiene su propio botón en la línea de botones). Mantiene
+// lo propio del Histórico: la línea General, los SLEP marcados en el panel
+// SLEP (en gris), el destacado (el último marcado, en color y con su planilla
+// detallada de 37 campos) y, para quien ve un solo SLEP, solo su información.
 //
 // Los datos de TODOS los SLEP llegan en una sola consulta por mes
 // (/cases/historico-detalle): marcar o destacar SLEP no vuelve a consultar.
@@ -49,7 +47,6 @@ export class HistoricoPanelComponent implements OnInit, OnDestroy {
     private readonly caseState: CaseStateService,
     private readonly api: CasesApiService,
     private readonly authService: AuthService,
-    private readonly dialog: MatDialog,
   ) {}
 
   // Quien ve un solo SLEP (ej. Digitador): siempre es SU SLEP.
@@ -145,17 +142,9 @@ export class HistoricoPanelComponent implements OnInit, OnDestroy {
     return tooltipMes(titulo, sub, ms[i], ms[i - 1] ?? null, posicion, extra);
   };
 
-  // Clic en una fila de la tabla o en el ranking: destaca ese SLEP.
+  // Clic en una fila de la tabla: destaca ese SLEP.
   elegirSlep(slep: string): void {
     if (this.detalle?.alcanceCompleto) this.caseState.destacarSlepHistorico(slep);
-  }
-
-  abrirRanking(): void {
-    if (!this.detalle) return;
-    this.dialog
-      .open(RankingAvanceDialogComponent, { data: { detalle: this.detalle, mesActivo: this.mesActivoIdx }, width: '1120px', maxWidth: '96vw' })
-      .afterClosed()
-      .subscribe((slep?: string) => { if (slep) this.elegirSlep(slep); });
   }
 
   ngOnDestroy(): void {

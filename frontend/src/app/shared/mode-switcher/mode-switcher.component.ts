@@ -15,10 +15,11 @@ import { ModoWorkspace, WorkspaceModeService } from '../../core/services/workspa
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="flex gap-1">
+    <div class="flex flex-none gap-1">
       @for (opcion of opciones; track opcion.modo) {
         <button
-          class="text-xs rounded px-2 py-1 border border-blue-800"
+          type="button"
+          class="text-xs rounded px-2 py-1 border border-blue-800 whitespace-nowrap"
           [class.bg-blue-800]="opcion.modo === modoActivo"
           [class.text-white]="opcion.modo === modoActivo"
           [class.text-blue-800]="opcion.modo !== modoActivo"
@@ -33,10 +34,12 @@ import { ModoWorkspace, WorkspaceModeService } from '../../core/services/workspa
 export class ModeSwitcherComponent {
   @Input({ required: true }) modoActivo!: ModoWorkspace;
 
-  private readonly todas: { modo: ModoWorkspace; etiqueta: string; permiso?: string }[] = [
+  // Ranking compara a todos los SLEP: solo para quien los ve todos.
+  private readonly todas: { modo: ModoWorkspace; etiqueta: string; permiso?: string; todosLosSlep?: boolean }[] = [
     { modo: 'formulario', etiqueta: 'Formulario' },
     { modo: 'dashboard-ampliado', etiqueta: 'Dashboard', permiso: 'dashboard' },
     { modo: 'historico', etiqueta: 'Histórico', permiso: 'historico' },
+    { modo: 'ranking', etiqueta: 'Ranking', permiso: 'historico', todosLosSlep: true },
   ];
 
   // Solo los modos que el perfil permite (Panel de avance, Histórico). Quien
@@ -45,9 +48,9 @@ export class ModeSwitcherComponent {
   // formulario y su asistente juntos: se llama "Formulario".
   get opciones() {
     const u = this.authService.usuarioActual();
-    const unSlep = !!u && u.alcance !== 'todos';
+    const unSlep = !!u && !u.esSuperadmin && u.alcance !== 'todos';
     return this.todas
-      .filter((o) => !o.permiso || this.authService.can(o.permiso))
+      .filter((o) => (!o.permiso || this.authService.can(o.permiso)) && !(o.todosLosSlep && unSlep))
       .map((o) => (o.modo === 'formulario' && unSlep ? { ...o, etiqueta: 'Asistente' } : o));
   }
 

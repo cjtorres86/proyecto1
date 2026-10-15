@@ -1,17 +1,13 @@
 <!-- Histórico con el modelo del informe de avance: gráfico del % de avance
      (meta 100 %, zona pendiente, puntos por nivel, tooltip completo), tabla
-     de avance por SLEP ordenada por ranking (rojo a azul) y su propio botón
-     de Ranking de avance. La planilla detallada (37 campos) del SLEP
+     de avance por SLEP ordenada por ranking (rojo a azul); el Ranking tiene
+     su propio botón en la línea de botones. La planilla detallada (37 campos) del SLEP
      destacado se mantiene debajo. -->
 <div class="relative h-full overflow-auto">
-  <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+  <div class="cab-panel">
     <h3 class="font-bold text-sm uppercase text-gray-500">Histórico</h3>
-    <div class="flex flex-wrap items-center gap-2">
+    <div>
       @if (detalle) {
-        <button type="button" (click)="abrirRanking()" class="inline-flex items-center gap-1.5 text-xs font-semibold border border-gray-300 dark:border-gray-600 rounded px-2.5 py-1 hover:border-gray-500 cursor-pointer">
-          <svg viewBox="0 0 16 16" class="w-3.5 h-3.5" aria-hidden="true"><path d="M2.5 13.5V9M6.5 13.5V4.5M10.5 13.5V7M14 13.5H2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          Ranking de avance
-        </button>
         <div class="inline-flex border border-gray-300 dark:border-gray-600 rounded overflow-hidden text-[11px]" role="group" aria-label="Escala del gráfico">
           <button type="button" class="px-2 py-1 font-semibold cursor-pointer" [ngClass]="{ 'bg-[#0F69B4] text-white': escala === '100' }" [attr.aria-pressed]="escala === '100'" (click)="escala = '100'" title="Muestra la distancia real a la meta">0–100 %</button>
           <button type="button" class="px-2 py-1 font-semibold cursor-pointer border-l border-gray-300 dark:border-gray-600" [ngClass]="{ 'bg-[#0F69B4] text-white': escala === 'aj' }" [attr.aria-pressed]="escala === 'aj'" (click)="escala = 'aj'" title="Acerca la escala para ver mejor los cambios">Ajustada</button>

@@ -10,11 +10,13 @@
         <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto">@if (puedeVerInspector) { <app-field-inspector /> } @else {
           <!-- Sin Inspector: el selector de modos (que vive en el Inspector) se
                muestra igual, para poder ir al Dashboard o al Histórico si el perfil los tiene. -->
-          <app-mode-switcher modoActivo="formulario" />
+          <div class="cab-panel !justify-end"><app-mode-switcher modoActivo="formulario" /></div>
           <p class="text-xs text-gray-500 mt-3">Tu perfil no incluye el asistente de formulario.</p>
         }</div>
       } @else if ((modo$ | async) === 'dashboard-ampliado') {
         <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-dashboard /></div>
+      } @else if ((modo$ | async) === 'ranking') {
+        <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-ranking-panel /></div>
       } @else {
         <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-historico-panel /></div>
       }
@@ -25,11 +27,13 @@
         <div class="bg-white rounded-lg shadow p-3 overflow-auto">@if (puedeVerInspector) { <app-field-inspector /> } @else {
           <!-- Sin Inspector: el selector de modos (que vive en el Inspector) se
                muestra igual, para poder ir al Dashboard o al Histórico si el perfil los tiene. -->
-          <app-mode-switcher modoActivo="formulario" />
+          <div class="cab-panel !justify-end"><app-mode-switcher modoActivo="formulario" /></div>
           <p class="text-xs text-gray-500 mt-3">Tu perfil no incluye el asistente de formulario.</p>
         }</div>
       } @else if ((modo$ | async) === 'dashboard-ampliado') {
         <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-dashboard /></div>
+      } @else if ((modo$ | async) === 'ranking') {
+        <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-ranking-panel /></div>
       } @else {
         <div class="col-span-2 bg-white rounded-lg shadow p-3 overflow-auto"><app-historico-panel /></div>
       }

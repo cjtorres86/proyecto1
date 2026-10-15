@@ -1,12 +1,12 @@
 <div class="flex flex-col h-full">
-  <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+  <div class="cab-panel">
     <h3 class="font-bold text-sm uppercase text-gray-500">Formulario</h3>
     <!-- "Cargar datos" y "Guardar": mismo estilo que los botones
          Formulario/Dashboard/Histórico (app-mode-switcher). Guardar se
          pinta sólido solo cuando hay cambios sin guardar. En un mes cerrado
          ambos quedan desactivados (salvo superadmin). -->
     @if (puedeEditar && !esTotalGeneral && contenedor) {
-      <div class="flex gap-1">
+      <div>
         <!-- Cargar datos: abre la ventana con dos opciones (mes anterior o
              archivo Excel). Se activa o desactiva por perfil en el portal
              (permiso "importar_excel", «Cargar datos»). -->
