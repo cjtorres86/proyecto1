@@ -82,6 +82,24 @@ export const dias = (v: number | null): string => (v == null ? '—' : `${fmt(v)
 export const posLicencia = (valor: number | null, maxima: number | null): number =>
   valor == null || !maxima ? 0 : Math.min(100, Math.max(0, (valor / maxima) * 100));
 
+// Licencias de un solo SLEP como tarjetas KPI (Dashboard e informe): duración
+// mínima, promedio y máxima (con su barra respecto de la máxima) y la
+// remuneración promedio. clave = tarjeta destacada.
+export interface KpiLicencia { id: string; label: string; num: number | null; valor: string; unidad: string; ancho: number | null; nota: string; clave: boolean }
+export function kpisLicencias(L: LicenciasSlep): KpiLicencia[] {
+  const max = L.maxima.valor;
+  const dur = (c: Cifra, nota: string, clave = false): KpiLicencia => ({
+    id: c.id, label: c.label, num: c.valor, valor: c.valor == null ? '—' : fmt(c.valor), unidad: c.valor == null ? '' : c.valor === 1 ? 'día' : 'días',
+    ancho: c.valor == null || !max ? null : Math.min(1, c.valor / max), nota, clave,
+  });
+  return [
+    dur(L.minima, 'La licencia más corta'),
+    dur(L.promedio, 'Lo que dura, en promedio, una licencia', true),
+    dur(L.maxima, 'La licencia más larga'),
+    { id: L.remuneracion.id, label: L.remuneracion.label, num: L.remuneracion.valor, valor: rem(L.remuneracion.valor), unidad: '', ancho: null, nota: L.remuneracion.nota, clave: true },
+  ];
+}
+
 // Arco de la dona (anillo) entre dos ángulos, en un lienzo de 120 × 120.
 function arco(a0: number, a1: number): string {
   const R = 54, r = 34, cx = 60, cy = 60, grande = a1 - a0 > Math.PI ? 1 : 0;

@@ -9,7 +9,10 @@
 .tit{font-size:14px;font-weight:700;color:#1B4673;margin:0}
 :host-context(.dark) .tit{color:#A9C8EE}
 .sub{font-size:11.5px;color:#76839a;margin:0}
-.grilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.grilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;container-type:inline-size}
+// Con dos columnas, la última tarjeta de desglose (Resultado) usa toda la fila
+// para no dejar un hueco al lado.
+@container (min-width:534px) and (max-width:807px){.ultimo{grid-column:1/-1}}
 .cifras{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
 .cifra{border:1px solid #e3e8f1;border-radius:8px;padding:9px 11px;cursor:default;min-width:0}
 :host-context(.dark) .cifra{border-color:#28324A}
@@ -39,7 +42,7 @@
 .av-barra::after{content:'';position:absolute;right:0;top:0;bottom:0;width:3px;background:#25306B}
 :host-context(.dark) .av-barra{background:#1F2B3E}
 .av-escala{display:flex;justify-content:space-between;font-size:10px;color:#76839a}
-// 3 · Licencias
+// Licencias (última tarjeta, a todo el ancho)
 .lic{grid-column:1/-1}
 .dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px 20px}
 .fila-rk{display:grid;grid-template-columns:24px minmax(90px,38%) 1fr auto;gap:8px;align-items:center;font-size:11.5px;color:#374151;padding:1px 2px;border-radius:4px}
@@ -50,29 +53,30 @@
 .sep-rk{border-top:1px dashed #c9d8ee;margin-top:2px;padding-top:3px}
 .fila-rk .bar,.fila-h .bar{height:12px;background:#eceff4;border-radius:3px;overflow:hidden}
 .fila-rk .bar i,.fila-h .bar i{display:block;height:100%;border-radius:3px}
-// 3 · Licencias de un solo SLEP: la línea de duración (mínima → promedio →
-// máxima, en días) y la remuneración promedio destacada. Plano, azul y gris.
-.lic-slep{display:grid;grid-template-columns:minmax(0,2fr) minmax(190px,1fr);gap:12px 20px;align-items:center}
-@media (max-width:760px){.lic-slep{grid-template-columns:1fr}}
-.lic-rango{display:flex;flex-direction:column;gap:8px;min-width:0}
-.lic-rango .lb{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#46536a}
-:host-context(.dark) .lic-rango .lb{color:#b3bfd2}
-.rango{position:relative;height:22px;margin:0 9px}
-.rango .pista{position:absolute;left:0;right:0;top:9px;height:4px;border-radius:2px;background:#eceff4}
-.rango .tramo{position:absolute;top:8px;height:6px;border-radius:3px;background:#8FB2F5}
-.rango .punto{position:absolute;top:4px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#fff;border:3px solid #1E4FA0;cursor:default}
-.rango .punto.prom{top:2px;width:18px;height:18px;margin-left:-9px;background:#1E4FA0;border-color:#fff;outline:2px solid #1E4FA0}
-:host-context(.dark) .rango .pista{background:#1F2B3E}
-:host-context(.dark) .rango .punto{background:#141B2E}
-.rango-et{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:10.5px}
-.rango-et div{display:flex;flex-direction:column;gap:1px;min-width:0}
-.rango-et div:nth-child(2){text-align:center}
-.rango-et div:nth-child(3){text-align:right}
-.rango-et span{color:#76839a}
-.rango-et b{font-size:15px;color:#111827;font-variant-numeric:tabular-nums}
-.rango-et .prom b{color:#1E4FA0}
-:host-context(.dark) .rango-et b{color:#e8edf5} :host-context(.dark) .rango-et .prom b{color:#8FB2F5}
-// 4, 5 y 6: desglose en barras
+// Licencias de un solo SLEP: tarjetas KPI (duración mínima, promedio y
+// máxima, con su barra respecto de la máxima, y la remuneración promedio).
+// Planas, azul y gris; las destacadas, con fondo azul claro.
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;container-type:inline-size}
+@container (max-width:520px){.kpis{grid-template-columns:1fr 1fr}}
+.kpi{border:1px solid #e3e8f1;border-top:3px solid #8FB2F5;border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;min-width:0;cursor:default}
+.kpi.clave{border-color:#c9d8ee;border-top-color:#1E4FA0;background:#EEF4FB}
+:host-context(.dark) .kpi{border-color:#28324A;border-top-color:#3b5d93}
+:host-context(.dark) .kpi.clave{background:#1c3352;border-color:#2c4a73;border-top-color:#8FB2F5}
+.kpi .lb{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#46536a}
+:host-context(.dark) .kpi .lb{color:#b3bfd2}
+.kpi .vl{font-size:clamp(18px,3.4cqi,30px);font-weight:800;line-height:1.05;color:#25306B;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi .vl small{font-size:13px;font-weight:600;color:#76839a;margin-left:4px}
+:host-context(.dark) .kpi .vl{color:#e8edf5}
+.kpi .kbar{height:5px;border-radius:3px;background:#eceff4;overflow:hidden}
+.kpi .kbar i{display:block;height:100%;border-radius:3px;background:#1E4FA0}
+:host-context(.dark) .kpi .kbar{background:#1F2B3E} :host-context(.dark) .kpi .kbar i{background:#8FB2F5}
+.kpi .nt{font-size:11px;color:#76839a}
+// 2 · Involucrados, a todo el ancho: dona a la izquierda y leyenda a la derecha.
+.ancho{grid-column:1/-1}
+.dona{display:flex;flex-wrap:wrap;align-items:center;gap:16px 40px;padding:0 8px}
+.dona svg{width:170px}
+.dona-ley{display:flex;flex-direction:column;gap:10px;flex:1;min-width:220px;max-width:560px;font-size:13px}
+// 3, 4 y 5: desglose en barras
 .fila-h{display:flex;flex-direction:column;gap:3px;font-size:11.5px;cursor:default}
 .fila-h .arriba{display:grid;grid-template-columns:1fr auto 46px;gap:8px;align-items:baseline}
 .fila-h .pc{font-size:10.5px;color:#76839a;text-align:right;font-variant-numeric:tabular-nums}

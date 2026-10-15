@@ -42,21 +42,21 @@
     </section>
 
     <div class="grilla">
-      <!-- 2 · Involucrados: campos 7 y 8 (dona) -->
-      <section class="blq" aria-labelledby="d-b2">
+      <!-- 2 · Involucrados: campos 7 y 8 (dona), a todo el ancho -->
+      <section class="blq ancho" aria-labelledby="d-b2">
         <div><p class="eyebrow">2 · Involucrados</p><h4 class="tit" id="d-b2">Situación de los funcionarios involucrados</h4></div>
         @if (!dona.total) {
           <p class="sub">Sin datos de los campos {{ n('Q07') }} y {{ n('YA_NO_ESTAN') }} para este mes.</p>
         } @else {
-          <div class="flex flex-wrap items-center gap-4">
-            <svg viewBox="0 0 120 120" class="w-[140px] flex-none" role="img" aria-label="Funcionarios involucrados según si continúan en el servicio">
+          <div class="dona">
+            <svg viewBox="0 0 120 120" class="flex-none" role="img" aria-label="Funcionarios involucrados según si continúan en el servicio">
               @for (p of dona.partes; track p.id) {
                 @if (p.d) { <path [attr.d]="p.d" [attr.fill]="p.color" (mouseenter)="verTip($event, p.id, p.label, p.valor, 'los involucrados', dona.total)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()" style="cursor:pointer" /> }
               }
               <text x="60" y="58" text-anchor="middle" font-size="18" font-weight="700" fill="currentColor">{{ fmt(dona.total) }}</text>
               <text x="60" y="73" text-anchor="middle" font-size="8.5" fill="#76839a">involucrados</text>
             </svg>
-            <div class="flex flex-col gap-1.5 text-[11.5px] min-w-[180px] flex-1">
+            <div class="dona-ley">
               @for (p of dona.partes; track p.id) {
                 <span class="flex items-center gap-2 text-gray-700 dark:text-gray-200"><i class="sw" [style.background]="p.color"></i>{{ p.label }}<b class="ml-auto tabular-nums">{{ fmt(p.valor) }}</b><span class="text-gray-500 w-[46px] text-right">{{ pct(p.pct) }}</span></span>
               }
@@ -66,34 +66,62 @@
         @for (cp of capsulasInvolucrados; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
       </section>
 
-      <!-- 3 · Licencias: rankings de los campos 17 y 18 -->
+      <!-- 3, 4 y 5: un dato principal y su desglose (mismo lenguaje visual) -->
+      @for (b of desgloses; track b.clave) {
+        <section class="blq" [class.ultimo]="b.clave === 'san' && !anexo.length" [attr.aria-labelledby]="'d-' + b.clave">
+          <div><p class="eyebrow">{{ numero(b.clave) }} · {{ sinNumero(b.eyebrow) }}</p><h4 class="tit" [id]="'d-' + b.clave">{{ b.titulo }}</h4></div>
+          <div class="cifra clave" (mouseenter)="verTip($event, b.principal.id, et(b.principal.id, b.principal.label), b.principal.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
+            <div class="lb">{{ et(b.principal.id, b.principal.label) }}</div>
+            <div class="flex items-baseline justify-between gap-2 flex-wrap"><span class="vl">{{ fmt(b.principal.valor) }}</span><span class="nt">{{ b.principal.nota }}</span></div>
+          </div>
+          <p class="sub">{{ b.orden }}</p>
+          @for (x of b.filas; track x.id) {
+            <div class="fila-h" (mouseenter)="verTip($event, x.id, x.label, x.valor, et(b.principal.id, b.principal.label), b.principal.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
+              <div class="arriba">
+                <span class="text-gray-700 dark:text-gray-200">{{ x.label }}</span>
+                <span class="num">{{ fmt(x.valor) }}</span>
+                <span class="pc">{{ b.principal.valor ? pct(x.pct) : '' }}</span>
+              </div>
+              <span class="bar"><i [style.width.%]="(x.pct > 1 ? 1 : x.pct) * 100" [style.background]="x.color"></i></span>
+            </div>
+          }
+          @for (cp of b.capsulas; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
+        </section>
+      }
+
+      <!-- 6 · Anexo (solo con el formulario de 44 campos) -->
+      @if (anexo.length) {
+        <section class="blq" aria-labelledby="d-b7">
+          <div><p class="eyebrow">{{ numero('anexo') }} · Anexo</p><h4 class="tit" id="d-b7">Seguimiento adicional (anexo)</h4></div>
+          <div class="cifras">
+            @for (c of anexo; track c.id) {
+              <div class="cifra" (mouseenter)="verTip($event, c.id, c.label, c.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
+                <div class="lb">{{ c.label }}</div><div class="vl">{{ c.id === 'Q62' ? rem(c.valor) : fmt(c.valor) }}</div>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Licencias (la última tarjeta, como en los informes). Consolidado:
+           rankings de los campos 17 y 18. -->
       <section class="blq lic" aria-labelledby="d-b3">
         @if (licenciasSlep; as L) {
-          <!-- Un solo SLEP: sus propios datos (campos 15 a 18), sin rankings. -->
-          <div><p class="eyebrow">3 · Licencias</p><h4 class="tit" id="d-b3">Duración de las licencias y remuneración promedio</h4></div>
-          <div class="lic-slep">
-            <div class="lic-rango">
-              <div class="lb">Duración de las licencias (días)</div>
-              <div class="rango" role="img" [attr.aria-label]="'Mínima ' + fmt(L.minima.valor) + ', promedio ' + fmt(L.promedio.valor) + ', máxima ' + fmt(L.maxima.valor) + ' días'">
-                <span class="pista"></span>
-                <span class="tramo" [style.left.%]="posLic(L.minima.valor, L.maxima.valor)" [style.right.%]="0"></span>
-                @for (c of [L.minima, L.promedio, L.maxima]; track c.id; let k = $index) {
-                  <span class="punto" [class.prom]="k === 1" [style.left.%]="posLic(c.valor, L.maxima.valor)" (mouseenter)="verTip($event, c.id, et(c.id, c.label), c.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()"></span>
-                }
+          <!-- Un solo SLEP: sus propios datos (campos 15 a 18) como tarjetas KPI, sin rankings. -->
+          <div><p class="eyebrow">{{ numero('licencias') }} · Licencias</p><h4 class="tit" id="d-b3">Duración de las licencias y remuneración promedio</h4></div>
+          <div class="kpis">
+            @for (k of kpisLic(L); track k.id) {
+              <div class="kpi" [class.clave]="k.clave" (mouseenter)="verTip($event, k.id, et(k.id, k.label), k.num)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
+                <div class="lb">{{ et(k.id, k.label) }}</div>
+                <div class="vl">{{ k.valor }}@if (k.unidad) { <small>{{ k.unidad }}</small> }</div>
+                @if (k.ancho !== null) { <span class="kbar" title="Respecto de la licencia más larga"><i [style.width.%]="(k.ancho < 0.02 ? 0.02 : k.ancho) * 100"></i></span> }
+                <div class="nt">{{ k.nota }}</div>
               </div>
-              <div class="rango-et">
-                @for (c of [L.minima, L.promedio, L.maxima]; track c.id; let k = $index) {
-                  <div [class.prom]="k === 1"><span>{{ et(c.id, c.label) }}</span><b>{{ dias(c.valor) }}</b></div>
-                }
-              </div>
-            </div>
-            <div class="cifra clave" (mouseenter)="verTip($event, L.remuneracion.id, et(L.remuneracion.id, L.remuneracion.label), L.remuneracion.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
-              <div class="lb">{{ et(L.remuneracion.id, L.remuneracion.label) }}</div><div class="vl">{{ rem(L.remuneracion.valor) }}</div><div class="nt">{{ L.remuneracion.nota }}</div>
-            </div>
+            }
           </div>
           <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ L.nota }}</p>
         } @else {
-        <div><p class="eyebrow">3 · Licencias</p><h4 class="tit" id="d-b3">Los SLEP con las licencias más largas y las remuneraciones más altas</h4></div>
+        <div><p class="eyebrow">{{ numero('licencias') }} · Licencias</p><h4 class="tit" id="d-b3">Los SLEP con las licencias más largas y las remuneraciones más altas</h4></div>
         <div class="dos">
           @for (r of rankingsLic; track r.id) {
             <div class="flex flex-col gap-1.5 min-w-0">
@@ -123,43 +151,6 @@
         </div>
         }
       </section>
-
-      <!-- 4, 5 y 6: un dato principal y su desglose (mismo lenguaje visual) -->
-      @for (b of desgloses; track b.clave) {
-        <section class="blq" [attr.aria-labelledby]="'d-' + b.clave">
-          <div><p class="eyebrow">{{ b.eyebrow }}</p><h4 class="tit" [id]="'d-' + b.clave">{{ b.titulo }}</h4></div>
-          <div class="cifra clave" (mouseenter)="verTip($event, b.principal.id, et(b.principal.id, b.principal.label), b.principal.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
-            <div class="lb">{{ et(b.principal.id, b.principal.label) }}</div>
-            <div class="flex items-baseline justify-between gap-2 flex-wrap"><span class="vl">{{ fmt(b.principal.valor) }}</span><span class="nt">{{ b.principal.nota }}</span></div>
-          </div>
-          <p class="sub">{{ b.orden }}</p>
-          @for (x of b.filas; track x.id) {
-            <div class="fila-h" (mouseenter)="verTip($event, x.id, x.label, x.valor, et(b.principal.id, b.principal.label), b.principal.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
-              <div class="arriba">
-                <span class="text-gray-700 dark:text-gray-200">{{ x.label }}</span>
-                <span class="num">{{ fmt(x.valor) }}</span>
-                <span class="pc">{{ b.principal.valor ? pct(x.pct) : '' }}</span>
-              </div>
-              <span class="bar"><i [style.width.%]="(x.pct > 1 ? 1 : x.pct) * 100" [style.background]="x.color"></i></span>
-            </div>
-          }
-          @for (cp of b.capsulas; track cp) { <p class="aviso m-0"><span aria-hidden="true">ⓘ</span>{{ cp }}</p> }
-        </section>
-      }
-
-      <!-- 7 · Anexo (solo con el formulario de 44 campos) -->
-      @if (anexo.length) {
-        <section class="blq" aria-labelledby="d-b7">
-          <div><p class="eyebrow">7 · Anexo</p><h4 class="tit" id="d-b7">Seguimiento adicional (anexo)</h4></div>
-          <div class="cifras">
-            @for (c of anexo; track c.id) {
-              <div class="cifra" (mouseenter)="verTip($event, c.id, c.label, c.valor)" (mousemove)="moverTip($event)" (mouseleave)="ocultarTip()">
-                <div class="lb">{{ c.label }}</div><div class="vl">{{ c.id === 'Q62' ? rem(c.valor) : fmt(c.valor) }}</div>
-              </div>
-            }
-          </div>
-        </section>
-      }
     </div>
 
   </div>

@@ -11,7 +11,7 @@ import { INTERRUPTOR_TEMA, descargarHtml, documentoAutonomo, estilosDeLaPagina, 
 import { ThemeToggleComponent } from '../../../shared/theme-toggle/theme-toggle.component';
 import { BitacoraApiService } from '../../bitacora/services/bitacora-api.service';
 import { DashboardApiService } from '../../dashboard/services/dashboard-api.service';
-import { Cifra, ModeloDashboard, RankingLic, armarDashboard, dias, nivelDe, numeracion, posLicencia, rem } from '../../dashboard/modelo-dashboard';
+import { Cifra, KpiLicencia, LicenciasSlep, ModeloDashboard, RankingLic, armarDashboard, dias, kpisLicencias, nivelDe, numeracion, rem } from '../../dashboard/modelo-dashboard';
 import { generarDocumento, svgAImagen } from '../documentos-informe';
 import { graficosDashboard } from './graficos-dashboard';
 
@@ -68,7 +68,6 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
   readonly fmt = fmt;
   readonly pct = pct;
   readonly rem = rem;
-  readonly posLic = posLicencia;
   readonly dias = dias;
   @ViewChild('barra') private barra?: ElementRef<HTMLElement>;
   private quitarTips?: () => void;
@@ -298,6 +297,13 @@ export class InformeDashboardComponent implements OnInit, OnDestroy {
   // (campos 4 y 5); los funcionarios involucrados están en la dona.
   puntosResumen(M: ModeloDashboard): Cifra[] {
     return M.origen.filter((c) => c.id === 'Q04' || c.id === 'Q05');
+  }
+
+  // Licencias de un solo SLEP como tarjetas KPI (calculadas una vez por SLEP).
+  private kpis: { L: LicenciasSlep | null; k: KpiLicencia[] } = { L: null, k: [] };
+  kpisLic(L: LicenciasSlep): KpiLicencia[] {
+    if (this.kpis.L !== L) this.kpis = { L, k: kpisLicencias(L) };
+    return this.kpis.k;
   }
 
   // ---------- Notas (ⓘ) por sección ----------

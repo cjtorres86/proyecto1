@@ -6,7 +6,7 @@ import { DashboardApiService } from '../services/dashboard-api.service';
 import { DashboardDeMes } from '../../../core/models/dashboard.model';
 import { ModeSwitcherComponent } from '../../../shared/mode-switcher/mode-switcher.component';
 import { escaparHtml, fmt, pct } from '../../../core/utils/avance';
-import { Cifra, Desglose, LicenciasSlep, ParteDona, RankingLic, armarDashboard, dias, numeracion, posLicencia, rem } from '../modelo-dashboard';
+import { Cifra, Desglose, KpiLicencia, LicenciasSlep, kpisLicencias, ParteDona, RankingLic, armarDashboard, numeracion, rem } from '../modelo-dashboard';
 
 export { NIVEL_DASH, PALETA } from '../modelo-dashboard';
 
@@ -116,8 +116,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return a == null ? '#76839a' : a < 0.5 ? '#c23434' : '#0f69b4';
   }
 
-  readonly posLic = posLicencia;
-  readonly dias = dias;
+  // Número de cada tarjeta, igual que en los informes: Licencias va al final
+  // (6, o 7 si hay Anexo); los números de campo del formulario no cambian.
+  numero(clave: string): number {
+    const orden: Record<string, number> = { involucrados: 2, cic: 3, proc: 4, san: 5, anexo: 6 };
+    return orden[clave] ?? (this.anexo.length ? 7 : 6);
+  }
+  sinNumero(eyebrow: string): string {
+    return eyebrow.replace(/^\d+ · /, '');
+  }
+
+  // Licencias de un solo SLEP como tarjetas KPI (calculadas una vez por SLEP).
+  private kpis: { L: LicenciasSlep | null; k: KpiLicencia[] } = { L: null, k: [] };
+  kpisLic(L: LicenciasSlep): KpiLicencia[] {
+    if (this.kpis.L !== L) this.kpis = { L, k: kpisLicencias(L) };
+    return this.kpis.k;
+  }
 
   valorLic(r: RankingLic, v: number): string {
     return r.unidad === '$' ? rem(v) : `${fmt(v)} d`;

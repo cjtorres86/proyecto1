@@ -217,7 +217,7 @@
 <!-- 3, 4 y 5: un dato principal y su desglose. En la hoja, horizontal: el
      dato principal a la izquierda y las barras a la derecha. -->
 <ng-template #tDesglose let-b let-h="h">
-  <section class="panel desglose" [class.horiz]="h">
+  <section class="panel desglose" [class.horiz]="h" [class.ultimo]="!h && b.clave === 'san' && !modelo?.anexo?.length">
     <div class="d-izq">
       <div class="sec-head"><div><span class="eyebrow">{{ numero(b.clave) }} · {{ sinNumero(b.eyebrow) }}</span><h2>{{ b.titulo }}</h2></div>@if (!h) { <ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: b.clave }" /> }</div>
       <div class="tile key" [attr.data-tip]="h ? null : tip(b.principal.id, et(b.principal.id, b.principal.label), b.principal.valor)"><span class="nm">{{ et(b.principal.id, b.principal.label) }}</span><span class="val">{{ fmt(b.principal.valor) }}</span><span class="gl">{{ b.principal.nota }}</span></div>
@@ -247,28 +247,21 @@
 </ng-template>
 
 <!-- Licencias (última tarjeta). Consolidado: rankings completos de los campos
-     17 y 18. Un solo SLEP: sus propios datos (campos 15 a 18), sin rankings. -->
+     17 y 18. Un solo SLEP: sus propios datos (campos 15 a 18) como tarjetas
+     KPI, sin rankings. -->
 <ng-template #tLicencias let-M let-h="h">
   <section class="panel licencias">
     @if (M.licenciasSlep; as L) {
       <div class="sec-head"><div><span class="eyebrow">{{ numero('licencias') }} · Licencias</span><h2>Duración de las licencias y remuneración promedio</h2></div>@if (!h) { <ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'licencias' }" /> }</div>
-      <div class="lic-slep">
-        <div class="lic-rango">
-          <span class="lb">Duración de las licencias (días)</span>
-          <div class="rango" role="img" [attr.aria-label]="'Mínima ' + fmt(L.minima.valor) + ', promedio ' + fmt(L.promedio.valor) + ', máxima ' + fmt(L.maxima.valor) + ' días'">
-            <span class="pista"></span>
-            <span class="tramo" [style.left.%]="posLic(L.minima.valor, L.maxima.valor)"></span>
-            @for (c of [L.minima, L.promedio, L.maxima]; track c.id; let k = $index) {
-              <span class="punto" [class.prom]="k === 1" [style.left.%]="posLic(c.valor, L.maxima.valor)" [attr.data-tip]="h ? null : tip(c.id, et(c.id, c.label), c.valor)"></span>
-            }
+      <div class="kpis">
+        @for (k of kpisLic(L); track k.id) {
+          <div class="kpi" [class.clave]="k.clave" [attr.data-tip]="h ? null : tip(k.id, et(k.id, k.label), k.num)">
+            <span class="nm">{{ et(k.id, k.label) }}</span>
+            <span class="val">{{ k.valor }}@if (k.unidad) { <small>{{ k.unidad }}</small> }</span>
+            @if (k.ancho !== null) { <span class="kbar" title="Respecto de la licencia más larga"><i [style.width.%]="(k.ancho < 0.02 ? 0.02 : k.ancho) * 100"></i></span> }
+            <span class="gl">{{ k.nota }}</span>
           </div>
-          <div class="rango-et">
-            @for (c of [L.minima, L.promedio, L.maxima]; track c.id; let k = $index) {
-              <div [class.prom]="k === 1"><span>{{ et(c.id, c.label) }}</span><b>{{ dias(c.valor) }}</b></div>
-            }
-          </div>
-        </div>
-        <div class="tile key" [attr.data-tip]="h ? null : tip(L.remuneracion.id, et(L.remuneracion.id, L.remuneracion.label), L.remuneracion.valor)"><span class="nm">{{ et(L.remuneracion.id, L.remuneracion.label) }}</span><span class="val">{{ rem(L.remuneracion.valor) }}</span><span class="gl">{{ L.remuneracion.nota }}</span></div>
+        }
       </div>
     } @else {
     <div class="sec-head"><div><span class="eyebrow">{{ numero('licencias') }} · Licencias</span><h2>Los SLEP con las licencias más largas y las remuneraciones más altas</h2></div>@if (!h) { <ng-container *ngTemplateOutlet="botonNotas; context: { $implicit: 'licencias' }" /> }</div>

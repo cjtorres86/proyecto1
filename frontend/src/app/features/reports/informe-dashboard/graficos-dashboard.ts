@@ -1,5 +1,5 @@
 import { fmt, pct } from '../../../core/utils/avance';
-import { Desglose, LicenciasSlep, ModeloDashboard, Nivel, RankingLic, dias, nivelDe, rem } from '../../dashboard/modelo-dashboard';
+import { Desglose, LicenciasSlep, ModeloDashboard, Nivel, RankingLic, kpisLicencias, nivelDe, rem } from '../../dashboard/modelo-dashboard';
 
 // Gráficos del Informe de dashboard para Excel y PDF (imágenes): el lenguaje
 // visual de los informes, con predominio de azules y grises. El rojo aparece
@@ -84,25 +84,23 @@ function grafDesglose(d: Desglose, et: (id: string, l: string) => string): Grafi
   return { cap: d.titulo, svg: svg(900, H, cab + `<g transform="translate(0,36)">${b.cuerpo}</g>`), W: 900, H };
 }
 
-// Licencias de un solo SLEP: la línea de duración (mínima → promedio → máxima)
-// y la remuneración promedio destacada. Azul y gris.
+// Licencias de un solo SLEP: las cuatro tarjetas KPI (duración mínima,
+// promedio y máxima, con su barra respecto de la máxima, y la remuneración).
 function grafLicenciasSlep(L: LicenciasSlep, et: (id: string, l: string) => string): GraficoSvg {
-  const W = 900, H = 170, X0 = 40, AN = 560, max = L.maxima.valor || 1;
-  const x = (v: number | null) => X0 + (v == null ? 0 : Math.min(1, v / max)) * AN;
-  let c = txt(X0 - 10, 26, 'DURACIÓN DE LAS LICENCIAS (DÍAS)', { size: 12, bold: true, color: C.texto2 });
-  c += `<rect x="${X0}" y="58" width="${AN}" height="6" rx="3" fill="${C.pista}"/>`;
-  c += `<rect x="${x(L.minima.valor)}" y="57" width="${x(L.maxima.valor) - x(L.minima.valor)}" height="8" rx="4" fill="#8FB2F5"/>`;
-  [L.minima, L.promedio, L.maxima].forEach((p, k) => {
-    const cx = x(p.valor), prom = k === 1;
-    c += `<circle cx="${cx}" cy="61" r="${prom ? 11 : 8}" fill="${prom ? C.azul : '#fff'}" stroke="${prom ? '#fff' : C.azul}" stroke-width="${prom ? 3 : 4}"/>`;
-    const anchor = k === 0 ? 'start' : k === 2 ? 'end' : 'middle', tx = k === 0 ? X0 - 8 : k === 2 ? X0 + AN + 8 : cx;
-    c += txt(tx, 104, et(p.id, p.label), { size: 12, color: C.texto3, anchor });
-    c += txt(tx, 126, dias(p.valor), { size: 17, bold: true, color: prom ? C.azul : C.texto, anchor });
+  const W = 900, H = 170, G = 14, AN = (W - 40 - G * 3) / 4;
+  let c = '';
+  kpisLicencias(L).forEach((k, i) => {
+    const x = 20 + i * (AN + G), y = 16;
+    c += `<rect x="${x}" y="${y}" width="${AN}" height="138" rx="8" fill="${k.clave ? '#EEF4FB' : '#fff'}" stroke="${C.linea}"/>`;
+    c += `<rect x="${x}" y="${y}" width="${AN}" height="4" rx="2" fill="${k.clave ? C.azul : '#8FB2F5'}"/>`;
+    c += txt(x + 14, y + 30, corta(et(k.id, k.label), 26).toUpperCase(), { size: 11, bold: true, color: C.texto2 });
+    c += `<text x="${x + 14}" y="${y + 72}" font-size="30" font-weight="700" fill="${C.navy}">${esc(k.valor)}${k.unidad ? `<tspan font-size="14" font-weight="400" fill="${C.texto3}"> ${esc(k.unidad)}</tspan>` : ''}</text>`;
+    if (k.ancho !== null) {
+      c += `<rect x="${x + 14}" y="${y + 88}" width="${AN - 28}" height="6" rx="3" fill="${C.pista}"/>`;
+      c += `<rect x="${x + 14}" y="${y + 88}" width="${Math.max(0.02, k.ancho) * (AN - 28)}" height="6" rx="3" fill="${C.azul}"/>`;
+    }
+    c += txt(x + 14, y + 118, corta(k.nota, 32), { size: 11, color: C.texto3 });
   });
-  c += `<rect x="660" y="30" width="220" height="110" rx="10" fill="#EEF4FB" stroke="${C.azul}" stroke-width="1.5"/>`;
-  c += txt(676, 58, corta(et(L.remuneracion.id, L.remuneracion.label), 30).toUpperCase(), { size: 11, bold: true, color: C.texto2 });
-  c += txt(676, 96, rem(L.remuneracion.valor), { size: 26, bold: true, color: C.navy });
-  c += txt(676, 122, L.remuneracion.nota, { size: 11, color: C.texto3 });
   return { cap: 'Duración de las licencias y remuneración promedio', svg: svg(W, H, c), W, H };
 }
 

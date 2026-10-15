@@ -309,7 +309,9 @@
 // Observaciones (ⓘ): comentarios que orientan.
 .id .nota{margin:0;font-size:.8rem;color:var(--fg-2);background:color-mix(in srgb,var(--accent-soft) 55%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line));border-radius:6px;padding:6px 10px;display:flex;gap:8px;align-items:flex-start}
 .id .nota span{color:var(--accent);font-weight:700}
-.id .dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:22px}
+.id .dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:22px;container-type:inline-size}
+// Con dos columnas, Resultado usa toda la fila para no dejar un hueco al lado.
+@container (min-width:662px) and (max-width:1003px){.id .dgrid > .ultimo{grid-column:1/-1}}
 @media (max-width:560px){.id .dgrid{grid-template-columns:1fr}}
 .id .panel.ancho{grid-column:1/-1}
 .id .tiles{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
@@ -323,12 +325,12 @@
 .id .dona-ley span{display:flex;align-items:center;gap:8px;border-radius:6px;padding:4px 6px}
 .id .dona-ley b{margin-left:auto;font-variant-numeric:tabular-nums}
 .id .dona-ley small{width:52px;text-align:right;color:var(--fg-3)}
-// En pantalla, Involucrados ocupa el alto de su fila: dona grande y centrada,
-// con la leyenda abajo.
-.id .wrap .inv{display:flex;flex-direction:column}
-.id .wrap .inv .dona{flex:1;flex-direction:column;justify-content:center;gap:20px}
-.id .wrap .inv .dona svg{width:min(300px,80%)}
-.id .wrap .inv .dona-ley{flex:none;width:100%;max-width:440px;min-width:0;font-size:.95rem}
+// En pantalla, Involucrados a todo el ancho: dona a la izquierda y leyenda a
+// la derecha; debajo, las tres tarjetas de desglose en una fila.
+.id .wrap .inv{grid-column:1/-1}
+.id .wrap .inv .dona{gap:18px 48px;padding:0 8px}
+.id .wrap .inv .dona svg{width:190px}
+.id .wrap .inv .dona-ley{max-width:600px;font-size:.95rem;gap:10px}
 // El dato principal de cada tarjeta (pantalla y PDF), del tamaño del % de avance.
 .id .tile.key .val{font-size:2.1rem;font-weight:700;line-height:1}
 .id .dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px 28px}
@@ -346,22 +348,18 @@
 .id .fila-h{display:flex;flex-direction:column;gap:4px;font-size:.84rem;border-radius:6px;padding:3px 6px}
 .id .fila-h .arriba{display:grid;grid-template-columns:1fr auto 56px;gap:10px;align-items:baseline}
 .id .fila-h .pc{font-size:.76rem;color:var(--fg-3);text-align:right}
-// Licencias de un solo SLEP: línea de duración y remuneración destacada.
-.id .lic-slep{display:grid;grid-template-columns:minmax(0,2fr) minmax(200px,1fr);gap:14px 24px;align-items:center}
-@media (max-width:760px){.id .lic-slep{grid-template-columns:1fr}}
-.id .lic-rango{display:flex;flex-direction:column;gap:10px;min-width:0}
-.id .rango{position:relative;height:24px;margin:0 10px}
-.id .rango .pista{position:absolute;left:0;right:0;top:10px;height:4px;border-radius:2px;background:var(--surface-2)}
-.id .rango .tramo{position:absolute;right:0;top:9px;height:6px;border-radius:3px;background:color-mix(in srgb,var(--accent) 45%,var(--surface-2))}
-.id .rango .punto{position:absolute;top:5px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--surface);border:3px solid var(--accent)}
-.id .rango .punto.prom{top:3px;width:18px;height:18px;margin-left:-9px;background:var(--accent);border-color:var(--surface);outline:2px solid var(--accent)}
-.id .rango-et{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:.74rem}
-.id .rango-et div{display:flex;flex-direction:column;gap:1px;min-width:0}
-.id .rango-et div:nth-child(2){text-align:center}
-.id .rango-et div:nth-child(3){text-align:right}
-.id .rango-et span{color:var(--fg-3)}
-.id .rango-et b{font-family:var(--f-display);font-size:1.1rem;color:var(--fg)}
-.id .rango-et .prom b{color:var(--accent)}
+// Licencias de un solo SLEP: tarjetas KPI (duración mínima, promedio y
+// máxima, con su barra respecto de la máxima, y la remuneración promedio).
+.id .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.id .kpi{background:var(--surface);border:1px solid var(--line);border-top:3px solid color-mix(in srgb,var(--accent) 45%,var(--surface-2));border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.id .kpi.clave{border-top-color:var(--accent);background:var(--accent-soft)}
+.id .kpi[data-tip]:hover{background:var(--surface-2)} .id .kpi.clave[data-tip]:hover{background:var(--accent-soft)}
+.id .kpi .nm{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-2)}
+.id .kpi .val{font-family:var(--f-display);font-size:2.1rem;font-weight:700;line-height:1.05;color:var(--head);font-variant-numeric:tabular-nums;white-space:nowrap}
+.id .kpi .val small{font-size:.9rem;font-weight:600;color:var(--fg-3);margin-left:5px}
+.id .kpi .kbar{display:block;height:5px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.id .kpi .kbar i{display:block;height:100%;border-radius:3px;background:var(--accent)}
+.id .kpi .gl{font-size:.78rem;color:var(--fg-3)}
 .id table.rk-d{min-width:640px}
 .id table.rk-d .pos{font-weight:700;color:var(--fg-3)} .id table.rk-d .pos.top{color:var(--accent)}
 .id table.rk-d .sn,.id table.rk-d th:nth-child(2){font-weight:600;color:var(--fg);text-align:left}
@@ -403,6 +401,8 @@
 .ia .panel.desglose.horiz{display:grid;grid-template-columns:250px 1fr;gap:10px 24px;align-items:start}
 .ia .panel.desglose .d-izq{display:flex;flex-direction:column;gap:10px;min-width:0}
 .ia .hojas-pdf .licencias .dos{grid-template-columns:1fr 1fr}
+.ia .hojas-pdf .kpis{grid-template-columns:repeat(4,1fr);gap:10px}
+.ia .hojas-pdf .kpi .val{font-size:1.7rem}
 .ia .hojas-pdf .fila-rk{font-size:.74rem;padding:0 2px;gap:6px}
 .ia .hojas-pdf .fila-rk .bar{height:8px}
 .ia .hojas-pdf table.rk-d{min-width:0;font-size:.74rem}
