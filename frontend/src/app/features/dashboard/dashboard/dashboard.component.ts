@@ -40,7 +40,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // 2 · Involucrados (dona)
   dona: { partes: ParteDona[]; total: number } = { partes: [], total: 0 };
   capsulasInvolucrados: string[] = [];
-  // 3 · Licencias (consolidado: rankings; un solo SLEP: sus datos, campos 15 a 18)
+  // Licencias, la última tarjeta (consolidado: rankings completos, todos los
+  // SLEP, como en el informe; un solo SLEP: sus datos, campos 15 a 18)
   rankingsLic: RankingLic[] = [];
   licenciasSlep: LicenciasSlep | null = null;
   // 4, 5 y 6
@@ -89,7 +90,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.porSlep.set('Q21', r.q21);
         this.porSlep.set('Q22', r.q22);
         this.num = numeracion(r.dash.numeros);
-        Object.assign(this, armarDashboard(r.dash, { slepActivo: this.slepActivo, mes: this.mes, anio: this.anio, porSlep: this.porSlep }));
+        Object.assign(this, armarDashboard(r.dash, { slepActivo: this.slepActivo, mes: this.mes, anio: this.anio, porSlep: this.porSlep, licenciasCompletas: true }));
       });
   }
 
